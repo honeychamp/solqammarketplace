@@ -1,0 +1,86 @@
+<?php
+
+namespace App\Controllers\Admin;
+
+use App\Controllers\BaseController;
+use App\Models\UserModel;
+use App\Services\Auth\AuthService;
+use Exception;
+
+class AuthController extends BaseController
+{
+    protected AuthService $authService;
+    protected UserModel $userModel;
+
+    public function __construct()
+    {
+        $this->authService = new AuthService();
+        $this->userModel   = new UserModel();
+    }
+
+    /**
+     * Dedicated Administrator Login Portal
+     */
+    public function login()
+    {
+        // If already logged in as Admin, redirect directly to dashboard
+        if ($this->authService->isLoggedIn()) {
+            if (session()->get('user.role') === 'admin') {
+                return redirect()->to('/admin/dashboard');
+            }
+            // If logged in as customer/seller, logout to allow admin sign in
+            $this->authService->logout();
+        }
+
+        if ($this->request->is('post')) {
+            $rules = [
+                'login'    => 'required',
+                'password' => 'required',
+            ];
+
+            if (!$this->validate($rules)) {
+                return redirect()->back()->withInput()->with('error', 'Please provide administrator email/username and password.');
+            }
+
+            $login    = trim((string) $this->request->getPost('login'));
+            $password = (string) $this->request->getPost('password');
+
+            try {
+                $user = $this->userModel->findByEmailOrPhone($login);
+                if (!$user || !password_verify($password, $user['password_hash'])) {
+                    return redirect()->back()->withInput()->with('error', 'Invalid administrator credentials.');
+                }
+
+                // Strict check: Only Admin role is allowed here
+                if ($user['role'] !== 'admin') {
+                    return redirect()->back()->withInput()->with('error', 'Access Denied: This portal is strictly restricted to Solqam Platform Administrators.');
+                }
+
+                if ($user['status'] === 'suspended') {
+                    return redirect()->back()->withInput()->with('error', 'Administrator account suspended. Contact system root.');
+                }
+
+                // Set session
+                $this->authService->setSession($user);
+
+                return redirect()->to('/admin/dashboard')->with('success', 'Authenticated successfully. Welcome to SOLQAM Admin Console!');
+
+            } catch (Exception $e) {
+                return redirect()->back()->withInput()->with('error', $e->getMessage());
+            }
+        }
+
+        return view('admin/auth/login', [
+            'title' => 'Admin Console Login — Solqam Marketplace',
+        ]);
+    }
+
+    /**
+     * Dedicated Administrator Logout
+     */
+    public function logout()
+    {
+        $this->authService->logout();
+        return redirect()->to('/admin/login')->with('info', 'Administrator signed out safely.');
+    }
+}

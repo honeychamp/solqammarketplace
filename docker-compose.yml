@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  # ---------------------------------------------------------------------------
+  # PHP 8.2 + Apache web server
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: solqamtech_app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      CI_ENVIRONMENT: development
+      database__default__hostname: db
+      database__default__database: solqamtech
+      database__default__username: solqam_user
+      database__default__password: solqam_pass
+      database__default__DBDriver: MySQLi
+      database__default__port: 3306
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - solqam_net
+
+  # ---------------------------------------------------------------------------
+  # MySQL 8.0 database
+  # ---------------------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    container_name: solqamtech_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: solqamtech
+      MYSQL_USER: solqam_user
+      MYSQL_PASSWORD: solqam_pass
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - solqam_net
+
+  # ---------------------------------------------------------------------------
+  # phpMyAdmin (optional — remove if not needed)
+  # ---------------------------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: solqamtech_pma
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+    networks:
+      - solqam_net
+
+volumes:
+  mysql_data:
+
+networks:
+  solqam_net:
+    driver: bridge

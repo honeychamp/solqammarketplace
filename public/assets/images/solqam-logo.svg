@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 110" width="520" height="110">
+  <text x="8" y="62" font-family="Montserrat, Plus Jakarta Sans, Arial, sans-serif" font-weight="900" font-size="52" letter-spacing="1" fill="#0B30E6">SOL</text>
+  <text x="132" y="62" font-family="Montserrat, Plus Jakarta Sans, Arial, sans-serif" font-weight="900" font-size="52" fill="#F0142F">Q</text>
+  <line x1="166" y1="28" x2="190" y2="58" stroke="#F0142F" stroke-width="7" stroke-linecap="round"/>
+  <text x="194" y="62" font-family="Montserrat, Plus Jakarta Sans, Arial, sans-serif" font-weight="900" font-size="52" letter-spacing="1" fill="#0B30E6">AM</text>
+  <text x="10" y="96" font-family="Plus Jakarta Sans, Arial, sans-serif" font-weight="800" font-size="16" letter-spacing="6" fill="#0B30E6">MARKET PLACE</text>
+</svg>

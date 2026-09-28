@@ -1,0 +1,1274 @@
+/**
+ * SOLQAM (سولقم) — Ultra-Premium E-Commerce Design System
+ * Inspired by high-class marketplaces like Daraz, Amazon & Noon
+ * Brand Colors: Royal Blue (#0B30E6) & Crimson Red (#F0142F)
+ */
+
+:root {
+    /* Brand Colors (Derived directly from Solqam Logo) */
+    --sol-primary: #0B30E6;
+    --sol-primary-dark: #0722ab;
+    --sol-primary-light: #3d5df0;
+    --sol-primary-subtle: #EEF2FF;
+    --sol-primary-rgb: 11, 48, 230;
+
+    --sol-accent: #F0142F;
+    --sol-accent-dark: #cc0e24;
+    --sol-accent-light: #ff3b53;
+    --sol-accent-subtle: #FEF2F2;
+    --sol-accent-rgb: 240, 20, 47;
+
+    --sol-gold: #F59E0B;
+    --sol-gold-subtle: #FFFBEB;
+    --sol-emerald: #10B981;
+    --sol-emerald-subtle: #ECFDF5;
+
+    /* Neutrals & Surfaces */
+    --sol-canvas: #F4F6FB;
+    --sol-card-bg: #FFFFFF;
+    --sol-card-border: #E2E8F0;
+    --sol-border-hover: #C7D2FE;
+    --sol-text-main: #0F172A;
+    --sol-text-muted: #64748B;
+    --sol-text-light: #94A3B8;
+
+    /* Daraz-Style Shadows & Radii */
+    --sol-radius-sm: 8px;
+    --sol-radius-md: 14px;
+    --sol-radius-lg: 20px;
+    --sol-radius-full: 9999px;
+
+    --sol-shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.04);
+    --sol-shadow-md: 0 8px 24px -4px rgba(11, 48, 230, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+    --sol-shadow-lg: 0 16px 36px -6px rgba(11, 48, 230, 0.12), 0 6px 16px rgba(0, 0, 0, 0.05);
+    --sol-shadow-hover: 0 20px 40px -8px rgba(11, 48, 230, 0.18), 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* Global Typography & Resets */
+body {
+    font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--sol-canvas);
+    color: var(--sol-text-main);
+    letter-spacing: -0.01em;
+    min-height: 100vh;
+}
+
+/* Brand Elements */
+.bg-solqam {
+    background-color: var(--sol-primary) !important;
+}
+
+.bg-solqam-gradient {
+    background: linear-gradient(135deg, #0B30E6 0%, #061FA1 100%) !important;
+}
+
+.bg-solqam-accent {
+    background-color: var(--sol-accent) !important;
+}
+
+.bg-solqam-accent-gradient {
+    background: linear-gradient(135deg, #F0142F 0%, #B9091E 100%) !important;
+}
+
+.text-solqam {
+    color: var(--sol-primary) !important;
+}
+
+.text-solqam-accent {
+    color: var(--sol-accent) !important;
+}
+
+/* Solqam Buttons */
+.btn-solqam,
+.btn-sol-primary {
+    background: linear-gradient(135deg, #0B30E6 0%, #0722ab 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--sol-radius-full);
+    padding: 0.55rem 1.35rem;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 14px rgba(11, 48, 230, 0.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.btn-solqam:hover, .btn-solqam:focus,
+.btn-sol-primary:hover, .btn-sol-primary:focus {
+    background: linear-gradient(135deg, #0722ab 0%, #051980 100%);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(11, 48, 230, 0.35);
+}
+
+.btn-solqam-outline,
+.btn-sol-outline {
+    background: transparent;
+    color: var(--sol-primary);
+    border: 1.5px solid var(--sol-primary);
+    font-weight: 600;
+    border-radius: var(--sol-radius-full);
+    padding: 0.5rem 1.25rem;
+    transition: all 0.2s ease;
+}
+
+.btn-solqam-outline:hover,
+.btn-sol-outline:hover {
+    background: var(--sol-primary-subtle);
+    color: var(--sol-primary);
+    border-color: var(--sol-primary);
+    transform: translateY(-1px);
+}
+
+.btn-solqam-accent,
+.btn-sol-accent {
+    background: linear-gradient(135deg, #F0142F 0%, #CC0E24 100%);
+    color: #ffffff;
+    font-weight: 700;
+    border: none;
+    border-radius: var(--sol-radius-full);
+    padding: 0.6rem 1.4rem;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 14px rgba(240, 20, 47, 0.25);
+}
+
+.btn-solqam-accent:hover,
+.btn-sol-accent:hover {
+    background: linear-gradient(135deg, #CC0E24 0%, #9F0619 100%);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(240, 20, 47, 0.35);
+}
+
+/* Top Announcement Bar */
+.solqam-topbar {
+    background: #07176E;
+    color: #E2E8F0;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.solqam-topbar a {
+    color: #CBD5E1;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.solqam-topbar a:hover {
+    color: #FFFFFF;
+}
+
+/* Header & Grand Search Bar (Daraz Class) */
+.solqam-main-nav.sticky-top {
+    background: #FFFFFF;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+    border-bottom: 1px solid #EEF2F6;
+    z-index: 1080;
+}
+
+.brand-badge-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.brand-logo-text {
+    font-weight: 900;
+    font-size: 1.65rem;
+    color: var(--sol-primary);
+    letter-spacing: -0.5px;
+    line-height: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.brand-logo-text .accent-q {
+    color: var(--sol-accent);
+}
+
+.brand-logo-sub {
+    font-size: 0.72rem;
+    color: var(--sol-primary);
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.solqam-search-container {
+    position: relative;
+    max-width: 680px;
+    width: 100%;
+}
+
+.solqam-search-input-group {
+    background: #F8FAFC;
+    border: 2px solid #E2E8F0;
+    border-radius: var(--sol-radius-full);
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    transition: all 0.25s ease;
+}
+
+.solqam-search-input-group:focus-within {
+    border-color: var(--sol-primary);
+    background: #FFFFFF;
+    box-shadow: 0 0 0 4px rgba(11, 48, 230, 0.12);
+}
+
+.solqam-search-input {
+    border: none;
+    background: transparent;
+    padding: 0.65rem 1.1rem;
+    font-size: 0.93rem;
+    width: 100%;
+    color: var(--sol-text-main);
+    font-weight: 500;
+}
+
+.solqam-search-input:focus {
+    outline: none;
+}
+
+.solqam-search-btn {
+    background: var(--sol-primary);
+    color: #ffffff;
+    border: none;
+    border-radius: var(--sol-radius-full);
+    padding: 0.6rem 1.6rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.solqam-search-btn:hover {
+    background: var(--sol-primary-dark);
+    transform: scale(1.02);
+}
+
+/* Quick Search Tags */
+.quick-tags {
+    font-size: 0.76rem;
+    color: var(--sol-text-muted);
+    margin-top: 5px;
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.quick-tags a {
+    color: var(--sol-text-muted);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.quick-tags a:hover {
+    color: var(--sol-primary);
+    font-weight: 600;
+}
+
+/* Header User Actions */
+.header-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--sol-radius-md);
+    color: var(--sol-text-main);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.88rem;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.header-action-btn:hover {
+    background: var(--sol-primary-subtle);
+    color: var(--sol-primary);
+    border-color: #E0E7FF;
+}
+
+.cart-icon-wrapper {
+    position: relative;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.cart-badge-counter {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    background: var(--sol-accent);
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: var(--sol-radius-full);
+    border: 2px solid #ffffff;
+    animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+
+.wallet-badge-pill {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    border: 1px solid #FCD34D;
+    color: #92400E;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 6px 14px;
+    border-radius: var(--sol-radius-full);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);
+    transition: all 0.2s ease;
+}
+
+.wallet-badge-pill:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.25);
+    color: #78350F;
+}
+
+/* Mega Category Strip */
+.solqam-category-bar {
+    background: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
+    padding: 8px 0;
+}
+
+.category-nav-link {
+    color: var(--sol-text-main);
+    font-weight: 600;
+    font-size: 0.88rem;
+    padding: 6px 14px;
+    border-radius: var(--sol-radius-full);
+    text-decoration: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.category-nav-link:hover, .category-nav-link.active {
+    color: var(--sol-primary);
+    background: var(--sol-primary-subtle);
+}
+
+/* Daraz-Style Hero Banner Section */
+.hero-slider-card {
+    border-radius: var(--sol-radius-lg);
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, #071C8A 0%, #0B30E6 60%, #1A46F0 100%);
+    color: #ffffff;
+    min-height: 380px;
+    box-shadow: var(--sol-shadow-lg);
+}
+
+.hero-side-card {
+    background: #FFFFFF;
+    border-radius: var(--sol-radius-md);
+    border: 1px solid var(--sol-card-border);
+    padding: 20px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: var(--sol-shadow-sm);
+    transition: all 0.25s ease;
+}
+
+.hero-side-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sol-shadow-md);
+    border-color: var(--sol-border-hover);
+}
+
+/* Flash Sale Section (Daraz Class) */
+.flash-sale-wrapper {
+    background: #FFFFFF;
+    border-radius: var(--sol-radius-lg);
+    padding: 24px;
+    box-shadow: var(--sol-shadow-md);
+    border: 1px solid var(--sol-card-border);
+}
+
+.flash-sale-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #F1F5F9;
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+}
+
+.countdown-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.countdown-digit {
+    background: var(--sol-accent);
+    color: #FFFFFF;
+    font-weight: 800;
+    font-size: 0.95rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    min-width: 32px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(240, 20, 47, 0.25);
+}
+
+.countdown-separator {
+    font-weight: 800;
+    color: var(--sol-accent);
+}
+
+/* Ultra-Premium Daraz Product Card */
+.solqam-product-card {
+    background: var(--sol-card-bg);
+    border: 1px solid var(--sol-card-border);
+    border-radius: var(--sol-radius-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+}
+
+.solqam-product-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--sol-shadow-hover);
+    border-color: var(--sol-primary-light);
+}
+
+.solqam-product-card .card-media {
+    position: relative;
+    width: 100%;
+    height: 210px;
+    overflow: hidden;
+    background: #F8FAFC;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.solqam-product-card .card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.solqam-product-card:hover .card-media img {
+    transform: scale(1.06);
+}
+
+.solqam-mall-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #0B30E6 0%, #061FA1 100%);
+    color: #FFFFFF;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(11, 48, 230, 0.3);
+}
+
+.discount-chip {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--sol-accent);
+    color: #FFFFFF;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 3px 7px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(240, 20, 47, 0.3);
+}
+
+.cashback-chip {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    z-index: 2;
+    background: #ECFDF5;
+    color: #047857;
+    border: 1px solid #A7F3D0;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    padding: 4px 8px;
+    border-radius: 999px;
+    line-height: 1.1;
+}
+
+.cashback-inline {
+    display: inline-block;
+    background: #ECFDF5;
+    color: #047857;
+    border: 1px solid #A7F3D0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.solqam-product-card .card-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.product-category-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--sol-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.product-title {
+    font-size: 0.94rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--sol-text-main);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-decoration: none;
+    margin-bottom: 8px;
+    transition: color 0.15s ease;
+}
+
+.product-title:hover {
+    color: var(--sol-primary);
+}
+
+.star-rating {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.78rem;
+    color: var(--sol-gold);
+    margin-bottom: 8px;
+}
+
+.star-rating .review-count {
+    color: var(--sol-text-muted);
+    font-size: 0.75rem;
+    margin-left: 4px;
+}
+
+.price-row {
+    margin-top: auto;
+    padding-top: 10px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+
+.price-current {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--sol-text-main);
+    line-height: 1;
+}
+
+.price-current .currency {
+    font-size: 0.85rem;
+    color: var(--sol-primary);
+    font-weight: 700;
+    margin-right: 2px;
+}
+
+.price-original {
+    font-size: 0.8rem;
+    color: var(--sol-text-muted);
+    text-decoration: line-through;
+    margin-top: 2px;
+}
+
+.free-shipping-tag {
+    font-size: 0.7rem;
+    color: var(--sol-emerald);
+    background: var(--sol-emerald-subtle);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    display: inline-block;
+    margin-top: 4px;
+}
+
+/* Category Circle Tiles (Daraz Class) */
+.category-bubble-card {
+    background: #FFFFFF;
+    border: 1px solid var(--sol-card-border);
+    border-radius: var(--sol-radius-md);
+    padding: 16px 10px;
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.25s ease;
+    box-shadow: var(--sol-shadow-sm);
+}
+
+.category-bubble-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--sol-primary);
+    box-shadow: var(--sol-shadow-md);
+}
+
+.category-bubble-icon {
+    width: 68px;
+    height: 68px;
+    border-radius: var(--sol-radius-full);
+    background: var(--sol-primary-subtle);
+    color: var(--sol-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.category-bubble-card:hover .category-bubble-icon {
+    background: var(--sol-primary);
+    color: #FFFFFF;
+    transform: scale(1.08);
+}
+
+.category-bubble-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--sol-text-main);
+    margin-bottom: 2px;
+}
+
+.category-bubble-count {
+    font-size: 0.75rem;
+    color: var(--sol-text-muted);
+}
+
+/* Stock Progress Bar */
+.stock-progress-wrap {
+    margin-top: 8px;
+    font-size: 0.72rem;
+    color: var(--sol-text-muted);
+}
+
+.progress.solqam-progress {
+    height: 6px;
+    background-color: #E2E8F0;
+    border-radius: var(--sol-radius-full);
+    overflow: hidden;
+    margin-top: 3px;
+}
+
+.progress.solqam-progress .progress-bar {
+    background: linear-gradient(90deg, #F0142F 0%, #FF6B7A 100%);
+}
+
+/* Value Props / Features Strip */
+.features-strip {
+    background: #FFFFFF;
+    border-top: 1px solid #E2E8F0;
+    border-bottom: 1px solid #E2E8F0;
+    padding: 30px 0;
+}
+
+.feature-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.feature-icon-circle {
+    width: 54px;
+    height: 54px;
+    border-radius: var(--sol-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+/* Daraz Class Footer */
+.solqam-footer {
+    background: #0B132B;
+    color: #94A3B8;
+    padding-top: 60px;
+    padding-bottom: 30px;
+    margin-top: auto;
+}
+
+.solqam-footer h6 {
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 0.96rem;
+    margin-bottom: 18px;
+    letter-spacing: 0.2px;
+}
+
+.solqam-footer a {
+    color: #94A3B8;
+    text-decoration: none;
+    font-size: 0.88rem;
+    display: block;
+    margin-bottom: 10px;
+    transition: color 0.15s ease;
+}
+
+.solqam-footer a:hover {
+    color: #FFFFFF;
+    transform: translateX(2px);
+}
+
+.payment-badge-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.payment-chip {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: #E2E8F0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ==========================================================
+   SELLER HUB & ADMIN CONSOLE STYLES
+   ========================================================== */
+
+/* Modern Sidebar */
+.solqam-sidebar {
+    width: 270px;
+    min-height: 100vh;
+    background: #0B132B;
+    border-right: 1px solid #1E293B;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.solqam-sidebar .nav-link {
+    color: #94A3B8;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 11px 16px;
+    border-radius: var(--sol-radius-md);
+    margin: 3px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.solqam-sidebar .nav-link:hover {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.solqam-sidebar .nav-link.active {
+    color: #FFFFFF;
+    background: linear-gradient(135deg, #0B30E6 0%, #0722ab 100%);
+    box-shadow: 0 4px 14px rgba(11, 48, 230, 0.35);
+}
+
+.solqam-admin-sidebar .nav-link.active {
+    background: linear-gradient(135deg, #0B30E6 0%, #F0142F 100%);
+}
+
+/* KPI Stat Cards */
+.solqam-stat-card {
+    background: #FFFFFF;
+    border-radius: var(--sol-radius-md);
+    border: 1px solid var(--sol-card-border);
+    padding: 22px;
+    box-shadow: var(--sol-shadow-sm);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+.solqam-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sol-shadow-md);
+}
+
+.solqam-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+}
+
+.solqam-stat-card.border-primary::before { background: var(--sol-primary); }
+.solqam-stat-card.border-accent::before { background: var(--sol-accent); }
+.solqam-stat-card.border-gold::before { background: var(--sol-gold); }
+.solqam-stat-card.border-emerald::before { background: var(--sol-emerald); }
+
+.stat-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--sol-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+/* Enterprise Data Tables */
+.solqam-table {
+    background: #FFFFFF;
+    border-radius: var(--sol-radius-md);
+    border: 1px solid var(--sol-card-border);
+    overflow: hidden;
+}
+
+.solqam-table thead {
+    background: #F8FAFC;
+    border-bottom: 2px solid #E2E8F0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sol-text-muted);
+}
+
+.solqam-table th {
+    padding: 14px 18px;
+}
+
+.solqam-table td {
+    padding: 14px 18px;
+    vertical-align: middle;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.solqam-table tr:hover td {
+    background: #F8FAFC;
+}
+
+/* Status Chips */
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: var(--sol-radius-full);
+    text-transform: capitalize;
+}
+
+.status-chip.delivered { background: #DCFCE7; color: #166534; }
+.status-chip.shipped { background: #DBEAFE; color: #1E40AF; }
+.status-chip.confirmed { background: #E0E7FF; color: #3730A3; }
+.status-chip.pending { background: #FEF3C7; color: #92400E; }
+.status-chip.cancelled { background: #FEE2E2; color: #991B1B; }
+
+/* Responsive Adjustments */
+@media (max-width: 991.98px) {
+    .solqam-sidebar {
+        width: 100%;
+        min-height: auto;
+    }
+}
+
+/* Brand lockup — Solqam Market Place */
+.brand-lockup {
+    display: inline-flex;
+    flex-direction: column;
+    line-height: 1;
+    text-decoration: none;
+}
+.brand-lockup .word {
+    font-weight: 900;
+    font-size: 1.42rem;
+    letter-spacing: -0.04em;
+    color: var(--sol-primary);
+}
+.brand-lockup .word .q {
+    color: var(--sol-accent);
+}
+.brand-lockup .tag {
+    margin-top: 5px;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sol-primary);
+}
+.brand-lockup.light .word,
+.brand-lockup.light .tag {
+    color: #fff;
+}
+.brand-lockup.light .word .q {
+    color: #ff5a6c;
+}
+.brand-lockup.sm .word { font-size: 1.15rem; }
+.brand-lockup.sm .tag { font-size: 0.5rem; letter-spacing: 0.18em; }
+
+/* Storefront polish */
+.solqam-main-nav.sticky-top {
+    backdrop-filter: blur(12px);
+    z-index: 1080;
+}
+.cart-sticky-summary {
+    position: sticky;
+    top: 96px;
+    z-index: 1;
+}
+.solqam-search-input-group {
+    box-shadow: 0 8px 24px rgba(11, 48, 230, 0.08);
+}
+.header-action-btn {
+    border-radius: 14px;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+.header-action-btn:hover {
+    transform: translateY(-1px);
+    background: var(--sol-primary-subtle);
+}
+
+/* Hub shells — seller & admin */
+.hub-app {
+    background:
+        radial-gradient(1200px 400px at 100% -10%, rgba(11, 48, 230, 0.08), transparent 50%),
+        radial-gradient(900px 300px at 0% 100%, rgba(240, 20, 47, 0.05), transparent 45%),
+        var(--sol-canvas);
+    min-height: 100vh;
+}
+.hub-app .solqam-sidebar {
+    width: 288px;
+    background:
+        linear-gradient(180deg, rgba(11, 48, 230, 0.22) 0%, transparent 28%),
+        linear-gradient(180deg, #07122A 0%, #0B132B 55%, #0A1020 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 18px 12px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+.admin-hub .solqam-sidebar {
+    background:
+        linear-gradient(180deg, rgba(240, 20, 47, 0.18) 0%, transparent 26%),
+        linear-gradient(180deg, #140814 0%, #0B132B 50%, #0A1020 100%);
+}
+.hub-nav-label {
+    color: rgba(226, 232, 240, 0.45);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 14px 18px 6px;
+    list-style: none;
+}
+.solqam-sidebar .nav-link {
+    gap: 10px;
+    justify-content: flex-start;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 2px 6px;
+}
+.solqam-sidebar .nav-link .nav-ico {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.06);
+    color: #93C5FD;
+    flex-shrink: 0;
+}
+.admin-hub .solqam-sidebar .nav-link .nav-ico {
+    color: #FDA4AF;
+}
+.solqam-sidebar .nav-link.active .nav-ico {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+.solqam-sidebar .nav-link span.label {
+    flex: 1;
+}
+.hub-store-card,
+.hub-status-card {
+    margin: 4px 8px 16px;
+    padding: 14px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.hub-main {
+    min-width: 0;
+}
+.hub-topbar {
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04);
+}
+.hub-content {
+    padding: 28px;
+}
+.console-card {
+    background: #fff;
+    border: 1px solid var(--sol-card-border);
+    border-radius: 20px;
+    box-shadow: var(--sol-shadow-sm);
+}
+.solqam-stat-card {
+    border-radius: 20px;
+    background:
+        linear-gradient(180deg, #ffffff 0%, #F8FAFF 100%);
+}
+.hub-user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #fff;
+    text-decoration: none;
+}
+@media (max-width: 991.98px) {
+    .hub-app .solqam-sidebar {
+        position: relative;
+        height: auto;
+        width: 100%;
+    }
+    .hub-content { padding: 16px; }
+}
+
+/* Product detail (Daraz-style PDP) */
+.pdp-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-bottom: 0.75rem;
+}
+.pdp-price-box {
+    background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%);
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 14px 16px;
+}
+.pdp-price {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--sol-accent);
+    line-height: 1;
+}
+.pdp-meta-row {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #F1F5F9;
+}
+.pdp-meta-label {
+    width: 110px;
+    flex-shrink: 0;
+    color: #64748B;
+    font-size: 0.85rem;
+    padding-top: 4px;
+}
+.pdp-opt {
+    border: 1px solid #CBD5E1;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.pdp-opt.is-active {
+    border-color: var(--sol-accent);
+    color: var(--sol-accent);
+    box-shadow: 0 0 0 1px var(--sol-accent);
+}
+.pdp-main-stage {
+    position: relative;
+    min-height: 380px;
+    max-height: 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #F8FAFC;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: zoom-in;
+}
+.pdp-main-stage img {
+    max-height: 460px;
+    width: 100%;
+    object-fit: contain;
+}
+.pdp-zoom-hint {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    background: rgba(15, 23, 42, 0.7);
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 999px;
+}
+.pdp-thumbs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
+.pdp-thumb {
+    width: 68px;
+    height: 68px;
+    padding: 0;
+    border: 2px solid #E2E8F0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    flex-shrink: 0;
+}
+.pdp-thumb.is-active { border-color: var(--sol-accent); }
+.pdp-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fw-black { font-weight: 900; }
+.command-hero {
+    border-radius: 28px;
+    padding: 28px 32px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(11, 48, 230, 0.22);
+}
+.command-hero.admin {
+    background:
+        radial-gradient(800px 200px at 100% 0%, rgba(240,20,47,.45), transparent 55%),
+        linear-gradient(135deg, #1A0530 0%, #0B30E6 55%, #F0142F 140%);
+}
+.command-hero.seller {
+    background:
+        radial-gradient(700px 220px at 90% 120%, rgba(253,186,116,.35), transparent 50%),
+        linear-gradient(135deg, #04122C 0%, #0B30E6 60%, #1D4ED8 120%);
+}
+.command-hero::after {
+    content: "";
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    right: -60px;
+    top: -80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+    pointer-events: none;
+}
+.command-kicker {
+    font-size: .72rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    font-weight: 800;
+    opacity: .75;
+    margin-bottom: 6px;
+}
+.kpi-tile {
+    background: #fff;
+    border: 1px solid rgba(226,232,240,.9);
+    border-radius: 22px;
+    padding: 16px 18px;
+    box-shadow: 0 10px 30px rgba(15,23,42,.05);
+    position: relative;
+    overflow: hidden;
+}
+.kpi-tile::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--sol-primary);
+}
+.kpi-tile.accent::before { background: var(--sol-accent); }
+.kpi-tile.gold::before { background: #F59E0B; }
+.kpi-tile.emerald::before { background: #10B981; }
+.kpi-tile span {
+    display: block;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #64748B;
+}
+.kpi-tile strong {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 900;
+    margin-top: 6px;
+    color: #0F172A;
+}
+.kpi-tile em {
+    display: block;
+    font-style: normal;
+    font-size: .75rem;
+    color: #94A3B8;
+    margin-top: 2px;
+}
+.command-panel {
+    background: rgba(255,255,255,.92);
+    border: 1px solid rgba(226,232,240,.95);
+    border-radius: 24px;
+    box-shadow: 0 18px 40px rgba(15,23,42,.06);
+    backdrop-filter: blur(12px);
+}
+.chart-shell { min-height: 220px; }
+.pulse-row {
+    border: 1px solid #EEF2FF;
+    background: linear-gradient(180deg, #fff, #F8FAFF);
+    border-radius: 18px;
+    padding: 14px 16px;
+}

@@ -1,0 +1,129 @@
+<?= $this->extend('layouts/main') ?>
+
+<?= $this->section('content') ?>
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h2 class="fw-bold text-dark mb-0"><i class="bi bi-cart3 text-solqam me-2"></i> Shopping Cart</h2>
+        <span class="text-muted small">Buyer Protection Guaranteed</span>
+    </div>
+
+    <?php if (empty($items)): ?>
+        <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+            <i class="bi bi-cart-x fs-1 text-muted mb-3 d-block"></i>
+            <h4 class="fw-bold text-dark">Your shopping cart is empty</h4>
+            <p class="text-muted small mb-4">Discover verified smartphones, fashion, and home goods. Cashback is listed on each product.</p>
+            <div>
+                <a href="<?= site_url('shop') ?>" class="btn btn-solqam px-4 rounded-pill">
+                    <i class="bi bi-bag-plus-fill me-1"></i> Start Shopping
+                </a>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="row g-4">
+            <!-- Items List (Left) -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light small text-uppercase">
+                                <tr>
+                                    <th>Item Details</th>
+                                    <th>Unit Price</th>
+                                    <th style="width: 140px;">Quantity</th>
+                                    <th>Subtotal</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($items as $item): ?>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="<?= esc($item['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" class="rounded-3 me-3" style="width: 65px; height: 65px; object-fit: cover; border: 1px solid #E2E8F0;">
+                                                <div>
+                                                    <h6 class="mb-1 fw-bold text-dark">
+                                                        <a href="<?= site_url('product/' . $item['product_id']) ?>" class="text-dark text-decoration-none">
+                                                            <?= esc($item['product_name']) ?>
+                                                        </a>
+                                                    </h6>
+                                                    <small class="text-muted"><i class="bi bi-shop text-solqam me-1"></i> <?= esc($item['store_name'] ?? 'Vendor') ?></small>
+                                                    <div class="mt-1"><span class="cashback-inline"><?= esc(cashback_percent_label($item)) ?> Cashback</span></div>
+                                                    <?php if (!empty($item['variant_label'])): ?>
+                                                        <div class="small text-solqam"><?= esc($item['variant_label']) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="fw-bold text-dark">
+                                            Rs. <?= number_format($item['unit_price'], 0) ?>
+                                        </td>
+                                        <td>
+                                            <form action="<?= site_url('cart/update') ?>" method="POST" class="d-flex align-items-center gap-1">
+                                                <?= csrf_field() ?>
+                                                <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
+                                                <input type="number" name="quantity" class="form-control form-control-sm text-center fw-bold rounded-2" value="<?= $item['quantity'] ?>" min="1" max="<?= $item['stock_available'] ?>" style="width: 65px;">
+                                                <button type="submit" class="btn btn-outline-secondary btn-sm" title="Update"><i class="bi bi-arrow-repeat"></i></button>
+                                            </form>
+                                        </td>
+                                        <td class="fw-bold text-solqam fs-6">
+                                            Rs. <?= number_format($item['unit_price'] * $item['quantity'], 0) ?>
+                                        </td>
+                                        <td>
+                                            <a href="<?= site_url('cart/remove/' . $item['id']) ?>" class="btn btn-sm text-danger" title="Remove Item" onclick="return confirm('Remove this item from your cart?');">
+                                                <i class="bi bi-trash fs-5"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="<?= site_url('shop') ?>" class="text-solqam text-decoration-none fw-bold small">
+                        <i class="bi bi-arrow-left me-1"></i> Continue Shopping
+                    </a>
+                </div>
+            </div>
+
+            <!-- Order Summary (Right) -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white cart-sticky-summary">
+                    <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">Order Summary</h5>
+
+                    <div class="d-flex justify-content-between mb-2 small">
+                        <span class="text-secondary">Subtotal (<?= count($items) ?> items)</span>
+                        <span class="fw-bold text-dark">Rs. <?= number_format($subtotal, 2) ?></span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-2 small">
+                        <span class="text-secondary">Delivery Fee (Pakistan-wide)</span>
+                        <span class="text-success fw-bold">FREE</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3 small">
+                        <span class="text-secondary">Wallet cashback (as listed)</span>
+                        <span class="badge badge-wallet">Rs. <?= number_format($estimatedCashback ?? cart_cashback_total($items), 0) ?></span>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="fs-5 fw-bold text-dark">Estimated Total</span>
+                        <span class="fs-5 fw-bold text-solqam">Rs. <?= number_format($subtotal, 2) ?></span>
+                    </div>
+
+                    <a href="<?= site_url('checkout') ?>" class="btn btn-solqam-accent btn-lg w-100 rounded-pill py-2 fw-bold shadow-sm">
+                        Proceed to Checkout <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+
+                    <div class="text-center mt-3 small text-muted">
+                        <i class="bi bi-shield-check text-success me-1"></i> Safe &amp; Verified Sandbox Checkout
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+</div>
+<?= $this->endSection() ?>
