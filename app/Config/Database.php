@@ -167,7 +167,7 @@ class Database extends Config
         'hostname'     => 'localhost',
         'username'     => 'root',
         'password'     => '',
-        'database'     => 'solqamtech',
+        'database'     => 'solqamtech_test',
         'DBDriver'     => 'MySQLi',
         'DBPrefix'     => '',
         'pConnect'     => false,
@@ -198,6 +198,11 @@ class Database extends Config
         // we don't overwrite live data on accident.
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
+            $this->tests['hostname'] = env('database.tests.hostname', $this->tests['hostname']);
+            $this->tests['database'] = env('database.tests.database', $this->tests['database']);
+            $this->tests['username'] = env('database.tests.username', $this->tests['username']);
+            $this->tests['password'] = (string) env('database.tests.password', $this->tests['password']);
+            $this->tests['port']     = (int) env('database.tests.port', $this->tests['port']);
         }
     }
 }

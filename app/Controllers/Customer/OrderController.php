@@ -69,17 +69,49 @@ class OrderController extends BaseController
 
         $reason       = $this->request->getPost('reason');
         $customerNote = $this->request->getPost('customer_note');
+        $photoPath = null;
+        $file = $this->request->getFile('return_photo');
+        if ($file && $file->isValid() && ! $file->hasMoved()) {
+            $dir = FCPATH . 'uploads/returns';
+            if (! is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            $name = 'ret_' . time() . '_' . $file->getRandomName();
+            $file->move($dir, $name);
+            $photoPath = base_url('uploads/returns/' . $name);
+        }
 
         $this->returnModel->insert([
             'order_id'      => $orderId,
             'user_id'       => $userId,
             'reason'        => $reason,
             'customer_note' => $customerNote,
+            'photo_path'    => $photoPath,
             'refund_amount' => $order['final_payable'] > 0 ? $order['final_payable'] : $order['total_amount'],
             'status'        => 'requested',
         ]);
 
         return redirect()->back()->with('success', 'Return request submitted. Our team will review and approve your refund into your wallet ledger.');
+    }
+
+    public function cancel($orderId)
+    {
+        try {
+            (new \App\Services\Order\OrderService())->cancelByBuyer((int) $orderId, (int) session()->get('user.id'));
+            return redirect()->to('/account/orders')->with('success', 'Order cancelled.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function invoice($orderId)
+    {
+        $userId = (int) session()->get('user.id');
+        $order = $this->orderModel->getOrderDetail((int) $orderId);
+        if (! $order || (int) $order['user_id'] !== $userId) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Order not found');
+        }
+        return view('customer/invoice', ['order' => $order]);
     }
 
     public function submitReview($orderId)

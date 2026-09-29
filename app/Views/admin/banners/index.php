@@ -14,17 +14,20 @@
                 <option value="side">Side</option>
             </select>
         </div>
+        <div class="col-md-3"><input type="datetime-local" name="starts_at" class="form-control" title="Starts"></div>
+        <div class="col-md-3"><input type="datetime-local" name="ends_at" class="form-control" title="Ends"></div>
         <div class="col-md-2"><button class="btn btn-primary w-100">Save</button></div>
     </form>
 </div>
 <div class="card-custom p-4">
     <table class="table">
-        <thead><tr><th>Title</th><th>Placement</th><th></th></tr></thead>
+        <thead><tr><th>Title</th><th>Placement</th><th>Schedule</th><th></th></tr></thead>
         <tbody>
         <?php foreach ($banners as $b): ?>
             <tr>
                 <td><?= esc($b['title']) ?></td>
                 <td><?= esc($b['placement']) ?></td>
+                <td class="small text-muted"><?= esc($b['starts_at'] ?? '—') ?> → <?= esc($b['ends_at'] ?? 'open') ?></td>
                 <td class="text-end"><a class="btn btn-sm btn-outline-danger" href="<?= site_url('admin/banners/delete/' . $b['id']) ?>">Delete</a></td>
             </tr>
         <?php endforeach; ?>

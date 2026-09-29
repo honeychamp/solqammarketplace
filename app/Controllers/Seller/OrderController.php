@@ -87,4 +87,23 @@ class OrderController extends BaseController
             return $this->redirectAfterHub('/seller/orders/' . $orderId, 'error', $e->getMessage());
         }
     }
+
+    public function slip($orderId)
+    {
+        $sellerId = (int) session()->get('user.id');
+        $order = $this->orderModel->getOrderDetail((int) $orderId);
+        if (! $order) {
+            return redirect()->to('/seller/orders')->with('error', 'Order not found.');
+        }
+        $sellerItems = array_filter($order['items'], fn ($it) => (int) $it['seller_id'] === $sellerId);
+        if ($sellerItems === []) {
+            return redirect()->to('/seller/orders')->with('error', 'Access denied.');
+        }
+
+        return view('seller/orders/slip', [
+            'title'       => 'Packing slip ' . $order['order_number'],
+            'order'       => $order,
+            'sellerItems' => $sellerItems,
+        ]);
+    }
 }

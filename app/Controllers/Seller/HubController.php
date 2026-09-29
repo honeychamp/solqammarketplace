@@ -74,4 +74,21 @@ class HubController extends BaseController
             'paid'    => $paid,
         ]);
     }
+
+    public function payoutStatement()
+    {
+        $sellerId = (int) session()->get('user.id');
+        $payouts = (new SellerPayoutModel())
+            ->select('seller_payouts.*, orders.order_number')
+            ->join('orders', 'orders.id = seller_payouts.order_id', 'left')
+            ->where('seller_payouts.seller_id', $sellerId)
+            ->orderBy('seller_payouts.id', 'DESC')
+            ->findAll();
+
+        return view('seller/payouts/statement', [
+            'title'   => 'Payout statement',
+            'payouts' => $payouts,
+            'seller'  => session()->get('user'),
+        ]);
+    }
 }

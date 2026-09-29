@@ -6,9 +6,25 @@
         <h4 class="fw-bold mb-1">My Store Products</h4>
         <p class="text-secondary small mb-0">Manage pricing, inventory stock, and product visibility</p>
     </div>
-    <a href="<?= site_url('seller/products/create') ?>" class="btn btn-success rounded-pill px-4">
-        <i class="bi bi-plus-lg me-1"></i> Add New Product
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="<?= site_url('seller/products/csv-template') ?>" class="btn btn-outline-secondary rounded-pill px-3">CSV template</a>
+        <a href="<?= site_url('seller/products/create') ?>" class="btn btn-success rounded-pill px-4">
+            <i class="bi bi-plus-lg me-1"></i> Add New Product
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-3">
+    <form action="<?= site_url('seller/products/import') ?>" method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
+        <?= csrf_field() ?>
+        <div class="col-md-8">
+            <label class="form-label small">Bulk import CSV</label>
+            <input type="file" name="csv" class="form-control" accept=".csv" required>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-outline-primary w-100">Import</button>
+        </div>
+    </form>
 </div>
 
 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">

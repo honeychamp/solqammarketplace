@@ -30,7 +30,7 @@ class MailService
                     'SMTPPass'    => (string) env('email.SMTPPass', ''),
                     'SMTPPort'    => (int) env('email.SMTPPort', 587),
                     'SMTPCrypto'  => (string) env('email.SMTPCrypto', 'tls'),
-                    'SMTPTimeout' => 20,
+                    'SMTPTimeout' => 8,
                     'mailType'    => 'html',
                     'charset'     => 'UTF-8',
                     'fromEmail'   => $fromEmail,
@@ -82,6 +82,22 @@ class MailService
             . '<p>10 minutes valid. Kisi se share na karein.</p>';
 
         self::send($email, 'Solqam verification code', $html);
+    }
+
+    public static function sendAdmin2fa(string $email, string $code): void
+    {
+        $html = '<p>Solqam Admin console code:</p>'
+            . '<p style="font-size:28px;letter-spacing:6px;font-weight:700;">' . htmlspecialchars($code) . '</p>'
+            . '<p>10 minutes. Agar aapne login nahi kiya to ignore karein.</p>';
+        self::send($email, 'Solqam admin verification', $html);
+    }
+
+    public static function orderUpdate(string $email, string $orderNumber, string $status, string $extra = ''): void
+    {
+        $html = '<p>Aapka Solqam order <strong>' . htmlspecialchars($orderNumber) . '</strong> ab <strong>' . htmlspecialchars($status) . '</strong> hai.</p>'
+            . ($extra !== '' ? '<p>' . htmlspecialchars($extra) . '</p>' : '')
+            . '<p>— Solqam Market Place</p>';
+        self::send($email, 'Solqam order ' . $orderNumber . ' — ' . $status, $html);
     }
 
     protected static function archive(string $to, string $subject, string $html): void

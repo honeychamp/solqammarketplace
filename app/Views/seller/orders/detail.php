@@ -9,6 +9,7 @@
     <a href="<?= site_url('seller/orders') ?>" class="btn btn-light btn-sm rounded-pill border px-3">
         <i class="bi bi-arrow-left me-1"></i> Back to Orders
     </a>
+    <a href="<?= site_url('seller/orders/' . $order['id'] . '/slip') ?>" class="btn btn-outline-dark btn-sm rounded-pill px-3">Packing slip</a>
 </div>
 
 <div class="row g-4">

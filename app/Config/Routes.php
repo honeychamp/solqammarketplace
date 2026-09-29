@@ -9,6 +9,9 @@ use CodeIgniter\Router\RouteCollection;
 // --------------------------------------------------------------------
 // Public Customer Web Routes
 // --------------------------------------------------------------------
+$routes->get('sitemap.xml', 'SeoController::sitemap');
+$routes->get('compare', 'Customer\CatalogController::compare');
+$routes->get('compare/toggle/(:num)', 'Customer\CatalogController::compareToggle/$1');
 $routes->get('/', 'Customer\HomeController::index');
 $routes->get('shop', 'Customer\CatalogController::index');
 $routes->get('track', 'Customer\TrackController::index');
@@ -45,7 +48,7 @@ $routes->get('logout', 'Auth\AuthController::logout');
 // --------------------------------------------------------------------
 $routes->match(['GET', 'POST'], 'payments/payfast/success', 'Payments\CallbackController::payfastSuccess');
 $routes->match(['GET', 'POST'], 'payments/payfast/failure', 'Payments\CallbackController::payfastFailure');
-$routes->match(['GET', 'POST'], 'payments/payfast/ipn', 'Payments\CallbackController::payfastIpn');
+$routes->post('payments/payfast/ipn', 'Payments\CallbackController::payfastIpn');
 
 $routes->group('', ['filter' => ['auth', 'role:customer']], static function ($routes) {
     $routes->get('checkout', 'Customer\CheckoutController::index');
@@ -56,6 +59,8 @@ $routes->group('', ['filter' => ['auth', 'role:customer']], static function ($ro
     $routes->group('account', static function ($routes) {
         $routes->get('orders', 'Customer\OrderController::index');
         $routes->get('orders/(:num)', 'Customer\OrderController::show/$1');
+        $routes->get('orders/(:num)/invoice', 'Customer\OrderController::invoice/$1');
+        $routes->post('orders/(:num)/cancel', 'Customer\OrderController::cancel/$1');
         $routes->post('orders/(:num)/return', 'Customer\OrderController::requestReturn/$1');
         $routes->post('orders/(:num)/review', 'Customer\OrderController::submitReview/$1');
         $routes->get('wallet', 'Customer\AccountController::wallet');
@@ -83,6 +88,8 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
     $routes->get('products', 'Seller\ProductController::index');
     $routes->get('products/create', 'Seller\ProductController::create');
     $routes->post('products/store', 'Seller\ProductController::store');
+    $routes->post('products/import', 'Seller\ProductController::importCsv');
+    $routes->get('orders/(:num)/slip', 'Seller\OrderController::slip/$1');
     $routes->get('products/edit/(:num)', 'Seller\ProductController::edit/$1');
     $routes->post('products/update/(:num)', 'Seller\ProductController::update/$1');
     $routes->post('products/(:num)/stock', 'Seller\ProductController::quickStock/$1');
@@ -97,6 +104,8 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
     $routes->get('questions', 'Seller\HubController::questions');
     $routes->post('questions/(:num)/answer', 'Seller\HubController::answer/$1');
     $routes->get('payouts', 'Seller\HubController::payouts');
+    $routes->get('payouts/statement', 'Seller\HubController::payoutStatement');
+    $routes->get('products/csv-template', 'Seller\ProductController::csvTemplate');
     $routes->get('messages', 'Seller\ChatController::index');
     $routes->get('messages/(:num)', 'Seller\ChatController::show/$1');
     $routes->post('messages/(:num)/send', 'Seller\ChatController::send/$1');
@@ -106,6 +115,7 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
 // Dedicated Admin Authentication Routes (Isolated from Customer & Seller)
 // --------------------------------------------------------------------
 $routes->match(['GET', 'POST'], 'admin/login', 'Admin\AuthController::login');
+$routes->match(['GET', 'POST'], 'admin/verify-2fa', 'Admin\AuthController::verify2fa');
 $routes->get('admin/logout', 'Admin\AuthController::logout');
 
 // --------------------------------------------------------------------
@@ -113,6 +123,9 @@ $routes->get('admin/logout', 'Admin\AuthController::logout');
 // --------------------------------------------------------------------
 $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($routes) {
     $routes->get('dashboard', 'Admin\DashboardController::index');
+    $routes->match(['GET', 'POST'], 'account', 'Admin\AccountController::index');
+    $routes->match(['GET', 'POST'], 'settings', 'Admin\SettingsController::index');
+    $routes->get('audit', 'Admin\AuditController::index');
 
     // Seller Approvals
     $routes->get('sellers', 'Admin\SellerController::index');
@@ -171,6 +184,7 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->post('shipping/store', 'Admin\ShippingController::store');
     $routes->get('payouts', 'Admin\PayoutController::index');
     $routes->post('payouts/(:num)/paid', 'Admin\PayoutController::markPaid/$1');
+    $routes->get('payouts/(:num)/print', 'Admin\PayoutController::printPdf/$1');
     $routes->get('tickets', 'Admin\TicketController::index');
     $routes->get('tickets/(:num)', 'Admin\TicketController::show/$1');
     $routes->post('tickets/(:num)/reply', 'Admin\TicketController::reply/$1');

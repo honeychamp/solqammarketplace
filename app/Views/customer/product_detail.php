@@ -67,6 +67,21 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                 <h1 class="pdp-title"><?= esc($product['name']) ?></h1>
+                <a href="<?= site_url('compare/toggle/' . $product['id']) ?>" class="small">Add to compare</a>
+                <script type="application/ld+json"><?= json_encode([
+                    '@context' => 'https://schema.org',
+                    '@type' => 'Product',
+                    'name' => $product['name'],
+                    'image' => $product['primary_image'] ?? '',
+                    'sku' => $product['sku'] ?? '',
+                    'brand' => ['@type' => 'Brand', 'name' => $brandName ?: 'Solqam'],
+                    'offers' => [
+                        '@type' => 'Offer',
+                        'priceCurrency' => 'PKR',
+                        'price' => $displayPrice,
+                        'availability' => ((int) ($product['stock'] ?? 0) > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                    ],
+                ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
 
                 <div class="d-flex align-items-center gap-2 flex-wrap mb-3 pb-3 border-bottom">
                     <?php if ($rcount > 0): ?>

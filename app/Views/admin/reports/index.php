@@ -91,9 +91,49 @@
         </div>
     <?php endif; ?>
 </div>
+
+<div class="row g-4 mt-2">
+    <div class="col-lg-6">
+        <div class="card-custom p-4">
+            <h5 class="fw-bold mb-3">Sales by city</h5>
+            <?php if (empty($byCity)): ?>
+                <p class="text-muted small mb-0">No city data yet.</p>
+            <?php else: ?>
+                <table class="table table-sm">
+                    <?php foreach ($byCity as $row): ?>
+                        <tr>
+                            <td><?= esc($row['city'] ?: 'Unknown') ?></td>
+                            <td><?= (int) $row['order_count'] ?> orders</td>
+                            <td class="text-end">Rs. <?= number_format((float) $row['gmv'], 0) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            <?php endif; ?>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card-custom p-4">
+            <h5 class="fw-bold mb-3">Sales by category</h5>
+            <?php if (empty($byCategory)): ?>
+                <p class="text-muted small mb-0">No category sales yet.</p>
+            <?php else: ?>
+                <table class="table table-sm">
+                    <?php foreach ($byCategory as $row): ?>
+                        <tr>
+                            <td><?= esc($row['category_name'] ?: 'Uncategorized') ?></td>
+                            <td><?= (int) $row['units'] ?> units</td>
+                            <td class="text-end">Rs. <?= number_format((float) $row['revenue'], 0) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     // Prepare Data from PHP
     const timelineData = <?= json_encode($salesTimeline) ?>;
@@ -142,7 +182,7 @@
     });
 
     // 2. Status Doughnut Chart
-    const statusLabels = statusData.map(s => s.status.toUpperCase());
+    const statusLabels = statusData.map(s => (s.status || 'unknown').toUpperCase());
     const statusCounts = statusData.map(s => parseInt(s.count));
 
     const ctxStatus = document.getElementById('statusDoughnutChart').getContext('2d');

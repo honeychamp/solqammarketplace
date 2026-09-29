@@ -83,11 +83,13 @@ class ProductModel extends Model
         }
 
         if (!empty($filters['search'])) {
+            $q = $filters['search'];
             $builder->groupStart()
-                ->like('products.name', $filters['search'])
-                ->orLike('products.description', $filters['search'])
-                ->orLike('products.brand', $filters['search'])
-                ->orLike('seller_profiles.store_name', $filters['search'])
+                ->like('products.name', $q)
+                ->orLike('products.description', $q)
+                ->orLike('products.brand', $q)
+                ->orLike('products.sku', $q)
+                ->orLike('seller_profiles.store_name', $q)
                 ->groupEnd();
         }
 
@@ -116,26 +118,31 @@ class ProductModel extends Model
         }
 
         $sort = $filters['sort'] ?? 'latest';
-        switch ($sort) {
-            case 'price_low':
-                $builder->orderBy('products.price', 'ASC');
-                break;
-            case 'price_high':
-                $builder->orderBy('products.price', 'DESC');
-                break;
-            case 'name_asc':
-                $builder->orderBy('products.name', 'ASC');
-                break;
-            case 'best_selling':
-                $builder->orderBy('products.sold_count', 'DESC');
-                break;
-            case 'rating':
-                $builder->orderBy('(SELECT AVG(rating) FROM reviews WHERE reviews.product_id = products.id)', 'DESC');
-                break;
-            default:
-                $builder->orderBy('products.is_sponsored', 'DESC');
-                $builder->orderBy('products.id', 'DESC');
-                break;
+        if (!empty($filters['search']) && $sort === 'latest') {
+            $builder->orderBy('products.sold_count', 'DESC');
+            $builder->orderBy('products.id', 'DESC');
+        } else {
+            switch ($sort) {
+                case 'price_low':
+                    $builder->orderBy('products.price', 'ASC');
+                    break;
+                case 'price_high':
+                    $builder->orderBy('products.price', 'DESC');
+                    break;
+                case 'name_asc':
+                    $builder->orderBy('products.name', 'ASC');
+                    break;
+                case 'best_selling':
+                    $builder->orderBy('products.sold_count', 'DESC');
+                    break;
+                case 'rating':
+                    $builder->orderBy('(SELECT AVG(rating) FROM reviews WHERE reviews.product_id = products.id)', 'DESC');
+                    break;
+                default:
+                    $builder->orderBy('products.is_sponsored', 'DESC');
+                    $builder->orderBy('products.id', 'DESC');
+                    break;
+            }
         }
 
         $limit = $filters['limit'] ?? 24;

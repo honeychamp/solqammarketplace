@@ -67,6 +67,21 @@ $greet = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good ev
 
 <div class="row g-4">
     <div class="col-lg-7" id="hub-orders">
+        <div class="command-panel p-4 mb-4" id="hub-sla">
+            <h5 class="fw-bold mb-1">SLA watch</h5>
+            <p class="small text-muted mb-3">Confirm within <?= (int) ($slaConfirmHours ?? 24) ?>h · Ship within <?= (int) ($slaShipHours ?? 72) ?>h</p>
+            <?php if (empty($slaBreaches)): ?>
+                <p class="text-success mb-0 small">No overdue packages.</p>
+            <?php else: ?>
+                <?php foreach ($slaBreaches as $item): ?>
+                    <div class="d-flex justify-content-between small py-1 border-bottom">
+                        <a href="<?= site_url('seller/orders/' . $item['order_id']) ?>"><?= esc($item['order_number']) ?></a>
+                        <span class="text-danger"><?= esc($item['_sla'] ?? 'Overdue') ?></span>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
         <div class="command-panel p-4 mb-4">
             <h5 class="fw-bold mb-1">Handle orders</h5>
             <p class="small text-muted">Confirm, ship, deliver. Open 360 for full buyer money detail.</p>

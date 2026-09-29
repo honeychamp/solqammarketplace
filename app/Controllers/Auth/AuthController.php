@@ -28,6 +28,9 @@ class AuthController extends BaseController
         }
 
         if ($this->request->is('post')) {
+            if (! \App\Services\Auth\RateLimitService::hit('login', \App\Services\Platform\SettingService::int('auth_max_hits', 8))) {
+                return redirect()->back()->withInput()->with('error', 'Too many login attempts. Try again in 15 minutes.');
+            }
             $rules = [
                 'login'    => 'required',
                 'password' => 'required',
@@ -76,6 +79,9 @@ class AuthController extends BaseController
         $defaultRole = $this->request->getGet('role') === 'seller' ? 'seller' : 'customer';
 
         if ($this->request->is('post')) {
+            if (! \App\Services\Auth\RateLimitService::hit('register', 5)) {
+                return redirect()->back()->withInput()->with('error', 'Too many registrations from this network. Wait 15 minutes.');
+            }
             $role = $this->request->getPost('role') ?? 'customer';
 
             $rules = [

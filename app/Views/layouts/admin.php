@@ -33,6 +33,21 @@
                     <span class="nav-ico"><i class="bi bi-speedometer2"></i></span><span class="label">Overview</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="<?= site_url('admin/account') ?>" class="nav-link <?= strpos(uri_string(), 'admin/account') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-person-badge"></i></span><span class="label">Admin login</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('admin/settings') ?>" class="nav-link <?= strpos(uri_string(), 'admin/settings') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-sliders"></i></span><span class="label">SLA &amp; limits</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('admin/audit') ?>" class="nav-link <?= strpos(uri_string(), 'admin/audit') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-journal-text"></i></span><span class="label">Audit log</span>
+                </a>
+            </li>
             <li class="hub-nav-label">People</li>
             <li class="nav-item">
                 <a href="<?= site_url('admin/sellers') ?>" class="nav-link <?= strpos(uri_string(), 'admin/sellers') !== false ? 'active' : '' ?>">
@@ -135,6 +150,8 @@
                 </div>
             </a>
             <ul class="dropdown-menu dropdown-menu-dark text-small shadow-lg rounded-3 border-0 mt-2">
+                <li><a class="dropdown-item" href="<?= site_url('admin/account') ?>"><i class="bi bi-person-badge me-2"></i> Admin login</a></li>
+                <li><a class="dropdown-item" href="<?= site_url('admin/settings') ?>"><i class="bi bi-sliders me-2"></i> SLA settings</a></li>
                 <li><a class="dropdown-item" href="<?= site_url('/') ?>"><i class="bi bi-shop me-2"></i> Storefront</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item text-danger" href="<?= site_url('admin/logout') ?>"><i class="bi bi-box-arrow-right me-2"></i> Sign out</a></li>

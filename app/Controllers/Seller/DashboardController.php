@@ -9,6 +9,7 @@ use App\Models\ProductModel;
 use App\Models\ProductQuestionModel;
 use App\Models\SellerPayoutModel;
 use App\Services\Customer\CustomerInsightService;
+use App\Services\Platform\SettingService;
 use App\Services\Wallet\WalletService;
 
 class DashboardController extends BaseController
@@ -75,6 +76,20 @@ class DashboardController extends BaseController
         $chats = array_slice($chats, 0, 6);
         $chart = (new CustomerInsightService())->last7DaySeries($sellerId);
         $sellerWallet = (new WalletService())->getBalance($sellerId);
+        $confirmH = SettingService::int('sla_confirm_hours', 24);
+        $shipH = SettingService::int('sla_ship_hours', 72);
+        $now = time();
+        $slaBreaches = [];
+        foreach ($openOrders as $item) {
+            $created = strtotime((string) ($item['order_date'] ?? $item['created_at'] ?? 'now')) ?: $now;
+            $hours = ($now - $created) / 3600;
+            $status = $item['fulfillment_status'] ?? $item['order_status'] ?? 'placed';
+            if ($status === 'placed' && $hours > $confirmH) {
+                $slaBreaches[] = $item + ['_sla' => 'Confirm overdue'];
+            } elseif (in_array($status, ['placed', 'confirmed'], true) && $hours > $shipH) {
+                $slaBreaches[] = $item + ['_sla' => 'Ship overdue'];
+            }
+        }
 
         return view('seller/dashboard', [
             'title'           => 'Seller Command Center — Solqam',
@@ -97,6 +112,9 @@ class DashboardController extends BaseController
             'lowStock'        => array_slice($lowStock, 0, 8),
             'chart'           => $chart,
             'sellerWallet'    => $sellerWallet,
+            'slaBreaches'     => $slaBreaches,
+            'slaConfirmHours' => $confirmH,
+            'slaShipHours'    => $shipH,
         ]);
     }
 

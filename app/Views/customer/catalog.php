@@ -51,9 +51,13 @@
 
                     <!-- Price Filter -->
                     <div class="mb-4">
-                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">Max Price (PKR)</label>
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-2">Price (PKR)</label>
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-light">Min</span>
+                            <input type="number" name="min_price" class="form-control" placeholder="0" value="<?= esc($filters['min_price'] ?? '') ?>">
+                        </div>
                         <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light">Rs.</span>
+                            <span class="input-group-text bg-light">Max</span>
                             <input type="number" name="max_price" class="form-control" placeholder="e.g. 15000" value="<?= esc($filters['max_price'] ?? '') ?>">
                         </div>
                     </div>
@@ -118,6 +122,9 @@
                         <strong class="text-dark ms-1"><?= count($products) ?> Products Found</strong>
                         <?php if (!empty($filters['search'])): ?>
                             <span class="badge bg-light text-solqam border ms-2">Keyword: "<?= esc($filters['search']) ?>"</span>
+                        <?php endif; ?>
+                        <?php if (!empty($searchHint)): ?>
+                            <div class="small text-muted mt-1">Showing close matches for “<?= esc($searchHint) ?>”</div>
                         <?php endif; ?>
                     </div>
                     <div class="d-flex align-items-center gap-2">
@@ -188,6 +195,10 @@
                                             <span class="free-shipping-tag">Free Delivery</span>
                                             <div class="small text-success fw-semibold mt-1"><?= esc(cashback_percent_label($product)) ?> cashback</div>
                                         </div>
+                                        <div class="d-flex gap-1">
+                                        <a href="<?= site_url('compare/toggle/' . $product['id']) ?>" class="btn btn-outline-secondary btn-sm p-2 rounded-circle" title="Compare" style="width: 38px; height: 38px;">
+                                            <i class="bi bi-plus-slash-minus"></i>
+                                        </a>
                                         <form action="<?= site_url('cart/add') ?>" method="POST" class="m-0">
                                             <?= csrf_field() ?>
                                             <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
@@ -196,12 +207,23 @@
                                                 <i class="bi bi-cart-plus fs-6"></i>
                                             </button>
                                         </form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
+            <?php endif; ?>
+            <?php if (!empty($recent)): ?>
+            <div class="mt-4">
+                <h6 class="fw-bold">Recently viewed</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <?php foreach ($recent as $r): ?>
+                        <a class="badge rounded-pill text-bg-light border text-decoration-none" href="<?= site_url('product/' . $r['id']) ?>"><?= esc($r['name']) ?></a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
             <?php endif; ?>
         </div>
     </div>

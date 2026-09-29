@@ -134,6 +134,48 @@
                                 </div>
                             </div>
                             <?php endif; ?>
+                            <div class="col-12">
+                                <div class="form-check p-3 border rounded-3 h-100" style="background: #FFF7ED;">
+                                    <input class="form-check-input ms-0 me-2" type="radio" name="payment_method" id="pay_later" value="pay_later">
+                                    <label class="form-check-label w-100 ps-1" for="pay_later">
+                                        <div class="fw-bold text-dark"><i class="bi bi-calendar2-week text-warning fs-5"></i> Pay later (wallet shortfall)</div>
+                                        <small class="text-secondary d-block mt-1">Wallet use karein jab balance kam ho. CNIC + bill copy zaroori. Baqi amount baad mein.</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="payLaterFields" class="d-none border rounded-3 p-3 mt-3 bg-white">
+                            <h6 class="fw-bold mb-2">Pay later documents</h6>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small">Full name</label>
+                                    <input type="text" name="pay_later_name" class="form-control" value="<?= esc(old('pay_later_name')) ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">CNIC</label>
+                                    <input type="text" name="pay_later_cnic" class="form-control" placeholder="xxxxx-xxxxxxx-x" value="<?= esc(old('pay_later_cnic')) ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Phone</label>
+                                    <input type="text" name="pay_later_phone" class="form-control" value="<?= esc(old('pay_later_phone')) ?>">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Address</label>
+                                    <textarea name="pay_later_address" class="form-control" rows="2"><?= esc(old('pay_later_address')) ?></textarea>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">CNIC front</label>
+                                    <input type="file" name="cnic_front" class="form-control" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">CNIC back</label>
+                                    <input type="file" name="cnic_back" class="form-control" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">Utility bill</label>
+                                    <input type="file" name="utility_bill" class="form-control" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <input type="hidden" name="payment_method" id="pay_wallet_hidden" value="wallet" disabled>
@@ -333,6 +375,16 @@
         }
     }
 
+    function togglePayLater() {
+        const box = document.getElementById('payLaterFields');
+        if (!box) return;
+        box.classList.toggle('d-none', selectedPayMethod() !== 'pay_later');
+    }
+    document.querySelectorAll('input[name="payment_method"]').forEach(function (el) {
+        el.addEventListener('change', togglePayLater);
+    });
+
     calculatePayable();
+    togglePayLater();
 </script>
 <?= $this->endSection() ?>

@@ -61,6 +61,7 @@
                                 </span>
                             </td>
                             <td class="text-end">
+                                <a href="<?= site_url('seller/orders/' . $item['order_id'] . '/slip') ?>" class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-1">Slip</a>
                                 <a href="<?= site_url('seller/orders/' . $item['order_id']) ?>" class="btn btn-outline-dark btn-sm rounded-pill px-3">
                                     Manage Order
                                 </a>

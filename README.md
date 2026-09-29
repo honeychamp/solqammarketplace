@@ -2,7 +2,36 @@
 
 **A Pakistan B2C Multi-Vendor Marketplace MVP** built with CodeIgniter 4, MySQL, and Bootstrap 5.
 
-> Month 1 MVP · API-first · Customer / Seller / Admin Portals · Append-only Wallet Ledger · COD + JazzCash Sandbox
+> Customer / Seller / Admin portals · Append-only wallet · COD now, PayFast later
+
+---
+
+## Admin login (survives DB refresh)
+
+Set in `.env` (not committed):
+
+```
+admin.email = your@email.com
+admin.password = your-password
+admin.name = Your Name
+admin.phone = 03xxxxxxxxx
+```
+
+Or change them in **Admin Console → Admin login**. That screen writes the same keys to `.env`.
+
+After a wipe:
+
+```bash
+php spark migrate:refresh --seed
+```
+
+or
+
+```bash
+php spark db:seed CleanResetSeeder
+```
+
+Only this admin is recreated. No demo sellers/customers.
 
 ---
 
@@ -11,9 +40,9 @@
 | Feature | Detail |
 |---------|--------|
 | **Roles** | Customer, Seller, Admin — session-based auth + API bearer token |
-| **Seller Onboarding** | Registration → Mock OTP → Admin approval → Portal access |
+| **Seller Onboarding** | Registration → email OTP → Seller Hub |
 | **Product Catalog** | Categories, search/filter, image upload, stock tracking |
-| **Cart & Checkout** | Multi-vendor cart, COD & JazzCash Sandbox, wallet deduction |
+| **Cart & Checkout** | Multi-vendor cart, COD (PayFast when keys are set), wallet deduction |
 | **Wallet Ledger** | 100% append-only ledger; balance = `SUM(credits) - SUM(debits)` |
 | **10% Cashback** | Auto-credited on `delivered` order status via ledger entry |
 | **Commission** | Single global % rate (default 10 %); configurable by Admin |
@@ -21,21 +50,6 @@
 | **Reviews** | One verified review per delivered order item |
 | **API v1** | `/api/v1/...` RESTful endpoints for future mobile apps |
 | **Admin Dashboard** | Sales charts (Chart.js), seller approvals, reports |
-
----
-
-## Default Credentials (Seeded)
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | `admin@solqam.pk` | `admin123` |
-| Seller 1 | `seller1@solqam.pk` | `seller123` |
-| Seller 2 | `seller2@solqam.pk` | `seller123` |
-| Seller 3 | `seller3@solqam.pk` | `seller123` |
-| Pending Seller | `pending@solqam.pk` | `seller123` |
-| Customer 1 | `customer1@solqam.pk` | `customer123` |
-| Customer 2 | `customer2@solqam.pk` | `customer123` |
-| Customer 3 | `customer3@solqam.pk` | `customer123` |
 
 ---
 
@@ -64,8 +78,8 @@ cp env .env
 # 4. Run migrations
 php spark migrate
 
-# 5. Seed demo data
-php spark db:seed MarketplaceSeeder
+# 5. Restore admin from .env
+php spark db:seed DatabaseSeeder
 
 # 6. Start local server (or use XAMPP Apache with http://localhost/solqamtech/public)
 php spark serve
@@ -84,8 +98,8 @@ docker compose up --build -d
 # Run migrations inside the container
 docker compose exec app php spark migrate
 
-# Seed demo data
-docker compose exec app php spark db:seed MarketplaceSeeder
+# Restore admin from .env
+docker compose exec app php spark db:seed DatabaseSeeder
 ```
 
 | Service | URL |
@@ -108,7 +122,7 @@ app/
 │   └── Admin/       # Dashboard, Sellers, Categories, Products, Orders, Reports
 ├── Database/
 │   ├── Migrations/  # Single migration — all 18 tables
-│   └── Seeds/       # MarketplaceSeeder.php
+│   └── Seeds/       # DatabaseSeeder (admin from .env)
 ├── Filters/         # AuthFilter, RoleFilter, SellerApprovalFilter, ApiAuthFilter
 ├── Models/          # 17 models
 ├── Services/
@@ -167,8 +181,7 @@ Portal URLs:
 
 ## SMS / OTP
 
-Set `sms.driver` to `jazzcmt`, `twilio`, or `http`, then `sms.demoBypass = false`.  
-OTP is 6 digits, 10 minutes. Demo mode (`sms.driver = mock`) can still use `1234`.
+OTP is 6 digits, 10 minutes, sent to the user’s email.
 
 ---
 
@@ -200,7 +213,7 @@ vendor/bin/phpunit tests/feature/OrderStatusTransitionTest.php
 vendor/bin/phpunit tests/feature/CheckoutFlowTest.php
 ```
 
-> Tests use the live MySQL database (`solqamtech`). Each test creates isolated records and cleans them up in `tearDown()`.
+> Prefer a separate test database so PHPUnit does not write into the live catalog.
 
 ---
 
@@ -228,7 +241,7 @@ Order Subtotal (PKR)
 | Database | MySQL 8.0 |
 | Frontend | Bootstrap 5 · Chart.js · Vanilla JS |
 | Auth | Custom session + bearer token (no Shield) |
-| Payment | JazzCash Sandbox (interface-based) |
+| Payment | COD + PayFast (optional) |
 | Testing | PHPUnit via CI4 test helpers |
 | DevOps | Docker Compose + XAMPP-friendly |
 

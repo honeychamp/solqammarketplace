@@ -18,6 +18,7 @@
                             <button class="btn btn-sm btn-success">Mark paid</button>
                         </form>
                     <?php endif; ?>
+                    <a class="btn btn-sm btn-outline-dark" href="<?= site_url('admin/payouts/' . $p['id'] . '/print') ?>">PDF</a>
                 </td>
             </tr>
         <?php endforeach; ?>

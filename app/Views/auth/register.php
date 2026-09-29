@@ -83,7 +83,7 @@
                             </div>
 
                             <button type="submit" id="customerSubmitBtn" class="btn btn-sol-primary w-100 py-2.5 rounded-pill fw-bold shadow-sm">
-                                Create Customer Account &amp; Verify OTP <i class="bi bi-arrow-right ms-1"></i>
+                                Create Customer Account &amp; Verify Email OTP <i class="bi bi-arrow-right ms-1"></i>
                             </button>
                         </form>
                     </div>
@@ -161,7 +161,7 @@
                             </div>
 
                             <button type="submit" id="sellerSubmitBtn" class="btn btn-sol-primary w-100 py-2.5 rounded-pill fw-bold shadow-sm">
-                                Register Seller Account &amp; Verify Phone <i class="bi bi-arrow-right ms-1"></i>
+                                Register Seller Account &amp; Verify Email OTP <i class="bi bi-arrow-right ms-1"></i>
                             </button>
                         </form>
                     </div>

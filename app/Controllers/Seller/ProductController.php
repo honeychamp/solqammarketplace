@@ -169,4 +169,67 @@ class ProductController extends BaseController
 
         return redirect()->to('/seller/products')->with('error', 'Product not found.');
     }
+
+    public function csvTemplate()
+    {
+        return $this->response
+            ->setHeader('Content-Type', 'text/csv')
+            ->setHeader('Content-Disposition', 'attachment; filename="solqam-products.csv"')
+            ->setBody("name,category_id,price,stock,sku,description,brand,cashback_percent\nWireless Earbuds,1,2499,20,SKU-EAR-01,Bluetooth earbuds,Solqam,5\n");
+    }
+
+    public function importCsv()
+    {
+        $sellerId = (int) session()->get('user.id');
+        $file = $this->request->getFile('csv');
+        if (! $file || ! $file->isValid()) {
+            return redirect()->back()->with('error', 'CSV file choose karein.');
+        }
+
+        $handle = fopen($file->getTempName(), 'r');
+        if (! $handle) {
+            return redirect()->back()->with('error', 'CSV read nahi ho saki.');
+        }
+
+        $header = fgetcsv($handle);
+        if ($header === false) {
+            fclose($handle);
+            return redirect()->back()->with('error', 'CSV empty hai.');
+        }
+        $header = array_map(static fn ($h) => strtolower(trim((string) $h)), $header);
+        $imported = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) < 4) {
+                continue;
+            }
+            $map = @array_combine($header, array_pad($row, count($header), ''));
+            if (! is_array($map)) {
+                continue;
+            }
+            $name = trim((string) ($map['name'] ?? ''));
+            $categoryId = (int) ($map['category_id'] ?? 0);
+            $price = (float) ($map['price'] ?? 0);
+            $stock = (int) ($map['stock'] ?? 0);
+            if ($name === '' || $categoryId <= 0 || $price <= 0) {
+                continue;
+            }
+            $this->productModel->insert([
+                'seller_id'        => $sellerId,
+                'category_id'      => $categoryId,
+                'name'             => $name,
+                'slug'             => url_title($name, '-', true) . '-' . substr(md5(uniqid('', true)), 0, 5),
+                'description'      => (string) ($map['description'] ?? $name),
+                'price'            => $price,
+                'stock'            => max(0, $stock),
+                'sku'              => (string) ($map['sku'] ?? ('SKU-' . strtoupper(substr(md5(uniqid('', true)), 0, 6)))),
+                'brand'            => (string) ($map['brand'] ?? ''),
+                'cashback_percent' => max(0, min(100, (float) ($map['cashback_percent'] ?? 0))),
+                'status'           => 'active',
+            ]);
+            $imported++;
+        }
+        fclose($handle);
+
+        return redirect()->to('/seller/products')->with('success', $imported . ' products imported.');
+    }
 }

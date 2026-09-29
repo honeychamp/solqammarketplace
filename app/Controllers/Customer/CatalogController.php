@@ -58,6 +58,15 @@ class CatalogController extends BaseController
         ];
 
         $products   = $this->productModel->getCatalog($filters);
+        $searchHint = null;
+        if ($products === [] && ! empty($filters['search']) && strlen((string) $filters['search']) > 3) {
+            $short = substr((string) $filters['search'], 0, 4);
+            $alt = $this->productModel->getCatalog(array_merge($filters, ['search' => $short]));
+            if ($alt !== []) {
+                $products = $alt;
+                $searchHint = $short;
+            }
+        }
         $flashMap   = $this->pricingService->getFlashPriceMap();
         foreach ($products as &$p) {
             if (isset($flashMap[(int) $p['id']])) {
@@ -80,6 +89,8 @@ class CatalogController extends BaseController
             'categories' => $categories,
             'brands'     => $brands,
             'filters'    => $filters,
+            'searchHint' => $searchHint ?? null,
+            'recent'     => $this->recentProducts(),
         ]);
     }
 
@@ -164,6 +175,11 @@ class CatalogController extends BaseController
 
         $highlights = array_values(array_filter(array_map('trim', preg_split('/\r\n|\n/', (string) ($product['highlights'] ?? '')) ?: [])));
 
+        $seen = session()->get('recently_viewed') ?? [];
+        array_unshift($seen, (int) $id);
+        $seen = array_values(array_unique(array_map('intval', $seen)));
+        session()->set('recently_viewed', array_slice($seen, 0, 12));
+
         return view('customer/product_detail', [
             'title'            => $product['name'] . ' — Solqam Market Place',
             'product'          => $product,
@@ -204,6 +220,52 @@ class CatalogController extends BaseController
         ]);
 
         return redirect()->to('/product/' . $id . '#qa-pane')->with('success', 'Question submitted. The seller will reply soon.');
+    }
+
+    public function compareToggle($id)
+    {
+        $ids = session()->get('compare_ids') ?? [];
+        $id = (int) $id;
+        if (in_array($id, $ids, true)) {
+            $ids = array_values(array_diff($ids, [$id]));
+        } else {
+            $ids[] = $id;
+            $ids = array_slice(array_values(array_unique($ids)), 0, 4);
+        }
+        session()->set('compare_ids', $ids);
+        return redirect()->back()->with('success', 'Compare list updated.');
+    }
+
+    public function compare()
+    {
+        $ids = session()->get('compare_ids') ?? [];
+        $products = [];
+        foreach ($ids as $id) {
+            $p = $this->productModel->getDetailedProduct((int) $id);
+            if ($p) {
+                $products[] = $p;
+            }
+        }
+        return view('customer/compare', [
+            'title'    => 'Compare — Solqam',
+            'products' => $products,
+        ]);
+    }
+
+    protected function recentProducts(): array
+    {
+        $ids = session()->get('recently_viewed') ?? [];
+        if ($ids === []) {
+            return [];
+        }
+        $out = [];
+        foreach (array_slice($ids, 0, 6) as $id) {
+            $p = $this->productModel->select('id, name, price, slug')->find((int) $id);
+            if ($p) {
+                $out[] = $p;
+            }
+        }
+        return $out;
     }
 
     protected function parseSpecifications(?string $raw): array

@@ -42,12 +42,31 @@ class ReportController extends BaseController
             ->get()
             ->getRowArray();
 
+        $byCity = $db->table('orders')
+            ->select('addresses.city, COUNT(orders.id) as order_count, COALESCE(SUM(orders.total_amount), 0) as gmv')
+            ->join('addresses', 'addresses.id = orders.address_id', 'left')
+            ->groupBy('addresses.city')
+            ->orderBy('gmv', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $byCategory = $db->table('order_items')
+            ->select('categories.name as category_name, SUM(order_items.quantity) as units, COALESCE(SUM(order_items.subtotal), 0) as revenue')
+            ->join('products', 'products.id = order_items.product_id', 'left')
+            ->join('categories', 'categories.id = products.category_id', 'left')
+            ->groupBy('products.category_id')
+            ->orderBy('revenue', 'DESC')
+            ->get()
+            ->getResultArray();
+
         return view('admin/reports/index', [
             'title'         => 'Executive Analytics & Reports — Solqam Admin',
             'statusAgg'     => $statusAgg,
             'salesTimeline' => $salesTimeline,
             'topSellers'    => $topSellers,
             'totals'        => $totals,
+            'byCity'        => $byCity,
+            'byCategory'    => $byCategory,
         ]);
     }
 }

@@ -13,6 +13,13 @@
             <h3 class="fw-bold mb-0" style="color: #0F172A;">Order #<?= esc($order['order_number']) ?></h3>
         </div>
         <div>
+            <a href="<?= site_url('account/orders/' . $order['id'] . '/invoice') ?>" class="btn btn-outline-primary btn-sm rounded-pill px-3 me-2">Invoice</a>
+            <?php if ($order['status'] === 'placed'): ?>
+            <form action="<?= site_url('account/orders/' . $order['id'] . '/cancel') ?>" method="POST" class="d-inline">
+                <?= csrf_field() ?>
+                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-2" type="submit">Cancel order</button>
+            </form>
+            <?php endif; ?>
             <?php if ($order['status'] === 'delivered'): ?>
                 <?php if (!$existingReturn): ?>
                     <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 me-2" data-bs-toggle="modal" data-bs-target="#returnModal">
@@ -269,7 +276,7 @@
                     <h5 class="modal-title fw-bold"><i class="bi bi-arrow-counterclockwise text-danger me-1"></i> Request Return / Refund</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form action="<?= site_url('account/orders/' . $order['id'] . '/return') ?>" method="POST">
+                <form action="<?= site_url('account/orders/' . $order['id'] . '/return') ?>" method="POST" enctype="multipart/form-data">
                     <?= csrf_field() ?>
                     <div class="modal-body">
                         <p class="small text-secondary mb-3">
@@ -287,6 +294,10 @@
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Additional Comments / Details</label>
                             <textarea name="customer_note" class="form-control" rows="3" placeholder="Provide detailed explanation of the issue..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Photo (optional)</label>
+                            <input type="file" name="return_photo" class="form-control" accept="image/*">
                         </div>
                         <div class="alert alert-light border small mb-0">
                             <strong>Estimated Refund Amount:</strong> Rs. <?= number_format($order['final_payable'] > 0 ? $order['final_payable'] : $order['total_amount'], 2) ?>

@@ -26,6 +26,8 @@ class BannerController extends BaseController
             'placement'  => $this->request->getPost('placement') ?: 'hero',
             'sort_order' => (int) ($this->request->getPost('sort_order') ?? 0),
             'is_active'  => 1,
+            'starts_at'  => $this->normalizeDateTime($this->request->getPost('starts_at')),
+            'ends_at'    => $this->normalizeDateTime($this->request->getPost('ends_at')),
         ]);
         return redirect()->to('/admin/banners')->with('success', 'Banner saved.');
     }
@@ -34,5 +36,15 @@ class BannerController extends BaseController
     {
         (new BannerModel())->delete((int) $id);
         return redirect()->to('/admin/banners')->with('success', 'Banner removed.');
+    }
+
+    protected function normalizeDateTime($value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        return str_replace('T', ' ', $value);
     }
 }

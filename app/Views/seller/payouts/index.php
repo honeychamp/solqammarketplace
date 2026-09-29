@@ -1,6 +1,7 @@
 <?= $this->extend('layouts/seller') ?>
 <?= $this->section('content') ?>
 <h4 class="fw-bold mb-4">Payouts</h4>
+<p class="mb-3"><a href="<?= site_url('seller/payouts/statement') ?>" class="btn btn-sm btn-outline-dark rounded-pill">Print / PDF statement</a></p>
 <div class="row g-3 mb-4">
     <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 p-3"><div class="small text-muted">Pending</div><div class="fs-4 fw-bold">Rs. <?= number_format($pending, 0) ?></div></div></div>
     <div class="col-md-6"><div class="card border-0 shadow-sm rounded-4 p-3"><div class="small text-muted">Paid</div><div class="fs-4 fw-bold text-success">Rs. <?= number_format($paid, 0) ?></div></div></div>

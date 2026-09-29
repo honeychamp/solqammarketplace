@@ -120,6 +120,8 @@ class OrderService
 
         $finalPayable = max(0.0, $payableBeforeWallet - $walletAmountUsed);
 
+        $this->assertCodFraudLimit($userId, $paymentMethod, $addressId);
+
         if ($finalPayable <= 0) {
             $paymentMethod = 'wallet';
         } elseif ($paymentMethod === 'wallet') {
@@ -176,6 +178,13 @@ class OrderService
 
             foreach ($cartItems as $item) {
                 $subtotal = (float) $item['unit_price'] * (int) $item['quantity'];
+                $locked = $this->db->query(
+                    'SELECT id, stock FROM products WHERE id = ? FOR UPDATE',
+                    [(int) $item['product_id']]
+                )->getRowArray();
+                if (! $locked || (int) $locked['stock'] < (int) $item['quantity']) {
+                    throw new RuntimeException('Insufficient stock for product: ' . ($item['product_name'] ?? ''));
+                }
                 $itemCommission = $this->isAdminSeller((int) $item['seller_id'])
                     ? 0.0
                     : commission_amount($subtotal, false, $commissionRate);
@@ -307,6 +316,16 @@ class OrderService
                 $finalPayable,
                 $paymentStatus
             );
+            try {
+                \App\Services\Mail\MailService::orderUpdate(
+                    (string) ($buyer['email'] ?? ''),
+                    $orderNumber,
+                    'placed',
+                    $paymentStatus === 'paid' ? 'Payment confirmed.' : 'Payment pending / COD.'
+                );
+            } catch (\Throwable $e) {
+            }
+            \App\Services\Platform\AuditService::log('order_placed', 'order', (int) $orderId, ['number' => $orderNumber]);
 
             return [
                 'success'       => true,
@@ -804,6 +823,38 @@ class OrderService
         }
     }
 
+    public function cancelByBuyer(int $orderId, int $userId): bool
+    {
+        $order = $this->orderModel->find($orderId);
+        if (! $order || (int) $order['user_id'] !== $userId) {
+            throw new RuntimeException('Order not found.');
+        }
+        if (($order['status'] ?? '') !== 'placed') {
+            throw new RuntimeException('Cancel sirf placed order par allowed hai.');
+        }
+        return $this->updateOrderStatus($orderId, 'cancelled', 'Cancelled by buyer');
+    }
+
+    protected function assertCodFraudLimit(int $userId, string $paymentMethod, int $addressId): void
+    {
+        if ($paymentMethod !== 'cod') {
+            return;
+        }
+        $max = \App\Services\Platform\SettingService::int('cod_max_open', 5);
+        $open = $this->db->table('orders')
+            ->join('payments', 'payments.order_id = orders.id', 'left')
+            ->where('orders.user_id', $userId)
+            ->whereIn('orders.status', ['placed', 'confirmed', 'shipped'])
+            ->groupStart()
+                ->where('payments.payment_method', 'cod')
+                ->orWhere('payments.payment_method', null)
+            ->groupEnd()
+            ->countAllResults();
+        if ($open >= $max) {
+            throw new RuntimeException('Zyada open COD orders. Pehle pending parcels complete karein.');
+        }
+    }
+
     protected function smsBuyerStatus(array $order, string $newStatus, array $extra = []): void
     {
         try {
@@ -811,6 +862,12 @@ class OrderService
             SmsNotifier::notifyOrderStatus($order, $newStatus, array_merge($extra, [
                 'phone' => (string) ($buyer['phone'] ?? ''),
             ]));
+            \App\Services\Mail\MailService::orderUpdate(
+                (string) ($buyer['email'] ?? ''),
+                (string) ($order['order_number'] ?? ''),
+                $newStatus
+            );
+            \App\Services\Platform\AuditService::log('order_status', 'order', (int) ($order['id'] ?? 0), ['status' => $newStatus]);
         } catch (\Throwable $e) {
             log_message('error', 'Order SMS skipped: ' . $e->getMessage());
         }

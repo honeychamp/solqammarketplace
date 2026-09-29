@@ -104,6 +104,10 @@
                             </a>
                         <?php endif; ?>
 
+                        <a href="<?= site_url('compare') ?>" class="header-action-btn d-none d-md-inline-flex" title="Compare">
+                            <i class="bi bi-sliders2-vertical fs-5 text-solqam"></i>
+                            <span class="d-none d-xl-inline fw-bold">Compare</span>
+                        </a>
                         <a href="<?= site_url('account/wishlist') ?>" class="header-action-btn position-relative" title="Wishlist">
                             <i class="bi bi-heart fs-5 text-solqam"></i>
                             <?php $wl = wishlist_count(); if ($wl > 0): ?>
