@@ -27,8 +27,6 @@ class SmsOtpService implements OtpServiceInterface
             'expires_at' => $expiresAt,
         ]);
 
-        SmsNotifier::otp($phone, $code, $purpose);
-
         try {
             $to = trim((string) $email);
             if ($to === '') {
@@ -36,10 +34,21 @@ class SmsOtpService implements OtpServiceInterface
                 $to = (string) ($user['email'] ?? '');
             }
             if ($to !== '') {
-                \App\Services\Mail\MailService::sendOtp($to, $code, $purpose);
+                $sent = \App\Services\Mail\MailService::sendOtp($to, $code, $purpose);
+                if (! $sent) {
+                    log_message('error', 'OTP email was not delivered to ' . $to);
+                }
+            } else {
+                log_message('error', 'OTP email skipped: no email for phone ' . $phone);
             }
         } catch (\Throwable $e) {
             log_message('error', 'OTP email failed: ' . $e->getMessage());
+        }
+
+        try {
+            SmsNotifier::otp($phone, $code, $purpose);
+        } catch (\Throwable $e) {
+            log_message('error', 'OTP SMS failed: ' . $e->getMessage());
         }
 
         return $code;

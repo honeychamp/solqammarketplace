@@ -2,13 +2,20 @@
 
 <?= $this->section('content') ?>
 <div class="container py-4">
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <h2 class="fw-bold text-dark mb-0"><i class="bi bi-cart3 text-solqam me-2"></i> Shopping Cart</h2>
-        <span class="text-muted small">Buyer Protection Guaranteed</span>
+    <div class="ck-hero">
+        <div>
+            <div class="sf-eyebrow mb-1">Your bag</div>
+            <h2 class="fw-bold text-dark mb-0">Shopping cart</h2>
+        </div>
+        <div class="ck-steps">
+            <span class="ck-step is-active"><span class="ck-step-num">1</span> Cart</span>
+            <span class="ck-step"><span class="ck-step-num">2</span> Address &amp; pay</span>
+            <span class="ck-step"><span class="ck-step-num">3</span> Place order</span>
+        </div>
     </div>
 
     <?php if (empty($items)): ?>
-        <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+        <div class="sf-panel p-5 text-center">
             <i class="bi bi-cart-x fs-1 text-muted mb-3 d-block"></i>
             <h4 class="fw-bold text-dark">Your shopping cart is empty</h4>
             <p class="text-muted small mb-4">Discover verified smartphones, fashion, and home goods. Cashback is listed on each product.</p>
@@ -22,7 +29,7 @@
         <div class="row g-4">
             <!-- Items List (Left) -->
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+                <div class="sf-panel p-3 mb-3">
                     <div class="table-responsive">
                         <table class="table align-middle mb-0">
                             <thead class="table-light small text-uppercase">
@@ -89,7 +96,7 @@
 
             <!-- Order Summary (Right) -->
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white cart-sticky-summary">
+                <div class="sf-panel ck-summary p-4 cart-sticky-summary">
                     <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">Order Summary</h5>
 
                     <div class="d-flex justify-content-between mb-2 small">
@@ -119,7 +126,7 @@
                     </a>
 
                     <div class="text-center mt-3 small text-muted">
-                        <i class="bi bi-shield-check text-success me-1"></i> Safe &amp; Verified Sandbox Checkout
+                        <i class="bi bi-shield-check text-success me-1"></i> Buyer protection · COD &amp; wallet
                     </div>
                 </div>
             </div>

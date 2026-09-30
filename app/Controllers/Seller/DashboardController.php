@@ -8,7 +8,7 @@ use App\Models\OrderItemModel;
 use App\Models\ProductModel;
 use App\Models\ProductQuestionModel;
 use App\Models\SellerPayoutModel;
-use App\Services\Customer\CustomerInsightService;
+use App\Services\Analytics\DashboardAnalytics;
 use App\Services\Platform\SettingService;
 use App\Services\Wallet\WalletService;
 
@@ -17,6 +17,18 @@ class DashboardController extends BaseController
     public function index()
     {
         $sellerId = (int) session()->get('user.id');
+        $status   = seller_approval_status($sellerId);
+        if ($status !== 'approved') {
+            $profile = (new \App\Models\SellerProfileModel())->getByUserId($sellerId);
+
+            return view('seller/pending', [
+                'title'           => 'Seller Hub — Pending approval',
+                'approvalStatus'  => $status !== '' ? $status : 'pending',
+                'rejectionReason' => $profile['rejection_reason'] ?? null,
+                'storeName'       => $profile['store_name'] ?? (session()->get('user.store_name') ?? 'Your store'),
+            ]);
+        }
+
         $productModel   = new ProductModel();
         $orderItemModel = new OrderItemModel();
 
@@ -74,7 +86,11 @@ class DashboardController extends BaseController
 
         $chats = (new ConversationModel())->forUser($sellerId, 'seller');
         $chats = array_slice($chats, 0, 6);
-        $chart = (new CustomerInsightService())->last7DaySeries($sellerId);
+        $analytics = new DashboardAnalytics();
+        $chart = $analytics->daySeries(14, $sellerId);
+        $pulse = $analytics->pulse($sellerId);
+        $payMix = $analytics->paymentMix($sellerId);
+        $topSkus = $analytics->topProducts(6, $sellerId);
         $sellerWallet = (new WalletService())->getBalance($sellerId);
         $confirmH = SettingService::int('sla_confirm_hours', 24);
         $shipH = SettingService::int('sla_ship_hours', 72);
@@ -111,6 +127,10 @@ class DashboardController extends BaseController
             'products'        => array_slice($products, 0, 12),
             'lowStock'        => array_slice($lowStock, 0, 8),
             'chart'           => $chart,
+            'pulse'           => $pulse,
+            'payMix'          => $payMix,
+            'topSkus'         => $topSkus,
+            'aov'             => count($orderIds) > 0 ? round($totalSales / count($orderIds), 0) : 0,
             'sellerWallet'    => $sellerWallet,
             'slaBreaches'     => $slaBreaches,
             'slaConfirmHours' => $confirmH,

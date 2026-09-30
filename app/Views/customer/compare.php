@@ -3,7 +3,7 @@
 <div class="container py-4">
     <h3 class="fw-bold mb-3">Compare products</h3>
     <?php if (empty($products)): ?>
-        <p>No products in compare. Shop se add karein.</p>
+        <p>No products in compare. Add items from the shop.</p>
     <?php else: ?>
         <div class="table-responsive">
             <table class="table">

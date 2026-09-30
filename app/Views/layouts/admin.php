@@ -9,23 +9,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260917c">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260929h">
 </head>
 <body class="hub-app admin-hub">
 <div class="d-flex flex-column flex-lg-row">
     <aside class="solqam-sidebar solqam-admin-sidebar">
+        <div class="sidebar-head">
         <a href="<?= site_url('admin/dashboard') ?>" class="d-flex align-items-center gap-2 text-decoration-none px-3 pt-2 pb-3">
-            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>" alt="Solqam Market Place" style="height: 42px; width: auto;">
+            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>?v=20260929h" alt="Solqam Market Place" style="height: 56px; width: auto;">
         </a>
         <div class="px-3 mb-2">
-            <span class="badge rounded-pill px-3 py-2" style="background: rgba(240,20,47,0.28); color: #fff; border: 1px solid rgba(255,90,108,0.4);">Admin Console</span>
+            <span class="badge rounded-pill px-3 py-2" style="background: linear-gradient(135deg,#F0142F,#0B30E6); color: #fff; border: 1px solid rgba(252,211,77,.45);">Admin Console</span>
         </div>
 
         <div class="hub-status-card d-flex align-items-center justify-content-between">
-            <span class="text-white-50 small">Platform</span>
+            <span class="small text-white fw-semibold">Platform</span>
             <span class="badge rounded-pill" style="background:#064E3B;color:#6EE7B7;"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Live</span>
         </div>
+        </div>
 
+        <div class="sidebar-scroll">
         <div class="hub-nav-label">Overview</div>
         <ul class="nav nav-pills flex-column mb-auto">
             <li class="nav-item">
@@ -87,6 +90,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="<?= site_url('admin/inbound') ?>" class="nav-link <?= strpos(uri_string(), 'admin/inbound') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-box-arrow-in-down"></i></span><span class="label">Inbound delivery</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="<?= site_url('admin/returns') ?>" class="nav-link <?= strpos(uri_string(), 'admin/returns') !== false ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-arrow-counterclockwise"></i></span><span class="label">Returns</span>
                 </a>
@@ -114,7 +122,7 @@
             </li>
             <li class="nav-item">
                 <a href="<?= site_url('admin/flash-sales') ?>" class="nav-link <?= strpos(uri_string(), 'admin/flash-sales') !== false ? 'active' : '' ?>">
-                    <span class="nav-ico"><i class="bi bi-lightning-charge"></i></span><span class="label">Flash sales</span>
+                    <span class="nav-ico"><i class="bi bi-lightning-charge"></i></span><span class="label">Campaigns</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -138,15 +146,16 @@
                 </a>
             </li>
         </ul>
+        </div>
 
-        <div class="dropdown mt-auto px-2 pt-3">
+        <div class="dropdown sidebar-foot px-2 pt-3">
             <a href="#" class="hub-user-chip dropdown-toggle" data-bs-toggle="dropdown">
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:linear-gradient(135deg,#F0142F,#0B30E6);">
+                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:linear-gradient(135deg,#0B30E6,#F0142F);">
                     <i class="bi bi-shield-lock-fill"></i>
                 </div>
                 <div class="text-truncate" style="max-width: 150px;">
                     <strong class="d-block small"><?= esc(session()->get('user.name')) ?></strong>
-                    <small class="text-white-50">Administrator</small>
+                    <small class="text-white">Administrator</small>
                 </div>
             </a>
             <ul class="dropdown-menu dropdown-menu-dark text-small shadow-lg rounded-3 border-0 mt-2">

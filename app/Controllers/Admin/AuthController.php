@@ -63,15 +63,8 @@ class AuthController extends BaseController
                     return redirect()->back()->withInput()->with('error', 'Administrator account suspended. Contact system root.');
                 }
 
-                $code = (string) random_int(100000, 999999);
-                session()->set('admin_2fa', [
-                    'user_id' => (int) $user['id'],
-                    'code'    => $code,
-                    'until'   => time() + 600,
-                ]);
-                \App\Services\Mail\MailService::sendAdmin2fa((string) $user['email'], $code);
-
-                return redirect()->to('/admin/verify-2fa')->with('success', 'Verification code aapki admin email par bhej diya gaya.');
+                $this->authService->setSession($user);
+                return redirect()->to('/admin/dashboard')->with('success', 'Welcome to Solqam Admin.');
 
             } catch (Exception $e) {
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
@@ -80,32 +73,6 @@ class AuthController extends BaseController
 
         return view('admin/auth/login', [
             'title' => 'Admin Console Login — Solqam Marketplace',
-        ]);
-    }
-
-    public function verify2fa()
-    {
-        $pending = session()->get('admin_2fa');
-        if (! is_array($pending) || empty($pending['user_id'])) {
-            return redirect()->to('/admin/login')->with('error', 'Login first.');
-        }
-
-        if ($this->request->is('post')) {
-            $code = trim((string) $this->request->getPost('otp'));
-            if (time() > (int) ($pending['until'] ?? 0) || $code !== (string) $pending['code']) {
-                return redirect()->back()->with('error', 'Invalid or expired admin code.');
-            }
-            $user = $this->userModel->find((int) $pending['user_id']);
-            session()->remove('admin_2fa');
-            if (! $user) {
-                return redirect()->to('/admin/login')->with('error', 'Admin not found.');
-            }
-            $this->authService->setSession($user);
-            return redirect()->to('/admin/dashboard')->with('success', 'Authenticated. Welcome to Solqam Admin.');
-        }
-
-        return view('admin/auth/verify_2fa', [
-            'title' => 'Admin verification — Solqam',
         ]);
     }
 

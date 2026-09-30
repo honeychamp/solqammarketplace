@@ -20,28 +20,37 @@ class PricingService
         $this->variantModel   = new ProductVariantModel();
     }
 
-    public function getActiveSale(): ?array
+    public function getActiveSale(?string $type = 'flash'): ?array
     {
-        return $this->flashSaleModel->getActive();
+        return $this->flashSaleModel->getActive($type);
     }
 
     public function getFlashPriceMap(): array
     {
-        $sale = $this->getActiveSale();
-        if (!$sale) {
+        $campaigns = $this->flashSaleModel->getLiveCampaigns();
+        if ($campaigns === []) {
             return [];
         }
-        $items = $this->flashItemModel->where('flash_sale_id', $sale['id'])->findAll();
+        $ids = array_column($campaigns, 'id');
+        $items = $this->flashItemModel
+            ->whereIn('flash_sale_id', $ids)
+            ->where('status', 'approved')
+            ->findAll();
         $map = [];
         foreach ($items as $item) {
-            $map[(int) $item['product_id']] = (float) $item['sale_price'];
+            $pid = (int) $item['product_id'];
+            $price = (float) $item['sale_price'];
+            if (! isset($map[$pid]) || $price < $map[$pid]) {
+                $map[$pid] = $price;
+            }
         }
+
         return $map;
     }
 
     public function resolveUnitPrice(array $product, ?array $variant = null): float
     {
-        $base = $variant && !empty($variant['price'])
+        $base = $variant && ! empty($variant['price'])
             ? (float) $variant['price']
             : (float) $product['price'];
 
@@ -54,20 +63,24 @@ class PricingService
         return $base;
     }
 
-    public function getFlashProducts(int $limit = 8): array
+    public function getCampaignProducts(string $type = 'flash', int $limit = 8): array
     {
-        $sale = $this->getActiveSale();
-        if (!$sale) {
+        $sale = $this->flashSaleModel->getActive($type);
+        if (! $sale) {
             return [];
         }
 
-        $productModel = new ProductModel();
         $items = $this->flashItemModel
             ->select('flash_sale_items.*, products.name, products.price as original_price, products.stock, products.sold_count, products.cashback_percent, seller_profiles.store_name, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
             ->join('products', 'products.id = flash_sale_items.product_id')
             ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
             ->where('flash_sale_items.flash_sale_id', $sale['id'])
+            ->where('flash_sale_items.status', 'approved')
             ->where('products.status', 'active')
+            ->groupStart()
+                ->where('seller_profiles.approval_status', 'approved')
+                ->orWhere('seller_profiles.id', null)
+            ->groupEnd()
             ->findAll($limit);
 
         foreach ($items as &$item) {
@@ -78,5 +91,10 @@ class PricingService
         unset($item);
 
         return $items;
+    }
+
+    public function getFlashProducts(int $limit = 8): array
+    {
+        return $this->getCampaignProducts('flash', $limit);
     }
 }

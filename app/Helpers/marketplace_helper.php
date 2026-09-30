@@ -82,12 +82,14 @@ if (!function_exists('cart_cashback_total')) {
 }
 
 if (!function_exists('commission_rate')) {
-    function commission_rate(): float
+    function commission_rate(?int $categoryId = null): float
     {
         try {
-            $rule = (new \App\Models\CommissionModel())->getActiveRule();
+            $service = new \App\Services\Commission\CommissionService();
 
-            return max(0.0, min(50.0, (float) ($rule['percentage'] ?? 10)));
+            return $categoryId
+                ? $service->rateForCategory($categoryId)
+                : $service->getCommissionRate();
         } catch (\Throwable $e) {
             return 10.0;
         }
@@ -158,5 +160,44 @@ if (!function_exists('pk_msisdn')) {
         }
 
         return $digits;
+    }
+}
+
+if (!function_exists('seller_approval_status')) {
+    function seller_approval_status(?int $userId = null): string
+    {
+        $userId = $userId ?? (int) (session()->get('user.id') ?? 0);
+        if ($userId <= 0) {
+            return '';
+        }
+        try {
+            $profile = (new \App\Models\SellerProfileModel())->getByUserId($userId);
+
+            return (string) ($profile['approval_status'] ?? '');
+        } catch (\Throwable $e) {
+            return (string) (session()->get('user.approval_status') ?? '');
+        }
+    }
+}
+
+if (!function_exists('seller_is_approved')) {
+    function seller_is_approved(?int $userId = null): bool
+    {
+        return seller_approval_status($userId) === 'approved';
+    }
+}
+
+if (!function_exists('dash_delta')) {
+    function dash_delta(float $now, float $prev): array
+    {
+        if ($now <= 0 && $prev <= 0) {
+            return ['0%', 'flat'];
+        }
+        if ($prev <= 0) {
+            return ['New', 'up'];
+        }
+        $pct = (int) round((($now - $prev) / $prev) * 100);
+
+        return [($pct > 0 ? '+' : '') . $pct . '%', $pct > 0 ? 'up' : ($pct < 0 ? 'down' : 'flat')];
     }
 }

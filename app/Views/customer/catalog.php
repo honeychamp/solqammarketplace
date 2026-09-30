@@ -119,7 +119,7 @@
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                         <span class="text-muted small">Showing results:</span>
-                        <strong class="text-dark ms-1"><?= count($products) ?> Products Found</strong>
+                        <strong class="text-dark ms-1"><?= number_format((int) ($catalogTotal ?? count($products))) ?> Products Found</strong>
                         <?php if (!empty($filters['search'])): ?>
                             <span class="badge bg-light text-solqam border ms-2">Keyword: "<?= esc($filters['search']) ?>"</span>
                         <?php endif; ?>
@@ -214,6 +214,32 @@
                         </div>
                     <?php endforeach; ?>
                 </div>
+                <?php
+                $catalogPages = (int) ($catalogPages ?? 1);
+                $pageNow = (int) ($filters['page'] ?? 1);
+                $qs = $filters;
+                unset($qs['page'], $qs['limit'], $qs['category_ids']);
+                $qs = array_filter($qs, static fn ($v) => $v !== null && $v !== '' && $v !== []);
+                if ($catalogPages > 1):
+                    $from = max(1, $pageNow - 4);
+                    $to = min($catalogPages, $pageNow + 4);
+                ?>
+                <nav class="mt-4 d-flex justify-content-center">
+                    <ul class="pagination flex-wrap">
+                        <?php if ($pageNow > 1): ?>
+                            <li class="page-item"><a class="page-link" href="<?= esc(site_url('shop') . '?' . http_build_query(array_merge($qs, ['page' => $pageNow - 1]))) ?>">Prev</a></li>
+                        <?php endif; ?>
+                        <?php for ($i = $from; $i <= $to; $i++): ?>
+                            <li class="page-item <?= $i === $pageNow ? 'active' : '' ?>">
+                                <a class="page-link" href="<?= esc(site_url('shop') . '?' . http_build_query(array_merge($qs, ['page' => $i]))) ?>"><?= $i ?></a>
+                            </li>
+                        <?php endfor; ?>
+                        <?php if ($pageNow < $catalogPages): ?>
+                            <li class="page-item"><a class="page-link" href="<?= esc(site_url('shop') . '?' . http_build_query(array_merge($qs, ['page' => $pageNow + 1]))) ?>">Next</a></li>
+                        <?php endif; ?>
+                    </ul>
+                </nav>
+                <?php endif; ?>
             <?php endif; ?>
             <?php if (!empty($recent)): ?>
             <div class="mt-4">

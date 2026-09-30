@@ -79,7 +79,7 @@
                 <!-- Brand Header -->
                 <div class="text-center mb-4">
                     <div class="mb-3">
-                        <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>" alt="Solqam Market Place" height="54" class="admin-brand-glow">
+                        <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>?v=20260929h" alt="Solqam Market Place" height="70" class="admin-brand-glow">
                     </div>
                     <div class="d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-pill small mb-2" style="background: rgba(240, 20, 47, 0.15); color: #FF4D61; border: 1px solid rgba(240, 20, 47, 0.25); font-size: 0.72rem; letter-spacing: 0.5px; font-weight: 700; text-uppercase;">
                         <i class="bi bi-shield-lock-fill"></i> RESTRICTED ACCESS &bull; GOVERNANCE ONLY

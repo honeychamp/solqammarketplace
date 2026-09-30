@@ -53,7 +53,12 @@ class AuthController extends BaseController
                 }
 
                 if ($user['role'] === 'seller') {
-                    return redirect()->to('/seller/dashboard')->with('success', 'Welcome to your Seller Dashboard!');
+                    $approved = seller_is_approved((int) $user['id']);
+                    $msg = $approved
+                        ? 'Welcome to your Seller Dashboard!'
+                        : 'Signed in. Your store is pending admin approval — you can open the dashboard, but you cannot manage products until Solqam approves you.';
+
+                    return redirect()->to('/seller/dashboard')->with('success', $msg);
                 }
 
                 $redirectUrl = session()->get('redirect_url') ?? '/';
@@ -173,10 +178,14 @@ class AuthController extends BaseController
                     $result = $this->authService->registerCustomer($post);
                 }
 
-                session()->setFlashdata('registered_phone', $result['phone']);
+                session()->set('pending_verify_phone', $result['phone']);
 
-                return redirect()->to('/verify-otp?phone=' . urlencode($result['phone']))
-                    ->with('success', 'Account created. OTP aapki email par bhej diya gaya hai.');
+                $mailOk = \App\Services\Mail\MailService::$lastOk;
+                $flash = $mailOk
+                    ? 'Account created. We sent a verification code to your email.'
+                    : 'Account created, but the verification email did not send. Open Resend code. If it still fails, SMTP is blocking delivery to Gmail.';
+
+                return redirect()->to('/verify-otp')->with($mailOk ? 'success' : 'error', $flash);
 
             } catch (Exception $e) {
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
@@ -191,39 +200,70 @@ class AuthController extends BaseController
 
     public function verifyOtp()
     {
-        $phone = $this->request->getGet('phone') ?? session()->getFlashdata('registered_phone');
+        if ($this->request->getGet('phone')) {
+            session()->set('pending_verify_phone', (string) $this->request->getGet('phone'));
+
+            return redirect()->to('/verify-otp');
+        }
+
+        $phone = (string) (session()->get('pending_verify_phone') ?? '');
 
         if ($this->request->is('post')) {
-            $phone = $this->request->getPost('phone');
-            $otp   = $this->request->getPost('otp');
+            if ($phone === '') {
+                return redirect()->to('/register')->with('error', 'Start from registration. Your session expired.');
+            }
+            $otp = $this->request->getPost('otp');
 
             if ($this->authService->verifySignupOtp($phone, $otp)) {
                 $user = $this->userModel->where('phone', $phone)->first();
+                session()->remove('pending_verify_phone');
                 $this->authService->setSession($user);
 
                 if ($user['role'] === 'seller') {
-                    return redirect()->to('/seller/dashboard')->with('success', 'Email verified. Welcome to your Seller Dashboard.');
+                    return redirect()->to('/seller/dashboard')->with(
+                        'success',
+                        'Email verified. Your store is pending admin approval. You can view the Seller Hub, but listing products stays locked until you are approved.'
+                    );
                 }
 
                 return redirect()->to('/')->with('success', 'Email verified. Welcome to Solqam Market Place.');
             }
 
-            return redirect()->back()->with('error', 'Invalid or expired verification code. Please try again.');
+            return redirect()->to('/verify-otp')->with('error', 'Invalid or expired verification code. Please try again.');
         }
 
-        if ($this->request->getGet('resend') && $phone) {
-            $this->authService->resendSignupOtp((string) $phone);
-            return redirect()->to('/verify-otp?phone=' . urlencode((string) $phone))
-                ->with('success', 'Naya OTP aapki email par bhej diya gaya hai.');
+        if ($phone === '') {
+            return redirect()->to('/register')->with('error', 'Start from registration to verify your email.');
         }
 
-        $user = $phone ? $this->userModel->where('phone', $phone)->first() : null;
+        $user = $this->userModel->where('phone', $phone)->first();
 
         return view('auth/verify_otp', [
-            'title' => 'Verify email OTP — Solqam Market Place',
-            'phone' => $phone,
+            'title' => 'Verify email — Solqam Market Place',
             'email' => $user['email'] ?? '',
         ]);
+    }
+
+    public function resendSignupOtp()
+    {
+        $phone = (string) (session()->get('pending_verify_phone') ?? '');
+        if ($phone === '') {
+            return redirect()->to('/register')->with('error', 'Start from registration to verify your email.');
+        }
+        if (! \App\Services\Auth\RateLimitService::hit('otp_resend', 4)) {
+            return redirect()->to('/verify-otp')->with('error', 'Too many resend attempts. Wait a few minutes.');
+        }
+
+        $this->authService->resendSignupOtp($phone);
+
+        $mailOk = \App\Services\Mail\MailService::$lastOk;
+
+        return redirect()->to('/verify-otp')->with(
+            $mailOk ? 'success' : 'error',
+            $mailOk
+                ? 'A new code was sent to your email.'
+                : 'The email still did not send. Check inbox/spam, and confirm SMTP in .env (from address must be allowed to send to Gmail).'
+        );
     }
 
     public function forgotPassword()
@@ -245,7 +285,7 @@ class AuthController extends BaseController
                     'verified'=> false,
                 ]);
                 return redirect()->to('/forgot-password/verify')
-                    ->with('success', 'OTP aapki registered email par bhej diya gaya hai.');
+                    ->with('success', 'We sent a verification code to your registered email.');
             } catch (Exception $e) {
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
             }
@@ -270,29 +310,37 @@ class AuthController extends BaseController
                 session()->set('password_reset', $reset);
                 return redirect()->to('/forgot-password/reset')->with('success', 'Code verified. Set a new password.');
             }
-            return redirect()->back()->with('error', 'Invalid or expired code. Check email, or resend OTP.');
-        }
-
-        if ($this->request->getGet('resend')) {
-            $this->authService->resendPasswordResetOtp((string) $reset['phone']);
-            return redirect()->to('/forgot-password/verify')
-                ->with('success', 'Naya OTP aapki email par bhej diya gaya hai.');
+            return redirect()->back()->with('error', 'Invalid or expired code. Check your email, or resend the code.');
         }
 
         $user = $this->userModel->where('phone', $reset['phone'])->first();
 
         return view('auth/forgot_verify', [
-            'title' => 'Verify Reset Code — Solqam Market Place',
-            'phone' => $reset['phone'],
+            'title' => 'Verify reset code — Solqam Market Place',
             'email' => $user['email'] ?? '',
         ]);
+    }
+
+    public function resendResetOtp()
+    {
+        $reset = session()->get('password_reset');
+        if (!$reset) {
+            return redirect()->to('/forgot-password')->with('error', 'Start password reset from this page.');
+        }
+        if (! \App\Services\Auth\RateLimitService::hit('otp_resend', 4)) {
+            return redirect()->to('/forgot-password/verify')->with('error', 'Too many resend attempts. Wait a few minutes.');
+        }
+        $this->authService->resendPasswordResetOtp((string) $reset['phone']);
+
+        return redirect()->to('/forgot-password/verify')
+            ->with('success', 'A new code was sent to your email.');
     }
 
     public function forgotReset()
     {
         $reset = session()->get('password_reset');
         if (!$reset || empty($reset['verified'])) {
-            return redirect()->to('/forgot-password')->with('error', 'Verify the email OTP first.');
+            return redirect()->to('/forgot-password')->with('error', 'Verify the email code first.');
         }
 
         if ($this->request->is('post')) {

@@ -38,11 +38,12 @@ class MyProductController extends BaseController
             ->join('categories', 'categories.id = products.category_id', 'left')
             ->where('products.seller_id', $adminId)
             ->orderBy('products.id', 'DESC')
-            ->findAll();
+            ->paginate(50);
 
         return view('admin/my-products/index', [
             'title'    => 'My Products — Solqam Admin',
             'products' => $products,
+            'pager'    => $this->productModel->pager,
         ]);
     }
 

@@ -22,11 +22,12 @@ class ProductController extends BaseController
             ->join('users', 'users.id = products.seller_id', 'left')
             ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
             ->orderBy('products.id', 'DESC')
-            ->findAll();
+            ->paginate(50);
 
         return view('admin/products/index', [
             'title'    => 'Manage All Products — Solqam Admin Console',
             'products' => $products,
+            'pager'    => $this->productModel->pager,
         ]);
     }
 

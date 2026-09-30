@@ -5,7 +5,7 @@
         <div class="col-md-6 col-lg-5">
             <div class="card shadow-sm border-0 rounded-4 p-4 p-md-5 bg-white">
                 <h3 class="fw-bold mb-1">Forgot password</h3>
-                    <p class="text-secondary small mb-4">Customer ya seller account ki email ya mobile number. OTP aapki registered email par jayega.</p>
+                    <p class="text-secondary small mb-4">Enter the email or mobile number on your customer or seller account. We will send a code to the registered email.</p>
                 <form action="<?= site_url('forgot-password') ?>" method="POST">
                     <?= csrf_field() ?>
                     <div class="mb-3">

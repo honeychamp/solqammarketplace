@@ -35,6 +35,9 @@ class ChatController extends BaseController
         if (!$seller || $seller['role'] !== 'seller') {
             return redirect()->back()->with('error', 'Seller not found.');
         }
+        if (! (new \App\Models\SellerProfileModel())->isApprovedForUser($sellerId)) {
+            return redirect()->back()->with('error', 'This seller is not yet approved.');
+        }
 
         if ($productId) {
             $product = (new ProductModel())->find($productId);

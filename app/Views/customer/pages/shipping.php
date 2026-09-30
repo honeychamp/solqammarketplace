@@ -5,7 +5,7 @@
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5">
                 <h1 class="h3 fw-bold mb-2">Shipping &amp; delivery</h1>
-                <p class="text-muted">Shipping is calculated at checkout from admin shipping zones. If your city is not listed, a default rate applies (typically Rs. 249, free over Rs. 3,000).</p>
+                <p class="text-muted">Admin sets a delivery charge for each city (Admin → Shipping). At checkout your address city is matched automatically and that rate is applied. A city named Default covers cities that are not listed. Orders above the “free above” amount get free delivery.</p>
                 <h5 class="fw-bold">What to expect</h5>
                 <ul class="text-secondary">
                     <li>Sellers dispatch themselves using TCS, Leopard, Trax, Pakistan Post, or a local rider.</li>

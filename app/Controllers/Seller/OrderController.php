@@ -88,6 +88,22 @@ class OrderController extends BaseController
         }
     }
 
+    public function setFulfill($orderId)
+    {
+        $sellerId = (int) session()->get('user.id');
+        $by       = (string) $this->request->getPost('fulfill_by');
+        try {
+            $this->orderService->setFulfillBy((int) $orderId, $sellerId, $by);
+            $msg = $by === 'admin'
+                ? 'Package assigned to Solqam delivery. Send the parcel to Solqam. Admin will deliver and keep the delivery fee.'
+                : 'You will deliver this package. After delivery you keep the delivery fee; category commission still goes to Solqam.';
+
+            return $this->redirectAfterHub('/seller/orders/' . $orderId, 'success', $msg);
+        } catch (\Exception $e) {
+            return $this->redirectAfterHub('/seller/orders/' . $orderId, 'error', $e->getMessage());
+        }
+    }
+
     public function slip($orderId)
     {
         $sellerId = (int) session()->get('user.id');

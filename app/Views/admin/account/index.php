@@ -1,7 +1,7 @@
 <?= $this->extend('layouts/admin') ?>
 <?= $this->section('content') ?>
 <h4 class="fw-bold mb-2">Admin login</h4>
-<p class="text-secondary small mb-4">Yeh email/password <code>.env</code> mein bhi save hoti hai. <code>php spark migrate:refresh --seed</code> ke baad wahi account wapas aa jata hai. Demo seller/customer accounts nahi hain.</p>
+<p class="text-secondary small mb-4">Password plus email or phone opens the dashboard directly. No OTP email. After a database refresh, the seeder recreates this login.</p>
 <div class="card-custom p-4" style="max-width:640px;">
     <form method="POST" action="<?= site_url('admin/account') ?>">
         <?= csrf_field() ?>

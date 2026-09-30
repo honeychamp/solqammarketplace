@@ -2,11 +2,17 @@
 
 <?= $this->section('content') ?>
 <div class="container py-4">
-    <div class="d-flex align-items-center gap-2 mb-4">
-        <h3 class="fw-bold mb-0" style="color: #0F172A;"><i class="bi bi-shield-check text-primary me-2"></i> Secure Checkout</h3>
-        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fw-semibold small">
-            <i class="bi bi-lock-fill me-1"></i> 256-bit Encrypted
-        </span>
+    <div class="ck-hero">
+        <div>
+            <div class="sf-eyebrow mb-1">Secure checkout</div>
+            <h3 class="fw-bold mb-1 text-dark">Delivery &amp; payment</h3>
+            <div class="small text-muted"><i class="bi bi-lock-fill text-success me-1"></i> 256-bit encrypted · 7-day returns</div>
+        </div>
+        <div class="ck-steps">
+            <span class="ck-step is-done"><span class="ck-step-num">1</span> Cart</span>
+            <span class="ck-step is-active"><span class="ck-step-num">2</span> Address &amp; pay</span>
+            <span class="ck-step"><span class="ck-step-num">3</span> Place order</span>
+        </div>
     </div>
 
     <form action="<?= site_url('checkout') ?>" method="POST" id="checkoutForm" enctype="multipart/form-data">
@@ -16,7 +22,7 @@
             <!-- Left Column: Shipping & Payment -->
             <div class="col-lg-7">
                 <!-- 1. Shipping Address -->
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                <div class="sf-panel p-4 mb-4">
                     <h5 class="fw-bold mb-3 d-flex align-items-center" style="color: #0F172A;">
                         <span class="badge rounded-circle me-2 text-white" style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background: var(--sol-primary);">1</span>
                         Delivery Address
@@ -26,8 +32,8 @@
                         <div class="mb-3">
                             <label class="form-label small fw-semibold text-secondary">Choose from saved destinations in Pakistan:</label>
                             <?php foreach ($addresses as $index => $addr): ?>
-                                <div class="form-check p-3 border rounded-3 mb-2 <?= $addr['is_default'] ? 'border-primary bg-light' : '' ?>" style="transition: all 0.2s ease;">
-                                    <input class="form-check-input ms-0 me-2" type="radio" name="address_id" id="addr_<?= $addr['id'] ?>" value="<?= $addr['id'] ?>" <?= ($index === 0) ? 'checked' : '' ?> onchange="toggleNewAddress(false)">
+                                <div class="form-check addr-tile mb-2">
+                                    <input class="form-check-input ms-0 me-2" type="radio" name="address_id" id="addr_<?= $addr['id'] ?>" value="<?= $addr['id'] ?>" data-city="<?= esc($addr['city']) ?>" data-province="<?= esc($addr['province'] ?? '') ?>" <?= ($index === 0) ? 'checked' : '' ?> onchange="toggleNewAddress(false); refreshShipping();">
                                     <label class="form-check-label w-100 ps-1" for="addr_<?= $addr['id'] ?>">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <strong class="text-dark"><?= esc($addr['recipient_name']) ?></strong>
@@ -40,7 +46,7 @@
                             <?php endforeach; ?>
 
                             <div class="form-check mt-3">
-                                <input class="form-check-input" type="radio" name="address_id" id="addr_new" value="new" onchange="toggleNewAddress(true)">
+                                <input class="form-check-input" type="radio" name="address_id" id="addr_new" value="new" onchange="toggleNewAddress(true); refreshShipping();">
                                 <label class="form-check-label fw-bold" style="color: var(--sol-primary);" for="addr_new">
                                     <i class="bi bi-plus-circle me-1"></i> Deliver to a new address
                                 </label>
@@ -70,11 +76,23 @@
                         <div class="row g-2">
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold text-muted">City</label>
-                                <input type="text" name="city" class="form-control" placeholder="e.g. Lahore">
+                                <?php $zones = $shippingZones ?? []; ?>
+                                <?php if ($zones !== []): ?>
+                                    <select name="city" id="checkoutCity" class="form-select" onchange="refreshShipping()">
+                                        <option value="">Select city</option>
+                                        <?php foreach ($zones as $z): ?>
+                                            <option value="<?= esc($z['city']) ?>"><?= esc($z['city']) ?> — Rs. <?= number_format((float) $z['rate'], 0) ?></option>
+                                        <?php endforeach; ?>
+                                        <option value="__other">Other city</option>
+                                    </select>
+                                    <input type="text" name="city_other" id="checkoutCityOther" class="form-control mt-2 d-none" placeholder="Type city name" oninput="refreshShipping()">
+                                <?php else: ?>
+                                    <input type="text" name="city" id="checkoutCity" class="form-control" placeholder="e.g. Lahore" oninput="refreshShipping()">
+                                <?php endif; ?>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold text-muted">Province</label>
-                                <select name="province" class="form-select">
+                                <select name="province" id="checkoutProvince" class="form-select" onchange="refreshShipping()">
                                     <option value="Punjab">Punjab</option>
                                     <option value="Sindh">Sindh</option>
                                     <option value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</option>
@@ -93,11 +111,14 @@
                 </div>
 
                 <!-- 2. Payment Method -->
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                <div class="sf-panel p-4 mb-4">
                     <h5 class="fw-bold mb-3 d-flex align-items-center" style="color: #0F172A;">
                         <span class="badge rounded-circle me-2 text-white" style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background: var(--sol-primary);">2</span>
                         Payment Method
                     </h5>
+
+                    <div class="small fw-bold text-muted text-uppercase mb-2" style="letter-spacing:.08em;">Accepted methods</div>
+                    <div class="mb-3"><?= view('customer/_payment_methods') ?></div>
 
                     <div id="walletCoversBox" class="alert alert-success d-none mb-0">
                         <i class="bi bi-check-circle-fill me-1"></i>
@@ -105,41 +126,34 @@
                     </div>
 
                     <div id="remainderPayBox">
-                        <p class="small text-muted mb-3 mb-0" id="remainderHint">Abhi Cash on Delivery. Online pay (JazzCash / EasyPaisa / card) PayFast API ke baad on hoga.</p>
+                        <p class="small text-muted mb-3" id="remainderHint">Select how you want to pay.</p>
                         <div class="row g-3" id="standardPayOptions">
                             <div class="col-12">
-                                <div class="form-check p-3 border rounded-3 h-100" style="background: #F8FAFC;">
+                                <div class="form-check pay-tile">
                                     <input class="form-check-input ms-0 me-2" type="radio" name="payment_method" id="pay_cod" value="cod" checked>
                                     <label class="form-check-label w-100 ps-1" for="pay_cod">
-                                        <div class="fw-bold text-dark"><i class="bi bi-cash-stack text-success fs-5"></i> Cash On Delivery</div>
-                                        <small class="text-secondary d-block mt-1">Parcel aane par cash dein. Prepaid nahi — cashback delivery ke baad.</small>
+                                        <div class="fw-bold text-dark"><i class="bi bi-cash-stack text-success fs-5"></i> Cash on Delivery</div>
+                                        <small class="text-secondary d-block mt-1">Pay cash when the parcel arrives. Wallet cashback after delivery.</small>
                                     </label>
                                 </div>
                             </div>
                             <?php if (!empty($payfastReady)): ?>
                             <div class="col-12">
-                                <div class="form-check p-3 border rounded-3 h-100" style="background: #EEF2FF;">
+                                <div class="form-check pay-tile">
                                     <input class="form-check-input ms-0 me-2" type="radio" name="payment_method" id="pay_payfast" value="payfast">
                                     <label class="form-check-label w-100 ps-1" for="pay_payfast">
-                                        <div class="fw-bold text-dark"><i class="bi bi-shield-lock text-primary fs-5"></i> Pay online (PayFast)</div>
-                                        <small class="text-secondary d-block mt-1">JazzCash, EasyPaisa aur card PayFast page par. Paid tabhi jab PayFast confirm kare.</small>
+                                        <div class="fw-bold text-dark"><i class="bi bi-shield-lock text-primary fs-5"></i> Pay online</div>
+                                        <small class="text-secondary d-block mt-1">JazzCash, EasyPaisa, Visa, Mastercard, UnionPay and PayPak via PayFast.</small>
                                     </label>
-                                </div>
-                            </div>
-                            <?php else: ?>
-                            <div class="col-12">
-                                <div class="p-3 border rounded-3 bg-light">
-                                    <div class="fw-semibold text-dark"><i class="bi bi-hourglass-split me-1 text-muted"></i> Online payment — coming next</div>
-                                    <small class="text-secondary">PayFast API keys lagane ke baad JazzCash / EasyPaisa / card yahan khulenge. Abhi sirf COD.</small>
                                 </div>
                             </div>
                             <?php endif; ?>
                             <div class="col-12">
-                                <div class="form-check p-3 border rounded-3 h-100" style="background: #FFF7ED;">
+                                <div class="form-check pay-tile">
                                     <input class="form-check-input ms-0 me-2" type="radio" name="payment_method" id="pay_later" value="pay_later">
                                     <label class="form-check-label w-100 ps-1" for="pay_later">
                                         <div class="fw-bold text-dark"><i class="bi bi-calendar2-week text-warning fs-5"></i> Pay later (wallet shortfall)</div>
-                                        <small class="text-secondary d-block mt-1">Wallet use karein jab balance kam ho. CNIC + bill copy zaroori. Baqi amount baad mein.</small>
+                                        <small class="text-secondary d-block mt-1">Use wallet when balance is short. CNIC + utility bill required.</small>
                                     </label>
                                 </div>
                             </div>
@@ -182,7 +196,7 @@
                 </div>
 
                 <!-- 3. Delivery Notes -->
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <div class="sf-panel p-4">
                     <h6 class="fw-bold mb-2 text-dark">Special Delivery Notes (Optional)</h6>
                     <textarea name="notes" class="form-control" rows="2" placeholder="Nearby landmark, gate security code, preferred delivery time, etc."></textarea>
                 </div>
@@ -190,7 +204,7 @@
 
             <!-- Right Column: Order Summary & Ledger Wallet -->
             <div class="col-lg-5">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white cart-sticky-summary">
+                <div class="sf-panel ck-summary p-4 cart-sticky-summary">
                     <h5 class="fw-bold mb-3 border-bottom pb-2" style="color: #0F172A;">Order Summary</h5>
 
                     <!-- Items Preview -->
@@ -254,12 +268,14 @@
                     </div>
                     <?php endif; ?>
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-secondary">Shipping (<?= esc($shippingQuote['eta_days'] ?? '3-5') ?> days)</span>
-                        <?php if (!empty($shippingQuote['is_free'])): ?>
-                            <span class="text-success fw-bold">FREE</span>
-                        <?php else: ?>
-                            <span class="fw-bold font-monospace">Rs. <?= number_format($shippingQuote['amount'] ?? 0, 2) ?></span>
-                        <?php endif; ?>
+                        <span class="text-secondary">Shipping <span id="shipEta">(<?= esc($shippingQuote['eta_days'] ?? '3-5') ?> days)</span></span>
+                        <span class="fw-bold font-monospace" id="shipAmount">
+                            <?php if (!empty($shippingQuote['is_free'])): ?>
+                                <span class="text-success">FREE</span>
+                            <?php else: ?>
+                                Rs. <?= number_format($shippingQuote['amount'] ?? 0, 2) ?>
+                            <?php endif; ?>
+                        </span>
                     </div>
 
                     <div id="walletDeductionRow" class="d-flex justify-content-between mb-2 text-success d-none">
@@ -269,7 +285,7 @@
 
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-secondary">Doorstep delivery</span>
-                        <span class="text-muted small"><?= !empty($shippingQuote['is_free']) ? 'Free over Rs. ' . number_format($shippingQuote['free_above'] ?? 3000, 0) : 'Zone rate' ?></span>
+                        <span class="text-muted small" id="shipNote"><?= !empty($shippingQuote['is_free']) ? 'Free over Rs. ' . number_format($shippingQuote['free_above'] ?? 3000, 0) : 'Admin city rate' ?></span>
                     </div>
 
                     <div class="d-flex justify-content-between mb-3">
@@ -312,8 +328,52 @@
 
     const subtotal = <?= (float) $subtotal ?>;
     const walletBalance = <?= (float) $walletBalance ?>;
-    const shipping = <?= (float) ($shippingQuote['amount'] ?? 0) ?>;
+    let shipping = <?= (float) ($shippingQuote['amount'] ?? 0) ?>;
     const couponDiscount = <?= (float) ($couponDiscount ?? 0) ?>;
+    const quoteUrl = <?= json_encode(site_url('checkout/shipping-quote')) ?>;
+
+    function currentCity() {
+        const selected = document.querySelector('input[name="address_id"]:checked');
+        if (selected && selected.value !== 'new') {
+            return { city: selected.getAttribute('data-city') || '', province: selected.getAttribute('data-province') || '', addressId: selected.value };
+        }
+        const sel = document.getElementById('checkoutCity');
+        let city = sel ? sel.value : '';
+        const other = document.getElementById('checkoutCityOther');
+        if (city === '__other' && other) {
+            other.classList.remove('d-none');
+            city = other.value;
+        } else if (other) {
+            other.classList.add('d-none');
+        }
+        const prov = document.getElementById('checkoutProvince');
+        return { city, province: prov ? prov.value : '', addressId: '' };
+    }
+
+    function refreshShipping() {
+        const ctx = currentCity();
+        const params = new URLSearchParams();
+        if (ctx.addressId) params.set('address_id', ctx.addressId);
+        if (ctx.city) params.set('city', ctx.city);
+        if (ctx.province) params.set('province', ctx.province);
+        fetch(quoteUrl + '?' + params.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(q => {
+                shipping = parseFloat(q.amount || 0);
+                const amt = document.getElementById('shipAmount');
+                const eta = document.getElementById('shipEta');
+                const note = document.getElementById('shipNote');
+                if (amt) amt.innerHTML = q.is_free ? '<span class="text-success">FREE</span>' : ('Rs. ' + shipping.toFixed(2));
+                if (eta) eta.textContent = '(' + (q.eta_days || '3-5') + ' days)';
+                if (note) {
+                    note.textContent = q.is_free
+                        ? ('Free over Rs. ' + Number(q.free_above || 0).toLocaleString())
+                        : (q.matched ? ('Rate for ' + q.matched) : 'Default delivery rate');
+                }
+                calculatePayable();
+            })
+            .catch(() => {});
+    }
 
     function selectedPayMethod() {
         const el = document.querySelector('input[name="payment_method"]:checked:not(:disabled)');
@@ -343,8 +403,8 @@
             if (hint) {
                 const leftover = Math.max(0, walletBalance - usedWallet);
                 hint.textContent = payable <= 0
-                    ? ('Wallet se Rs. ' + usedWallet.toFixed(0) + ' cut honge. Wallet mein Rs. ' + leftover.toFixed(0) + ' reh jayenge.')
-                    : ('Wallet se Rs. ' + usedWallet.toFixed(0) + ' cut honge. Baqi Rs. ' + payable.toFixed(0) + ' ke liye neeche payment method choose karein.');
+                    ? ('Rs. ' + usedWallet.toFixed(0) + ' will be taken from wallet. Rs. ' + leftover.toFixed(0) + ' stays in wallet.')
+                    : ('Rs. ' + usedWallet.toFixed(0) + ' from wallet. Choose a method below for the remaining Rs. ' + payable.toFixed(0) + '.');
             }
         } else {
             if (deductionRow) deductionRow.classList.add('d-none');
@@ -368,8 +428,8 @@
                 radios.forEach(function (r) { r.disabled = false; });
                 if (remainderHint) {
                     remainderHint.textContent = walletShort
-                        ? ('Wallet se Rs. ' + usedWallet.toFixed(0) + ' cut. Baqi Rs. ' + payable.toFixed(0) + ' Cash on Delivery (online PayFast keys ke baad).')
-                        : 'Abhi Cash on Delivery. PayFast API ke baad JazzCash / EasyPaisa / card yahan khulenge.';
+                        ? ('Wallet covers Rs. ' + usedWallet.toFixed(0) + '. Remaining Rs. ' + payable.toFixed(0) + '.')
+                        : 'Select how you want to pay.';
                 }
             }
         }
@@ -386,5 +446,6 @@
 
     calculatePayable();
     togglePayLater();
+    refreshShipping();
 </script>
 <?= $this->endSection() ?>

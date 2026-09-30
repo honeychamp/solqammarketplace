@@ -9,24 +9,34 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260917c">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260929h">
 </head>
 <body class="hub-app seller-hub">
 <div class="d-flex flex-column flex-lg-row">
     <aside class="solqam-sidebar">
+        <div class="sidebar-head">
         <a href="<?= site_url('seller/dashboard') ?>" class="d-flex align-items-center gap-2 text-decoration-none px-3 pt-2 pb-3">
-            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>" alt="Solqam Market Place" style="height: 42px; width: auto;">
+            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>?v=20260929h" alt="Solqam Market Place" style="height: 56px; width: auto;">
         </a>
         <div class="px-3 mb-2">
-            <span class="badge rounded-pill px-3 py-2" style="background: rgba(11,48,230,0.35); color: #fff; border: 1px solid rgba(147,197,253,0.35);">Seller Hub</span>
+            <span class="badge rounded-pill px-3 py-2" style="background: linear-gradient(135deg,#0B30E6,#F59E0B); color: #fff; border: 1px solid rgba(240,20,47,.4);">Seller Hub</span>
         </div>
 
+        <?php $sellerApproved = seller_is_approved(); ?>
         <div class="hub-store-card">
-            <div class="text-white-50 small mb-1">Your store</div>
+            <div class="small text-white fw-semibold mb-1">Your store</div>
             <div class="fw-bold text-white text-truncate"><i class="bi bi-shop me-1 text-warning"></i><?= esc(session()->get('user.store_name') ?? 'Vendor Store') ?></div>
-            <div class="mt-2 small fw-semibold" style="color: #6EE7B7;"><i class="bi bi-patch-check-fill me-1"></i>Verified partner</div>
+            <div class="mt-2 small fw-semibold" style="color: <?= $sellerApproved ? '#6EE7B7' : '#FCD34D' ?>;">
+                <?php if ($sellerApproved): ?>
+                    <i class="bi bi-patch-check-fill me-1"></i>Approved partner
+                <?php else: ?>
+                    <i class="bi bi-hourglass-split me-1"></i><?= seller_approval_status() === 'rejected' ? 'Not approved' : 'Pending approval' ?>
+                <?php endif; ?>
+            </div>
+        </div>
         </div>
 
+        <div class="sidebar-scroll">
             <div class="hub-nav-label">Workspace</div>
         <ul class="nav nav-pills flex-column mb-auto">
             <li class="nav-item">
@@ -34,6 +44,7 @@
                     <span class="nav-ico"><i class="bi bi-grid-1x2-fill"></i></span><span class="label">Dashboard</span>
                 </a>
             </li>
+            <?php if ($sellerApproved): ?>
             <li class="nav-item">
                 <a href="<?= site_url('seller/products') ?>" class="nav-link <?= strpos(uri_string(), 'seller/products') !== false ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-box-seam"></i></span><span class="label">Products</span>
@@ -54,9 +65,16 @@
                     <span class="nav-ico"><i class="bi bi-graph-up-arrow"></i></span><span class="label">Performance</span>
                 </a>
             </li>
+            <?php else: ?>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-box-seam"></i></span><span class="label">Products</span></span></li>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-bag-check"></i></span><span class="label">Orders</span></span></li>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-people"></i></span><span class="label">Buyers 360</span></span></li>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-graph-up-arrow"></i></span><span class="label">Performance</span></span></li>
+            <?php endif; ?>
         </ul>
         <div class="hub-nav-label">Buyers</div>
         <ul class="nav nav-pills flex-column mb-auto">
+            <?php if ($sellerApproved): ?>
             <li class="nav-item">
                 <a href="<?= site_url('seller/questions') ?>" class="nav-link <?= strpos(uri_string(), 'seller/questions') !== false ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-chat-left-text"></i></span><span class="label">Q&amp;A</span>
@@ -67,29 +85,44 @@
                     <span class="nav-ico"><i class="bi bi-chat-dots"></i></span><span class="label">Chat</span>
                 </a>
             </li>
+            <?php else: ?>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-chat-left-text"></i></span><span class="label">Q&amp;A</span></span></li>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-chat-dots"></i></span><span class="label">Chat</span></span></li>
+            <?php endif; ?>
         </ul>
         <div class="hub-nav-label">Money</div>
         <ul class="nav nav-pills flex-column mb-auto">
+            <?php if ($sellerApproved): ?>
+            <li class="nav-item">
+                <a href="<?= site_url('seller/campaigns') ?>" class="nav-link <?= strpos(uri_string(), 'seller/campaigns') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-lightning-charge"></i></span><span class="label">Campaigns</span>
+                </a>
+            </li>
             <li class="nav-item">
                 <a href="<?= site_url('seller/payouts') ?>" class="nav-link <?= strpos(uri_string(), 'seller/payouts') !== false ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-wallet2"></i></span><span class="label">Payouts</span>
                 </a>
             </li>
+            <?php else: ?>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-lightning-charge"></i></span><span class="label">Campaigns</span></span></li>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-wallet2"></i></span><span class="label">Payouts</span></span></li>
+            <?php endif; ?>
             <li class="nav-item mt-3">
                 <a href="<?= site_url('/') ?>" target="_blank" class="nav-link">
                     <span class="nav-ico"><i class="bi bi-shop-window"></i></span><span class="label">View storefront</span>
                 </a>
             </li>
         </ul>
+        </div>
 
-        <div class="dropdown mt-auto px-2 pt-3">
+        <div class="dropdown sidebar-foot px-2 pt-3">
             <a href="#" class="hub-user-chip dropdown-toggle" data-bs-toggle="dropdown">
-                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:linear-gradient(135deg,#0B30E6,#3d5df0);">
+                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:linear-gradient(135deg,#0B30E6,#F59E0B);">
                     <i class="bi bi-person-fill"></i>
                 </div>
                 <div class="text-truncate" style="max-width: 150px;">
                     <strong class="d-block small"><?= esc(session()->get('user.name')) ?></strong>
-                    <small class="text-white-50">Merchant</small>
+                    <small class="text-white">Merchant</small>
                 </div>
             </a>
             <ul class="dropdown-menu dropdown-menu-dark text-small shadow-lg rounded-3 border-0 mt-2">
@@ -108,12 +141,16 @@
                     <h5 class="mb-0 fw-bold"><?= esc($title ?? 'Seller Hub') ?></h5>
                 </div>
                 <div class="ms-auto d-flex align-items-center gap-2">
+                    <?php if ($sellerApproved): ?>
                     <a href="<?= site_url('seller/products/create') ?>" class="btn btn-solqam btn-sm px-3">
                         <i class="bi bi-plus-lg me-1"></i> Add product
                     </a>
                     <a href="<?= site_url('seller/orders') ?>" class="btn btn-light border btn-sm rounded-pill px-3" title="Orders">
                         <i class="bi bi-bell"></i>
                     </a>
+                    <?php else: ?>
+                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Awaiting admin approval</span>
+                    <?php endif; ?>
                 </div>
             </div>
         </header>

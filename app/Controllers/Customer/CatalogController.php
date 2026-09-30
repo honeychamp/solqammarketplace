@@ -55,7 +55,14 @@ class CatalogController extends BaseController
             'max_price'     => $this->request->getGet('max_price'),
             'sort'          => $this->request->getGet('sort') ?? 'latest',
             'limit'         => 24,
+            'page'          => max(1, (int) ($this->request->getGet('page') ?? 1)),
         ];
+
+        $total      = $this->productModel->countCatalog($filters);
+        $pageCount  = max(1, (int) ceil($total / (int) $filters['limit']));
+        if ($filters['page'] > $pageCount) {
+            $filters['page'] = $pageCount;
+        }
 
         $products   = $this->productModel->getCatalog($filters);
         $searchHint = null;
@@ -90,6 +97,8 @@ class CatalogController extends BaseController
             'brands'     => $brands,
             'filters'    => $filters,
             'searchHint' => $searchHint ?? null,
+            'catalogTotal' => $total,
+            'catalogPages' => $pageCount,
             'recent'     => $this->recentProducts(),
         ]);
     }

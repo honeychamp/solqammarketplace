@@ -5,34 +5,42 @@ namespace App\Database\Seeds;
 use CodeIgniter\Database\Seeder;
 
 /**
- * Admin login comes from .env (admin.email / admin.password).
- * Survives migrate:refresh --seed and CleanResetSeeder.
+ * Single platform admin. Credentials live in this seeder
+ * (EMAIL / PASSWORD). Optional .env admin.* overrides them.
  */
 class AdminSeeder extends Seeder
 {
+    public const EMAIL    = 'admin@solqam.pk';
+    public const PASSWORD = 'admin123';
+    public const NAME     = 'Solqam Administrator';
+    public const PHONE    = '03111222333';
+
     public function run()
     {
         $db = \Config\Database::connect();
 
-        $email = trim((string) env('admin.email', 'admin@solqam.pk'));
-        $password = (string) env('admin.password', 'admin123');
-        $name = trim((string) env('admin.name', 'Solqam Administrator'));
-        $phone = trim((string) env('admin.phone', '03111222333'));
+        $email    = trim((string) env('admin.email', self::EMAIL));
+        $password = (string) env('admin.password', self::PASSWORD);
+        $name     = trim((string) env('admin.name', self::NAME));
+        $phone    = trim((string) env('admin.phone', self::PHONE));
+        if ($phone === '') {
+            $phone = self::PHONE;
+        }
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $email = 'admin@solqam.pk';
+            $email = self::EMAIL;
         }
         if ($password === '') {
-            $password = 'admin123';
+            $password = self::PASSWORD;
         }
         if ($name === '') {
-            $name = 'Solqam Administrator';
+            $name = self::NAME;
         }
 
         $now = date('Y-m-d H:i:s');
         $payload = [
             'name'          => $name,
             'email'         => $email,
-            'phone'         => $phone !== '' ? $phone : '03111222333',
+            'phone'         => $phone,
             'password_hash' => password_hash($password, PASSWORD_BCRYPT),
             'role'          => 'admin',
             'status'        => 'active',
@@ -64,6 +72,6 @@ class AdminSeeder extends Seeder
             ]);
         }
 
-        echo "Admin ready: {$email} (password from .env admin.password)\n";
+        echo "Admin ready: {$email}\n";
     }
 }

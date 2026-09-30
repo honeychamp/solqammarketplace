@@ -35,6 +35,16 @@ class SellerProfileModel extends Model
         return $this->where('user_id', $userId)->first();
     }
 
+    public function isApprovedForUser(int $userId): bool
+    {
+        $profile = $this->getByUserId($userId);
+        if ($profile === null) {
+            return true;
+        }
+
+        return ($profile['approval_status'] ?? '') === 'approved';
+    }
+
     public function getPendingSellers(): array
     {
         return $this->select('seller_profiles.*, users.name as owner_name, users.email as owner_email, users.phone as owner_phone')

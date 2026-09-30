@@ -95,8 +95,8 @@
             <?php if ($seller['user_status'] !== 'active' || $seller['approval_status'] !== 'approved'): ?>
                 <form action="<?= site_url('admin/sellers/' . $seller['id'] . '/approve') ?>" method="POST" class="mb-2">
                     <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-success w-100 py-2 rounded-pill fw-bold" onclick="return confirm('Activate this seller account?');">
-                        <i class="bi bi-check-circle me-1"></i> Activate Seller
+                    <button type="submit" class="btn btn-success w-100 py-2 rounded-pill fw-bold" onclick="return confirm('Approve this seller? They will be able to list products and manage orders.');">
+                        <i class="bi bi-check-circle me-1"></i> Approve seller
                     </button>
                 </form>
             <?php endif; ?>

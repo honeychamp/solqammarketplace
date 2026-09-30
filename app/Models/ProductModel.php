@@ -43,12 +43,16 @@ class ProductModel extends Model
 
     public function getDetailedProduct(int $id): ?array
     {
-        $product = $this->select('products.*, categories.name as category_name, categories.slug as category_slug, users.name as seller_name, seller_profiles.store_name')
+        $product = $this->select('products.*, categories.name as category_name, categories.slug as category_slug, users.name as seller_name, seller_profiles.store_name, seller_profiles.approval_status as seller_approval')
             ->join('categories', 'categories.id = products.category_id', 'left')
             ->join('users', 'users.id = products.seller_id', 'left')
             ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
             ->where('products.id', $id)
             ->first();
+
+        if ($product && ! $this->isPublicSellerRow($product)) {
+            return null;
+        }
 
         if ($product) {
             $imageModel = new ProductImageModel();
@@ -71,6 +75,7 @@ class ProductModel extends Model
             ->join('categories', 'categories.id = products.category_id', 'left')
             ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
             ->where('products.status', 'active');
+        $this->applyPublicSellerScope($builder);
 
         if (!empty($filters['category_ids']) && is_array($filters['category_ids'])) {
             $builder->whereIn('products.category_id', $filters['category_ids']);
@@ -150,5 +155,79 @@ class ProductModel extends Model
         $offset = ($page - 1) * $limit;
 
         return $builder->findAll($limit, $offset);
+    }
+
+    public function countCatalog(array $filters = []): int
+    {
+        $builder = $this->select('products.id')
+            ->join('categories', 'categories.id = products.category_id', 'left')
+            ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
+            ->where('products.status', 'active');
+        $this->applyPublicSellerScope($builder);
+
+        if (!empty($filters['category_ids']) && is_array($filters['category_ids'])) {
+            $builder->whereIn('products.category_id', $filters['category_ids']);
+        } elseif (!empty($filters['category_id'])) {
+            $builder->where('products.category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['category_slug']) && empty($filters['category_ids'])) {
+            $builder->where('categories.slug', $filters['category_slug']);
+        }
+
+        if (!empty($filters['search'])) {
+            $q = $filters['search'];
+            $builder->groupStart()
+                ->like('products.name', $q)
+                ->orLike('products.description', $q)
+                ->orLike('products.brand', $q)
+                ->orLike('products.sku', $q)
+                ->orLike('seller_profiles.store_name', $q)
+                ->groupEnd();
+        }
+
+        if (!empty($filters['brand'])) {
+            $builder->where('products.brand', $filters['brand']);
+        }
+
+        if (!empty($filters['mall'])) {
+            $builder->where('products.is_mall', 1);
+        }
+
+        if (!empty($filters['sponsored'])) {
+            $builder->where('products.is_sponsored', 1);
+        }
+
+        if (!empty($filters['seller_id'])) {
+            $builder->where('products.seller_id', $filters['seller_id']);
+        }
+
+        if (!empty($filters['min_price'])) {
+            $builder->where('products.price >=', $filters['min_price']);
+        }
+
+        if (!empty($filters['max_price'])) {
+            $builder->where('products.price <=', $filters['max_price']);
+        }
+
+        return (int) $builder->countAllResults();
+    }
+
+    protected function applyPublicSellerScope($builder): void
+    {
+        $builder->groupStart()
+            ->where('seller_profiles.approval_status', 'approved')
+            ->orWhere('seller_profiles.id', null)
+            ->groupEnd();
+    }
+
+    protected function isPublicSellerRow(array $product): bool
+    {
+        $status = $product['seller_approval'] ?? null;
+        if ($status === null || $status === '') {
+            return true;
+        }
+
+        return $status === 'approved';
     }
 }

@@ -30,11 +30,12 @@ class ProductController extends BaseController
             ->join('categories', 'categories.id = products.category_id', 'left')
             ->where('products.seller_id', $sellerId)
             ->orderBy('products.id', 'DESC')
-            ->findAll();
+            ->paginate(50);
 
         return view('seller/products/index', [
             'title'    => 'Manage Products — Solqam Seller Hub',
             'products' => $products,
+            'pager'    => $this->productModel->pager,
         ]);
     }
 
@@ -183,12 +184,12 @@ class ProductController extends BaseController
         $sellerId = (int) session()->get('user.id');
         $file = $this->request->getFile('csv');
         if (! $file || ! $file->isValid()) {
-            return redirect()->back()->with('error', 'CSV file choose karein.');
+            return redirect()->back()->with('error', 'Please choose a CSV file.');
         }
 
         $handle = fopen($file->getTempName(), 'r');
         if (! $handle) {
-            return redirect()->back()->with('error', 'CSV read nahi ho saki.');
+            return redirect()->back()->with('error', 'The CSV file could not be read.');
         }
 
         $header = fgetcsv($handle);

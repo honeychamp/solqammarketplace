@@ -26,7 +26,7 @@ class CartItemModel extends Model
 
     public function getItemsWithProducts(int $cartId): array
     {
-        $items = $this->select('cart_items.*, products.name as product_name, products.price as current_price, products.stock as product_stock, products.seller_id, products.cashback_percent, seller_profiles.store_name, product_variants.color as variant_color, product_variants.size as variant_size, product_variants.stock as variant_stock, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
+        $items = $this->select('cart_items.*, products.name as product_name, products.price as current_price, products.stock as product_stock, products.seller_id, products.category_id, products.cashback_percent, seller_profiles.store_name, product_variants.color as variant_color, product_variants.size as variant_size, product_variants.stock as variant_stock, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
             ->join('products', 'products.id = cart_items.product_id')
             ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
             ->join('product_variants', 'product_variants.id = cart_items.variant_id', 'left')

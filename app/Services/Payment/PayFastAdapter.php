@@ -53,7 +53,7 @@ class PayFastAdapter implements PaymentGatewayInterface
         if ($configured) {
             $token = $this->requestAccessToken();
             if ($token === '') {
-                throw new \RuntimeException('PayFast token nahi mila. Merchant ID / Secured Key check karein.');
+                throw new \RuntimeException('PayFast token was not issued. Check merchant ID and secured key.');
             }
             $fields['TOKEN'] = $token;
         }

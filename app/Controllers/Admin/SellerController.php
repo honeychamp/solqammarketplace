@@ -29,12 +29,13 @@ class SellerController extends BaseController
             $builder->where('seller_profiles.approval_status', $status);
         }
 
-        $sellers = $builder->findAll();
+        $sellers = $builder->paginate(50);
 
         return view('admin/sellers/index', [
             'title'   => 'Seller Management — Solqam Admin Console',
             'sellers' => $sellers,
             'currentStatus' => $status,
+            'pager'   => $this->sellerProfileModel->pager,
         ]);
     }
 

@@ -32,8 +32,8 @@ $shippingZones = $shippingZones ?? [];
 $ratingBreakdown = $ratingBreakdown ?? [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
 $soldCount = (int) ($product['sold_count'] ?? 0);
 ?>
-<div class="container py-3 pdp-page">
-    <nav aria-label="breadcrumb" class="mb-3">
+<div class="container py-4 pdp-page">
+    <nav aria-label="breadcrumb" class="mb-3 sf-crumb">
         <ol class="breadcrumb small mb-0">
             <li class="breadcrumb-item"><a href="<?= site_url('/') ?>" class="text-solqam text-decoration-none">Home</a></li>
             <li class="breadcrumb-item"><a href="<?= site_url('shop') ?>" class="text-solqam text-decoration-none">Shop</a></li>
@@ -44,7 +44,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
 
     <div class="row g-3 align-items-start">
         <div class="col-lg-5">
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white pdp-gallery">
+            <div class="sf-panel p-3 p-lg-4 pdp-gallery">
                 <div class="pdp-main-stage" role="button" data-bs-toggle="modal" data-bs-target="#pdpZoomModal">
                     <img id="mainProductImg" src="<?= esc($product['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" alt="<?= esc($product['name']) ?>">
                     <?php if (!empty($product['is_mall'])): ?>
@@ -65,7 +65,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
         </div>
 
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+            <div class="sf-panel p-4">
                 <h1 class="pdp-title"><?= esc($product['name']) ?></h1>
                 <a href="<?= site_url('compare/toggle/' . $product['id']) ?>" class="small">Add to compare</a>
                 <script type="application/ld+json"><?= json_encode([
@@ -178,7 +178,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                     </div>
 
                     <?php if ((int) $product['stock'] > 0): ?>
-                    <div class="d-flex gap-2 mt-3">
+                    <div class="d-flex gap-2 mt-3 pdp-buybar">
                         <button type="submit" name="buy_now" value="1" class="btn btn-solqam-accent flex-grow-1 py-2 fw-bold">Buy Now</button>
                         <button type="submit" class="btn btn-solqam flex-grow-1 py-2 fw-bold">Add to Cart</button>
                         <button type="submit" formaction="<?= site_url('wishlist/toggle') ?>" formmethod="post" class="btn btn-outline-danger">
@@ -193,7 +193,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
         </div>
 
         <div class="col-lg-3">
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+            <div class="sf-panel p-3 p-lg-4 mb-3">
                 <h6 class="fw-bold mb-3">Delivery Options</h6>
                 <div class="d-flex gap-2 mb-3">
                     <i class="bi bi-geo-alt text-solqam"></i>
@@ -214,13 +214,15 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                 <?php else: ?>
                     <p class="small text-muted">Karachi, Lahore, Islamabad: 2–3 days. Nationwide: 3–5 days.</p>
                 <?php endif; ?>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 mb-3">
                     <i class="bi bi-cash-stack text-success"></i>
                     <div class="small"><strong>Cash on Delivery</strong> available on checkout.</div>
                 </div>
+                <div class="small fw-bold text-muted text-uppercase mb-2" style="letter-spacing:.08em;">Payment methods</div>
+                <?= view('customer/_payment_methods') ?>
             </div>
 
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+            <div class="sf-panel p-3 p-lg-4 mb-3">
                 <h6 class="fw-bold mb-3">Return &amp; Warranty</h6>
                 <div class="d-flex gap-2 <?= $warranty !== '' ? 'mb-2' : '' ?>">
                     <i class="bi bi-arrow-counterclockwise text-solqam-accent"></i>
@@ -240,7 +242,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                 <?php endif; ?>
             </div>
 
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="sf-panel p-3 p-lg-4">
                 <h6 class="fw-bold mb-3">Sold by</h6>
                 <div class="d-flex gap-2 mb-2">
                     <div class="bg-solqam text-white rounded-circle d-flex align-items-center justify-content-center" style="width:40px;height:40px;"><i class="bi bi-shop"></i></div>
@@ -262,7 +264,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mt-4" id="pdpTabsCard">
+    <div class="sf-panel p-4 mt-4" id="pdpTabsCard">
         <ul class="nav nav-pills mb-4 gap-2 flex-wrap" id="productDetailTabs" role="tablist">
             <li class="nav-item"><button class="nav-link active rounded-pill px-4 fw-bold" id="desc-tab" data-bs-toggle="tab" data-bs-target="#desc-pane" type="button">Description</button></li>
             <li class="nav-item"><button class="nav-link rounded-pill px-4 fw-bold" id="spec-tab" data-bs-toggle="tab" data-bs-target="#spec-pane" type="button">Details</button></li>
@@ -396,7 +398,12 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     </div>
 
     <?php if (!empty($relatedProducts)): ?>
-    <h5 class="fw-bold mt-5 mb-3">You may also like</h5>
+    <div class="sf-section-head mt-5 mb-3">
+        <div>
+            <div class="sf-eyebrow">More to shop</div>
+            <h4 class="fw-bold mb-0">You may also like</h4>
+        </div>
+    </div>
     <div class="row g-3">
         <?php foreach ($relatedProducts as $rel): ?>
             <div class="col-6 col-md-3">

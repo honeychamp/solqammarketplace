@@ -97,11 +97,11 @@ $adminPkgStatus = $adminShipment['status'] ?? 'placed';
             <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Gross</span><span>Rs. <?= number_format($order['total_amount'], 2) ?></span></div>
             <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Payable</span><span>Rs. <?= number_format($order['final_payable'], 2) ?></span></div>
             <div class="d-flex justify-content-between mb-2 text-success"><span>Buyer cashback</span><span>Rs. <?= number_format((float) ($order['cashback_amount'] ?? 0), 2) ?></span></div>
-            <div class="d-flex justify-content-between mb-3 text-primary"><span>Commission (<?= esc($order['commission_rate'] ?? commission_rate()) ?>%)</span><span>Rs. <?= number_format($order['commission_amount'], 2) ?></span></div>
+            <div class="d-flex justify-content-between mb-3 text-primary"><span>Commission (category rates<?= isset($order['commission_rate']) ? ', avg ' . esc($order['commission_rate']) . '%' : '' ?>)</span><span>Rs. <?= number_format($order['commission_amount'], 2) ?></span></div>
             <div class="small">
                 <div><strong>Payment:</strong> <?= strtoupper($order['payment_method'] ?? 'COD') ?></div>
                 <div><strong>Status:</strong> <?= strtoupper($order['payment_status'] ?? 'PENDING') ?></div>
-                <div class="text-muted mt-2">Seller items: commission at the admin-set rate. Admin SKUs: 0% commission. Buyer cashback is the % saved on each product. Prepaid now; COD / Pay later after delivery.</div>
+                <div class="text-muted mt-2">Seller items: commission from the product’s category. Admin SKUs: 0%. Buyer cashback is the % saved on each product. Prepaid now; COD / Pay later after delivery.</div>
             </div>
         </div>
         <?php if (!empty($order['pay_later'])): ?>

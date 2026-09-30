@@ -3,17 +3,24 @@
 namespace App\Controllers\Customer;
 
 use App\Controllers\BaseController;
-use App\Models\CommissionModel;
+use App\Models\CategoryModel;
+use App\Services\Commission\CommissionService;
 
 class PagesController extends BaseController
 {
     public function commission()
     {
-        $rule = (new CommissionModel())->getActiveRule();
+        $service = new CommissionService();
+        $categories = (new CategoryModel())->getActiveCategories();
+        foreach ($categories as &$cat) {
+            $cat['effective_commission'] = $service->rateForCategory((int) $cat['id']);
+        }
+        unset($cat);
 
         return view('customer/pages/commission', [
             'title'      => 'Commission Structure — Solqam Market Place',
-            'percentage' => (float) ($rule['percentage'] ?? 10),
+            'percentage' => $service->getCommissionRate(),
+            'categories' => $categories,
         ]);
     }
 

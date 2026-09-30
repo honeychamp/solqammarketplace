@@ -128,7 +128,7 @@ class OrderService
             throw new RuntimeException('Wallet balance is less than the order total. Choose Cash on Delivery for the remaining amount.');
         } elseif ($paymentMethod === 'payfast') {
             if (! config('Payments')->payfastReady()) {
-                throw new RuntimeException('Online payment (PayFast) abhi on nahi. Abhi Cash on Delivery use karein.');
+                throw new RuntimeException('Online payment is not available yet. Use Cash on Delivery.');
             }
         } elseif ($paymentMethod === 'pay_later') {
             if (!$useWallet || $walletAmountUsed <= 0 || $finalPayable <= 0) {
@@ -139,18 +139,23 @@ class OrderService
             }
         }
 
-        $commissionRate = $this->commissionService->getCommissionRate();
         $commissionAmount = 0.0;
         $cashbackTotal = 0.0;
+        $weightedRate = 0.0;
+        $sellerGoods = 0.0;
         foreach ($cartItems as $item) {
             $line = (float) $item['unit_price'] * (int) $item['quantity'];
             $cashbackTotal += cashback_amount($line, $item);
             if ($this->isAdminSeller((int) $item['seller_id'])) {
                 continue;
             }
-            $commissionAmount += commission_amount($line, false, $commissionRate);
+            $lineRate = $this->commissionService->rateForCategory((int) ($item['category_id'] ?? 0));
+            $commissionAmount += commission_amount($line, false, $lineRate);
+            $sellerGoods += $line;
+            $weightedRate += $line * $lineRate;
         }
         $commissionAmount = round($commissionAmount, 2);
+        $commissionRate = $sellerGoods > 0 ? round($weightedRate / $sellerGoods, 2) : 0.0;
         $cashbackTotal = round($cashbackTotal, 2);
         $orderNumber = 'SOL-' . strtoupper(date('ymd')) . '-' . strtoupper(substr(md5(uniqid()), 0, 5));
 
@@ -187,7 +192,11 @@ class OrderService
                 }
                 $itemCommission = $this->isAdminSeller((int) $item['seller_id'])
                     ? 0.0
-                    : commission_amount($subtotal, false, $commissionRate);
+                    : commission_amount(
+                        $subtotal,
+                        false,
+                        $this->commissionService->rateForCategory((int) ($item['category_id'] ?? 0))
+                    );
                 $itemCashbackRate = cashback_rate($item);
                 $itemCashback = cashback_amount($subtotal, $itemCashbackRate);
 
@@ -463,7 +472,7 @@ class OrderService
             return;
         }
         if (is_online_gateway($payment['payment_method'] ?? null) && $payment['status'] !== 'paid') {
-            throw new RuntimeException('PayFast ne payment confirm nahi ki. Paid hone ke baad hi order confirm/ship hoga.');
+            throw new RuntimeException('PayFast did not confirm payment. The order is confirmed or shipped only after payment is paid.');
         }
     }
 
@@ -512,10 +521,14 @@ class OrderService
 
             $payment = $this->paymentModel->where('order_id', $orderId)->first();
             $method = $payment['payment_method'] ?? 'cod';
-            if (($method === 'cod' || ($payment['status'] ?? '') !== 'paid')) {
+            if ($method === 'cod' || $method === 'pay_later' || ($payment['status'] ?? '') !== 'paid') {
                 $this->settleSellerFunds((int) $orderId, 'cod');
             } else {
-                $this->settleSellerFunds((int) $orderId, 'online');
+                foreach ((new ShipmentModel())->where('order_id', $orderId)->findAll() as $pkg) {
+                    if (($pkg['status'] ?? '') === 'delivered') {
+                        $this->settlePackageOnDelivered((int) $orderId, (int) $pkg['seller_id'], $method);
+                    }
+                }
             }
         } elseif ($newStatus === 'cancelled') {
             $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
@@ -585,7 +598,49 @@ class OrderService
         return $ok;
     }
 
-    public function updateSellerShipment(int $orderId, int $sellerId, string $newStatus, array $extra = []): bool
+    public function setFulfillBy(int $orderId, int $sellerId, string $fulfillBy): void
+    {
+        if ($this->isAdminSeller($sellerId)) {
+            throw new RuntimeException('Admin store packages are fulfilled by Solqam.');
+        }
+        $fulfillBy = $fulfillBy === 'admin' ? 'admin' : 'seller';
+        $this->assertOnlinePaymentCleared($orderId);
+
+        $shipmentModel = new ShipmentModel();
+        $shipment = $shipmentModel->where('order_id', $orderId)->where('seller_id', $sellerId)->first();
+        if (! $shipment) {
+            throw new RuntimeException('Shipment not found.');
+        }
+        if (in_array((string) ($shipment['status'] ?? ''), ['shipped', 'delivered'], true)) {
+            throw new RuntimeException('This package is already in transit or delivered. Fulfillment cannot change.');
+        }
+
+        $payload = [
+            'fulfill_by'     => $fulfillBy,
+            'handoff_status' => $fulfillBy === 'admin' ? 'pending_admin' : null,
+        ];
+        if ($fulfillBy === 'admin' && in_array((string) $shipment['status'], ['placed', ''], true)) {
+            $payload['status'] = 'confirmed';
+            $this->orderItemModel
+                ->where('order_id', $orderId)
+                ->where('seller_id', $sellerId)
+                ->set(['fulfillment_status' => 'confirmed'])
+                ->update();
+        }
+        $shipmentModel->update($shipment['id'], $payload);
+    }
+
+    public function receiveAdminInbound(int $shipmentId): void
+    {
+        $shipmentModel = new ShipmentModel();
+        $shipment = $shipmentModel->find($shipmentId);
+        if (! $shipment || ($shipment['fulfill_by'] ?? '') !== 'admin') {
+            throw new RuntimeException('This package is not assigned to Solqam delivery.');
+        }
+        $shipmentModel->update($shipmentId, ['handoff_status' => 'received']);
+    }
+
+    public function updateSellerShipment(int $orderId, int $sellerId, string $newStatus, array $extra = [], bool $asAdminCourier = false): bool
     {
         $allowed = ['confirmed', 'shipped', 'delivered'];
         if (!in_array($newStatus, $allowed, true)) {
@@ -597,11 +652,20 @@ class OrderService
         $shipment = $shipmentModel->where('order_id', $orderId)->where('seller_id', $sellerId)->first();
         if (!$shipment) {
             $shipmentId = $shipmentModel->insert([
-                'order_id'  => $orderId,
-                'seller_id' => $sellerId,
-                'status'    => 'placed',
+                'order_id'   => $orderId,
+                'seller_id'  => $sellerId,
+                'fulfill_by' => $this->isAdminSeller($sellerId) ? 'admin' : 'seller',
+                'status'     => 'placed',
             ]);
             $shipment = $shipmentModel->find($shipmentId);
+        }
+
+        $fulfillBy = (string) ($shipment['fulfill_by'] ?? 'seller');
+        if ($fulfillBy === 'admin' && ! $asAdminCourier && ! $this->isAdminSeller($sellerId) && in_array($newStatus, ['shipped', 'delivered'], true)) {
+            throw new RuntimeException('This package is assigned to Solqam delivery. You cannot mark it shipped or delivered.');
+        }
+        if ($fulfillBy === 'seller' && $asAdminCourier && ! $this->isAdminSeller($sellerId)) {
+            throw new RuntimeException('Seller is delivering this package. Admin courier is not assigned.');
         }
 
         $data = ['status' => $newStatus];
@@ -622,9 +686,7 @@ class OrderService
             if ($newStatus === 'delivered') {
             $payment = $this->paymentModel->where('order_id', $orderId)->first();
             $method = $payment['payment_method'] ?? 'cod';
-            if ($method === 'cod' || $method === 'pay_later') {
-                $this->settleSellerFunds($orderId, 'cod', $sellerId);
-            }
+            $this->settlePackageOnDelivered($orderId, $sellerId, $method);
         }
 
         $packages = $shipmentModel->where('order_id', $orderId)->findAll();
@@ -676,58 +738,142 @@ class OrderService
             $bySeller[$sid]['cashback'] += item_cashback($item);
         }
 
-        $payoutModel = new SellerPayoutModel();
-        $adminId = $this->platformAdminId();
-        $order = $this->orderModel->find($orderId);
-        $orderNumber = $order['order_number'] ?? ('#' . $orderId);
+        $payment = $this->paymentModel->where('order_id', $orderId)->first();
+        $method  = $payment['payment_method'] ?? 'cod';
 
         foreach ($bySeller as $sellerId => $totals) {
             if ($this->isAdminSeller((int) $sellerId)) {
                 continue;
             }
-
-            $existing = $payoutModel->where('order_id', $orderId)->where('seller_id', $sellerId)->first();
-            if ($existing && ($existing['status'] ?? '') === 'paid') {
-                continue;
-            }
-
-            $commission = round($totals['commission'], 2);
-            $cashback = round($totals['cashback'], 2);
-            $net = round(max(0.0, $totals['goods'] - $commission - $cashback), 2);
-
-            if ($commission > 0 && $adminId > 0) {
-                $this->walletService->credit(
-                    $adminId,
-                    $commission,
-                    'commission',
-                    $orderId,
-                    "Platform commission from order {$orderNumber}"
-                );
-            }
-
-            if ($mode === 'online' && $net > 0) {
-                $this->walletService->credit(
-                    $sellerId,
-                    $net,
-                    'seller_payout',
-                    $orderId,
-                    "Auto payout after paid order {$orderNumber} (cashback + commission cut)"
-                );
-            }
-
-            $row = [
-                'seller_id' => $sellerId,
-                'order_id'  => $orderId,
-                'amount'    => $net,
-                'status'    => 'paid',
-                'paid_at'   => date('Y-m-d H:i:s'),
-            ];
-            if ($existing) {
-                $payoutModel->update($existing['id'], $row);
+            if ($mode === 'online') {
+                $this->settleOnlineGoods($orderId, (int) $sellerId, $totals);
             } else {
-                $payoutModel->insert($row);
+                $this->settlePackageOnDelivered($orderId, (int) $sellerId, $method, $totals);
             }
         }
+    }
+
+    protected function settleOnlineGoods(int $orderId, int $sellerId, array $totals): void
+    {
+        $order = $this->orderModel->find($orderId);
+        $orderNumber = $order['order_number'] ?? ('#' . $orderId);
+        $adminId = $this->platformAdminId();
+        $commission = round($totals['commission'], 2);
+        $cashback = round($totals['cashback'], 2);
+        $net = round(max(0.0, $totals['goods'] - $commission - $cashback), 2);
+
+        if ($commission > 0 && $adminId > 0 && ! $this->hasLedger($orderId, 'commission', 'seller ' . $sellerId)) {
+            $this->walletService->credit(
+                $adminId,
+                $commission,
+                'commission',
+                $orderId,
+                "Platform commission from order {$orderNumber} seller {$sellerId} (goods only, no delivery)"
+            );
+        }
+
+        if ($net > 0 && ! $this->hasLedger($orderId, 'seller_payout', 'seller ' . $sellerId)) {
+            $this->walletService->credit(
+                $sellerId,
+                $net,
+                'seller_payout',
+                $orderId,
+                "Goods payout order {$orderNumber} seller {$sellerId} (category commission cut, delivery held)"
+            );
+        }
+
+        $this->upsertPayout($orderId, $sellerId, $net);
+    }
+
+    protected function settlePackageOnDelivered(int $orderId, int $sellerId, string $method, ?array $totals = null): void
+    {
+        if ($this->isAdminSeller($sellerId)) {
+            return;
+        }
+        if ($totals === null) {
+            $items = $this->orderItemModel->where('order_id', $orderId)->where('seller_id', $sellerId)->findAll();
+            $totals = ['goods' => 0.0, 'commission' => 0.0, 'cashback' => 0.0];
+            foreach ($items as $item) {
+                $totals['goods'] += (float) $item['subtotal'];
+                $totals['commission'] += (float) $item['commission_amount'];
+                $totals['cashback'] += item_cashback($item);
+            }
+        }
+
+        $shipment = (new ShipmentModel())->where('order_id', $orderId)->where('seller_id', $sellerId)->first();
+        $fulfillBy = (string) ($shipment['fulfill_by'] ?? 'seller');
+        $shipAmt = round((float) ($shipment['shipping_amount'] ?? 0), 2);
+        $order = $this->orderModel->find($orderId);
+        $orderNumber = $order['order_number'] ?? ('#' . $orderId);
+        $adminId = $this->platformAdminId();
+        $commission = round($totals['commission'], 2);
+        $cashback = round($totals['cashback'], 2);
+        $goodsNet = round(max(0.0, $totals['goods'] - $commission - $cashback), 2);
+        $sellerGetsDelivery = $fulfillBy !== 'admin';
+        $deliveryToSeller = $sellerGetsDelivery ? $shipAmt : 0.0;
+        $isCod = in_array($method, ['cod', 'pay_later'], true);
+
+        if ($commission > 0 && $adminId > 0 && ! $this->hasLedger($orderId, 'commission', 'seller ' . $sellerId)) {
+            $this->walletService->credit(
+                $adminId,
+                $commission,
+                'commission',
+                $orderId,
+                "Platform commission from order {$orderNumber} seller {$sellerId} (goods only, no delivery)"
+            );
+        }
+
+        if ($isCod) {
+            if ($fulfillBy === 'admin' && $goodsNet > 0 && ! $this->hasLedger($orderId, 'seller_payout', 'seller ' . $sellerId)) {
+                $this->walletService->credit(
+                    $sellerId,
+                    $goodsNet,
+                    'seller_payout',
+                    $orderId,
+                    "COD collected by Solqam, goods after commission order {$orderNumber} seller {$sellerId}"
+                );
+            }
+        } elseif ($sellerGetsDelivery && $deliveryToSeller > 0 && ! $this->hasLedger($orderId, 'seller_shipping', 'seller ' . $sellerId)) {
+            $this->walletService->credit(
+                $sellerId,
+                $deliveryToSeller,
+                'seller_shipping',
+                $orderId,
+                "Delivery fee passed to seller (self-ship) order {$orderNumber} seller {$sellerId}"
+            );
+        }
+
+        $this->upsertPayout($orderId, $sellerId, round($goodsNet + $deliveryToSeller, 2));
+    }
+
+    protected function upsertPayout(int $orderId, int $sellerId, float $amount): void
+    {
+        $payoutModel = new SellerPayoutModel();
+        $existing = $payoutModel->where('order_id', $orderId)->where('seller_id', $sellerId)->first();
+        $row = [
+            'seller_id' => $sellerId,
+            'order_id'  => $orderId,
+            'amount'    => $amount,
+            'status'    => 'paid',
+            'paid_at'   => date('Y-m-d H:i:s'),
+        ];
+        if ($existing) {
+            $payoutModel->update($existing['id'], $row);
+        } else {
+            $payoutModel->insert($row);
+        }
+    }
+
+    protected function hasLedger(int $orderId, string $type, string $needle = ''): bool
+    {
+        $builder = $this->db->table('wallet_transactions')
+            ->where('reference_id', $orderId)
+            ->where('reference_type', $type);
+        if ($needle !== '') {
+            $builder->like('description', $needle);
+        }
+
+        return $builder->get()->getRowArray() !== null;
     }
 
     protected function grantBuyerCashback(array $order, string $reason = 'paid'): void
@@ -817,6 +963,7 @@ class OrderService
             $shipmentModel->insert([
                 'order_id'         => $orderId,
                 'seller_id'        => $sellerId,
+                'fulfill_by'       => $this->isAdminSeller((int) $sellerId) ? 'admin' : 'seller',
                 'status'           => 'placed',
                 'shipping_amount'  => $amt,
             ]);
@@ -851,7 +998,7 @@ class OrderService
             ->groupEnd()
             ->countAllResults();
         if ($open >= $max) {
-            throw new RuntimeException('Zyada open COD orders. Pehle pending parcels complete karein.');
+            throw new RuntimeException('Too many open COD orders. Complete pending parcels first.');
         }
     }
 

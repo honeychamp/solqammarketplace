@@ -30,11 +30,15 @@ class HomeController extends BaseController
         $featuredProducts = $productModel->getCatalog(['limit' => 8, 'sort' => 'best_selling']);
         $flashSale = null;
         $flashProducts = [];
+        $megaSale = null;
+        $megaProducts = [];
         $heroBanners = [];
         $sideBanners = [];
         try {
-            $flashSale     = $pricing->getActiveSale();
-            $flashProducts = $pricing->getFlashProducts(8);
+            $flashSale     = $pricing->getActiveSale('flash');
+            $flashProducts = $pricing->getCampaignProducts('flash', 8);
+            $megaSale      = $pricing->getActiveSale('mega');
+            $megaProducts  = $pricing->getCampaignProducts('mega', 8);
             $heroBanners   = $bannerModel->forPlacement('hero');
             $sideBanners   = $bannerModel->forPlacement('side');
         } catch (\Throwable $e) {
@@ -47,6 +51,8 @@ class HomeController extends BaseController
             'featuredProducts' => $featuredProducts,
             'flashSale'        => $flashSale,
             'flashProducts'    => $flashProducts,
+            'megaSale'         => $megaSale,
+            'megaProducts'     => $megaProducts,
             'heroBanners'      => $heroBanners,
             'sideBanners'      => $sideBanners,
         ]);

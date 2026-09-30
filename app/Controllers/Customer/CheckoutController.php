@@ -55,8 +55,8 @@ class CheckoutController extends BaseController
         $walletBalance = $this->walletService->getBalance($userId);
         $defaultAddr   = $addresses[0] ?? null;
         $shippingQuote = $this->shippingService->quote(
-            $defaultAddr['city'] ?? 'Lahore',
-            $defaultAddr['province'] ?? 'Punjab',
+            $defaultAddr['city'] ?? null,
+            $defaultAddr['province'] ?? null,
             $subtotal
         );
 
@@ -83,7 +83,35 @@ class CheckoutController extends BaseController
             'couponDiscount' => $couponDiscount,
             'estimatedCashback' => cart_cashback_total($items),
             'payfastReady'   => config('Payments')->payfastReady(),
+            'shippingZones'  => $this->shippingService->cityList(),
         ]);
+    }
+
+    public function shippingQuote()
+    {
+        $userId = (int) session()->get('user.id');
+        $city   = trim((string) $this->request->getGet('city'));
+        $province = trim((string) $this->request->getGet('province'));
+        $addressId = (int) $this->request->getGet('address_id');
+
+        if ($addressId > 0) {
+            $addr = $this->addressModel->where('id', $addressId)->where('user_id', $userId)->first();
+            if ($addr) {
+                $city     = (string) $addr['city'];
+                $province = (string) ($addr['province'] ?? '');
+            }
+        }
+
+        $cart = $this->cartModel->where('user_id', $userId)->first();
+        $items = $cart ? $this->cartItemModel->getItemsWithProducts((int) $cart['id']) : [];
+        $subtotal = 0.0;
+        foreach ($items as $item) {
+            $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
+        }
+
+        $quote = $this->shippingService->quote($city !== '' ? $city : null, $province !== '' ? $province : null, $subtotal);
+
+        return $this->response->setJSON($quote);
     }
 
     public function applyCoupon()
@@ -125,12 +153,20 @@ class CheckoutController extends BaseController
                 return redirect()->back()->withInput()->with('error', 'Please complete all address fields.');
             }
 
+            $cityPost = (string) $this->request->getPost('city');
+            if ($cityPost === '__other') {
+                $cityPost = trim((string) $this->request->getPost('city_other'));
+            }
+            if ($cityPost === '') {
+                return redirect()->back()->withInput()->with('error', 'Please enter a city so delivery charges can be applied.');
+            }
+
             $addressId = $this->addressModel->insert([
                 'user_id'        => $userId,
                 'recipient_name' => $this->request->getPost('recipient_name'),
                 'phone'          => $this->request->getPost('phone'),
                 'street_address' => $this->request->getPost('street_address'),
-                'city'           => $this->request->getPost('city'),
+                'city'           => $cityPost,
                 'province'       => $this->request->getPost('province'),
                 'postal_code'    => $this->request->getPost('postal_code'),
                 'is_default'     => 1,
@@ -157,7 +193,7 @@ class CheckoutController extends BaseController
                 $cnicBack  = $this->storePayLaterFile($this->request->getFile('cnic_back'), 'cnic');
                 $billCopy  = $this->storePayLaterFile($this->request->getFile('utility_bill'), 'bill');
                 if (!$cnicFront || !$billCopy) {
-                    return redirect()->back()->withInput()->with('error', 'Pay later ke liye CNIC copy aur bill copy upload karein.');
+                    return redirect()->back()->withInput()->with('error', 'Upload CNIC copies and a utility bill for Pay later.');
                 }
                 $payLater = [
                     'full_name'         => trim((string) $this->request->getPost('pay_later_name')),

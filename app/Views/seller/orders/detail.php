@@ -34,6 +34,21 @@
                     } ?> me-1"></i> Your package: <?= ucfirst($pkgStatus) ?>
                 </span>
             </div>
+            <?php $fulfillBy = $shipment['fulfill_by'] ?? 'seller'; ?>
+            <div class="alert alert-light border small mb-3">
+                <strong>Who delivers:</strong>
+                <?= $fulfillBy === 'admin' ? 'Solqam (you send the parcel to admin). Delivery fee stays with Solqam. Category commission still goes to Solqam from product value only.' : 'You (self-courier). After delivery you keep the delivery fee. Category commission on product value goes to Solqam.' ?>
+            </div>
+            <?php if (in_array($pkgStatus, ['placed', 'confirmed'], true) && ($shipment['status'] ?? '') !== 'shipped'): ?>
+                <form action="<?= site_url('seller/orders/' . $order['id'] . '/fulfill') ?>" method="POST" class="d-flex flex-wrap gap-2 mb-3">
+                    <?= csrf_field() ?>
+                    <button name="fulfill_by" value="seller" class="btn btn-sm <?= $fulfillBy !== 'admin' ? 'btn-solqam' : 'btn-outline-secondary' ?>">I will deliver</button>
+                    <button name="fulfill_by" value="admin" class="btn btn-sm <?= $fulfillBy === 'admin' ? 'btn-solqam' : 'btn-outline-secondary' ?>">Send to Solqam to deliver</button>
+                </form>
+            <?php endif; ?>
+            <?php if ($fulfillBy === 'admin'): ?>
+                <div class="alert alert-warning small">Handoff: <?= esc($shipment['handoff_status'] ?? 'pending_admin') ?>. Wait for admin to receive and deliver. You cannot mark shipped/delivered.</div>
+            <?php endif; ?>
 
             <div class="position-relative m-4">
                 <div class="progress" style="height: 4px;">
@@ -51,7 +66,7 @@
                 <div class="<?= $currentStage >= 4 ? 'fw-bold text-success' : '' ?>">Delivered</div>
             </div>
 
-            <?php if (in_array($pkgStatus, ['placed', 'confirmed', 'shipped'], true)): ?>
+            <?php if (in_array($pkgStatus, ['placed', 'confirmed', 'shipped'], true) && ($shipment['fulfill_by'] ?? 'seller') !== 'admin'): ?>
                 <div class="p-3 bg-light rounded-3 border">
                     <form action="<?= site_url('seller/orders/' . $order['id'] . '/status') ?>" method="POST" class="d-flex flex-wrap align-items-center gap-3">
                         <?= csrf_field() ?>
@@ -82,6 +97,8 @@
                         <strong>Order Completed:</strong> This package has been delivered successfully. Customer received their purchase and wallet cashback was credited.
                     </div>
                 </div>
+            <?php elseif ($fulfillBy === 'admin'): ?>
+                <p class="small text-muted mb-0">Solqam will update shipped / delivered after the inbound parcel is received.</p>
             <?php else: ?>
                 <div class="alert alert-danger-subtle border-0 text-danger small mb-0 rounded-3">
                     This order is <strong><?= ucfirst($order['status']) ?></strong>.

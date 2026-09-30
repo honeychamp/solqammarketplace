@@ -123,4 +123,22 @@ class Email extends BaseConfig
      * Enable notify message from server
      */
     public bool $DSN = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->fromEmail   = (string) env('email.fromEmail', 'info@solqam.com');
+        $this->fromName    = (string) env('email.fromName', 'Solqam Market Place');
+        $this->protocol    = (string) env('email.protocol', 'smtp');
+        $this->SMTPHost    = (string) env('email.SMTPHost', 'mail.solqam.com');
+        $this->SMTPUser    = (string) env('email.SMTPUser', $this->fromEmail);
+        $this->SMTPPass    = (string) env('email.SMTPPass', $this->SMTPPass);
+        $this->SMTPPort    = (int) env('email.SMTPPort', 465);
+        $this->SMTPCrypto  = (string) env('email.SMTPCrypto', 'ssl');
+        if ($this->SMTPPort === 465) {
+            $this->SMTPCrypto = 'ssl';
+        }
+        $this->SMTPTimeout = 25;
+        $this->mailType    = 'html';
+    }
 }

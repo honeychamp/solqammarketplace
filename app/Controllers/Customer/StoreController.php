@@ -13,7 +13,7 @@ class StoreController extends BaseController
     {
         $sellerId = (int) $sellerId;
         $profile = (new SellerProfileModel())->where('user_id', $sellerId)->first();
-        if (!$profile) {
+        if (!$profile || ($profile['approval_status'] ?? '') !== 'approved') {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Store not found');
         }
 

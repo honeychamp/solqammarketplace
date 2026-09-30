@@ -38,8 +38,10 @@ $routes->get('cart/remove/(:num)', 'Customer\CartController::remove/$1');
 $routes->match(['GET', 'POST'], 'login', 'Auth\AuthController::login');
 $routes->match(['GET', 'POST'], 'register', 'Auth\AuthController::register');
 $routes->match(['GET', 'POST'], 'verify-otp', 'Auth\AuthController::verifyOtp');
+$routes->post('verify-otp/resend', 'Auth\AuthController::resendSignupOtp');
 $routes->match(['GET', 'POST'], 'forgot-password', 'Auth\AuthController::forgotPassword');
 $routes->match(['GET', 'POST'], 'forgot-password/verify', 'Auth\AuthController::forgotVerify');
+$routes->post('forgot-password/verify/resend', 'Auth\AuthController::resendResetOtp');
 $routes->match(['GET', 'POST'], 'forgot-password/reset', 'Auth\AuthController::forgotReset');
 $routes->get('logout', 'Auth\AuthController::logout');
 
@@ -54,6 +56,7 @@ $routes->group('', ['filter' => ['auth', 'role:customer']], static function ($ro
     $routes->get('checkout', 'Customer\CheckoutController::index');
     $routes->post('checkout', 'Customer\CheckoutController::process');
     $routes->post('checkout/coupon', 'Customer\CheckoutController::applyCoupon');
+    $routes->get('checkout/shipping-quote', 'Customer\CheckoutController::shippingQuote');
     $routes->get('checkout/pay/(:num)', 'Customer\CheckoutController::pay/$1');
 
     $routes->group('account', static function ($routes) {
@@ -99,12 +102,15 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
     $routes->get('orders', 'Seller\OrderController::index');
     $routes->get('orders/(:num)', 'Seller\OrderController::show/$1');
     $routes->post('orders/(:num)/status', 'Seller\OrderController::updateStatus/$1');
+    $routes->post('orders/(:num)/fulfill', 'Seller\OrderController::setFulfill/$1');
     $routes->get('customers', 'Seller\CustomerController::index');
     $routes->get('customers/(:num)', 'Seller\CustomerController::show/$1');
     $routes->get('questions', 'Seller\HubController::questions');
     $routes->post('questions/(:num)/answer', 'Seller\HubController::answer/$1');
     $routes->get('payouts', 'Seller\HubController::payouts');
     $routes->get('payouts/statement', 'Seller\HubController::payoutStatement');
+    $routes->get('campaigns', 'Seller\CampaignController::index');
+    $routes->post('campaigns/join', 'Seller\CampaignController::join');
     $routes->get('products/csv-template', 'Seller\ProductController::csvTemplate');
     $routes->get('messages', 'Seller\ChatController::index');
     $routes->get('messages/(:num)', 'Seller\ChatController::show/$1');
@@ -115,7 +121,6 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
 // Dedicated Admin Authentication Routes (Isolated from Customer & Seller)
 // --------------------------------------------------------------------
 $routes->match(['GET', 'POST'], 'admin/login', 'Admin\AuthController::login');
-$routes->match(['GET', 'POST'], 'admin/verify-2fa', 'Admin\AuthController::verify2fa');
 $routes->get('admin/logout', 'Admin\AuthController::logout');
 
 // --------------------------------------------------------------------
@@ -136,6 +141,7 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     // Categories Management
     $routes->get('categories', 'Admin\CategoryController::index');
     $routes->post('categories/store', 'Admin\CategoryController::store');
+    $routes->post('categories/update/(:num)', 'Admin\CategoryController::update/$1');
     $routes->get('categories/delete/(:num)', 'Admin\CategoryController::delete/$1');
 
     // Platform-wide Product Catalog Moderation (all sellers)
@@ -160,6 +166,9 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->get('orders', 'Admin\OrderController::index');
     $routes->get('orders/(:num)', 'Admin\OrderController::show/$1');
     $routes->post('orders/(:num)/status', 'Admin\OrderController::updateStatus/$1');
+    $routes->get('inbound', 'Admin\InboundController::index');
+    $routes->post('inbound/(:num)/receive', 'Admin\InboundController::receive/$1');
+    $routes->post('inbound/(:num)/status', 'Admin\InboundController::updateStatus/$1');
 
     // Commission Settings
     $routes->get('commissions', 'Admin\CommissionController::index');
@@ -180,8 +189,11 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->get('flash-sales', 'Admin\FlashSaleController::index');
     $routes->post('flash-sales/store', 'Admin\FlashSaleController::store');
     $routes->post('flash-sales/item', 'Admin\FlashSaleController::addItem');
+    $routes->post('flash-sales/item/(:num)/approve', 'Admin\FlashSaleController::approve/$1');
+    $routes->post('flash-sales/item/(:num)/reject', 'Admin\FlashSaleController::reject/$1');
     $routes->get('shipping', 'Admin\ShippingController::index');
     $routes->post('shipping/store', 'Admin\ShippingController::store');
+    $routes->get('shipping/delete/(:num)', 'Admin\ShippingController::delete/$1');
     $routes->get('payouts', 'Admin\PayoutController::index');
     $routes->post('payouts/(:num)/paid', 'Admin\PayoutController::markPaid/$1');
     $routes->get('payouts/(:num)/print', 'Admin\PayoutController::printPdf/$1');

@@ -19,7 +19,7 @@ class CustomerController extends BaseController
         $customers = $this->userModel
             ->where('role', 'customer')
             ->orderBy('id', 'DESC')
-            ->findAll();
+            ->paginate(50);
 
         $insight = new \App\Services\Wallet\WalletService();
         foreach ($customers as &$c) {
@@ -30,6 +30,7 @@ class CustomerController extends BaseController
         return view('admin/customers/index', [
             'title'     => 'Customer Directory — Solqam Admin Console',
             'customers' => $customers,
+            'pager'     => $this->userModel->pager,
         ]);
     }
 

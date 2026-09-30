@@ -4,8 +4,16 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1">Marketplace Sellers</h4>
-        <p class="text-secondary small mb-0">View all registered marketplace sellers, store details, and vendor profiles</p>
+        <p class="text-secondary small mb-0">New sellers stay pending until you approve them. Until then they can sign in but cannot list products or handle orders.</p>
     </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <?php $st = $currentStatus ?? ''; ?>
+    <a href="<?= site_url('admin/sellers') ?>" class="btn btn-sm rounded-pill <?= $st === '' ? 'btn-solqam' : 'btn-light border' ?>">All</a>
+    <a href="<?= site_url('admin/sellers?status=pending') ?>" class="btn btn-sm rounded-pill <?= $st === 'pending' ? 'btn-solqam' : 'btn-light border' ?>">Pending</a>
+    <a href="<?= site_url('admin/sellers?status=approved') ?>" class="btn btn-sm rounded-pill <?= $st === 'approved' ? 'btn-solqam' : 'btn-light border' ?>">Approved</a>
+    <a href="<?= site_url('admin/sellers?status=rejected') ?>" class="btn btn-sm rounded-pill <?= $st === 'rejected' ? 'btn-solqam' : 'btn-light border' ?>">Rejected</a>
 </div>
 
 <div class="card-custom p-4">
@@ -52,6 +60,7 @@
                 </tbody>
             </table>
         </div>
+        <?= view('shared/_pager', ['pager' => isset($pager) ? $pager->only(['status']) : null]) ?>
     <?php endif; ?>
 </div>
 <?= $this->endSection() ?>

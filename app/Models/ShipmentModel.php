@@ -9,7 +9,16 @@ class ShipmentModel extends Model
     protected $table         = 'shipments';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
-    protected $allowedFields = ['order_id', 'seller_id', 'status', 'tracking_number', 'courier', 'shipping_amount'];
+    protected $allowedFields = [
+        'order_id',
+        'seller_id',
+        'fulfill_by',
+        'handoff_status',
+        'status',
+        'tracking_number',
+        'courier',
+        'shipping_amount',
+    ];
     protected $useTimestamps = true;
 
     public function forOrder(int $orderId): array

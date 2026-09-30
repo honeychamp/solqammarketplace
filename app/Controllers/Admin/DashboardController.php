@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\CategoryModel;
 use App\Models\CommissionModel;
 use App\Models\OrderModel;
 use App\Models\ProductModel;
@@ -11,6 +12,7 @@ use App\Models\SellerPayoutModel;
 use App\Models\SellerProfileModel;
 use App\Models\SupportTicketModel;
 use App\Models\UserModel;
+use App\Services\Analytics\DashboardAnalytics;
 
 class DashboardController extends BaseController
 {
@@ -121,7 +123,18 @@ class DashboardController extends BaseController
             ->findAll(8);
 
         $commission = (new CommissionModel())->getActiveRule();
-        $chart = (new \App\Services\Customer\CustomerInsightService())->last7DaySeries();
+        $categoryRates = (new CategoryModel())->orderBy('name', 'ASC')->findAll(12);
+        $commissionService = new \App\Services\Commission\CommissionService();
+        foreach ($categoryRates as &$crow) {
+            $crow['effective_commission'] = $commissionService->rateForCategory((int) $crow['id']);
+        }
+        unset($crow);
+        $analytics = new DashboardAnalytics();
+        $chart = $analytics->daySeries(14);
+        $pulse = $analytics->pulse();
+        $payMix = $analytics->paymentMix();
+        $topSkus = $analytics->topProducts(6);
+        $aov = count($allOrders) > 0 ? round($totalGmv / count($allOrders), 0) : 0;
 
         $walletCashback = 0.0;
         $walletSpend = 0.0;
@@ -156,7 +169,12 @@ class DashboardController extends BaseController
             'openTickets'           => $openTickets,
             'moderationProducts'    => $moderationProducts,
             'commission'            => $commission,
+            'categoryRates'         => $categoryRates,
             'chart'                 => $chart,
+            'pulse'                 => $pulse,
+            'payMix'                => $payMix,
+            'topSkus'               => $topSkus,
+            'aov'                   => $aov,
             'walletCashback'        => $walletCashback,
             'walletSpend'           => $walletSpend,
         ]);

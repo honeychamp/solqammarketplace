@@ -6,7 +6,7 @@
         <div class="col-md-6 col-lg-5">
             <div class="card shadow-sm border-0 rounded-4 p-4 p-md-5 bg-white">
                 <div class="text-center mb-4">
-                    <img src="<?= base_url('assets/images/solqam-logo.svg') ?>" alt="Solqam Market Place" height="56" class="mb-3">
+                    <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20260929h" alt="Solqam Market Place" height="72" class="mb-3">
                     <h3 class="fw-bold text-dark mb-1">Welcome Back</h3>
                     <p class="text-secondary small">Sign in to your Customer or Seller account</p>
                 </div>

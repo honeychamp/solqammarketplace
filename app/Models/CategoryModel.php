@@ -19,6 +19,7 @@ class CategoryModel extends Model
         'image',
         'sort_order',
         'icon',
+        'commission_percent',
         'is_active',
     ];
 
@@ -65,5 +66,27 @@ class CategoryModel extends Model
             $ids = array_merge($ids, $this->getSelfAndDescendantIds((int) $child['id']));
         }
         return array_values(array_unique($ids));
+    }
+
+    public function uniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = url_title($name, '-', true);
+        if ($base === '') {
+            $base = 'category';
+        }
+
+        $slug = $base;
+        $n    = 2;
+        while (true) {
+            $query = $this->where('slug', $slug);
+            if ($ignoreId !== null) {
+                $query->where('id !=', $ignoreId);
+            }
+            if (! $query->first()) {
+                return $slug;
+            }
+            $slug = $base . '-' . $n;
+            $n++;
+        }
     }
 }

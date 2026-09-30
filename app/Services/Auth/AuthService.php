@@ -51,10 +51,9 @@ class AuthService
         // Auto-initialize Wallet ledger
         $this->walletService->getOrCreateWallet($userId);
 
-        // Generate OTP
-        $otp = $this->otpService->generateOtp($data['phone'], 'signup', $data['email'] ?? null);
-
         $this->db->transComplete();
+
+        $otp = $this->otpService->generateOtp($data['phone'], 'signup', $data['email'] ?? null);
 
         return [
             'user_id' => $userId,
@@ -78,8 +77,8 @@ class AuthService
             'phone'         => $userData['phone'],
             'password_hash' => password_hash($userData['password'], PASSWORD_BCRYPT),
             'role'          => 'seller',
-            'status'        => 'active', // Active immediately after OTP verify
-            'is_verified'   => 0,        // Requires OTP verification
+            'status'        => 'active', // Can sign in; store stays pending until admin approval
+            'is_verified'   => 0,
             'api_token'     => $apiToken,
         ]);
 
@@ -93,16 +92,15 @@ class AuthService
             'bank_account_title'     => $sellerData['bank_account_title'] ?? null,
             'bank_name'              => $sellerData['bank_name'] ?? null,
             'account_number_or_iban' => $sellerData['account_number_or_iban'] ?? null,
-            'approval_status'        => 'approved', // Auto-approved on registration
+            'approval_status'        => 'pending',
         ]);
 
         // Auto-initialize Wallet ledger
         $this->walletService->getOrCreateWallet($userId);
 
-        // Generate OTP
-        $otp = $this->otpService->generateOtp($userData['phone'], 'signup', $userData['email'] ?? null);
-
         $this->db->transComplete();
+
+        $otp = $this->otpService->generateOtp($userData['phone'], 'signup', $userData['email'] ?? null);
 
         return [
             'user_id' => $userId,
@@ -196,7 +194,8 @@ class AuthService
 
         if ($user['role'] === 'seller') {
             $profile = $this->sellerProfileModel->getByUserId((int) $user['id']);
-            $userData['store_name'] = $profile['store_name'] ?? 'Vendor Store';
+            $userData['store_name']       = $profile['store_name'] ?? 'Vendor Store';
+            $userData['approval_status']  = $profile['approval_status'] ?? 'pending';
         }
 
         $this->session->set('user', $userData);

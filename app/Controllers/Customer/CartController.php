@@ -62,6 +62,9 @@ class CartController extends BaseController
         if (!$product || $product['status'] !== 'active') {
             return redirect()->back()->with('error', 'Product not available.');
         }
+        if (! (new \App\Models\SellerProfileModel())->isApprovedForUser((int) $product['seller_id'])) {
+            return redirect()->back()->with('error', 'This seller is not yet approved on Solqam.');
+        }
 
         $variant = null;
         $variants = $this->variantModel->forProduct($productId);

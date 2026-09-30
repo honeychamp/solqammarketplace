@@ -48,9 +48,19 @@
 body {
     font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--sol-canvas);
+    background-image:
+        radial-gradient(1100px 520px at -8% -12%, rgba(11, 48, 230, 0.09), transparent 55%),
+        radial-gradient(900px 420px at 108% -8%, rgba(240, 20, 47, 0.07), transparent 50%),
+        radial-gradient(700px 300px at 50% 100%, rgba(7, 23, 110, 0.04), transparent 60%);
     color: var(--sol-text-main);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     min-height: 100vh;
+    overflow-x: clip;
+}
+
+::selection {
+    background: var(--sol-primary);
+    color: #ffffff;
 }
 
 /* Brand Elements */
@@ -163,9 +173,11 @@ body {
 
 /* Header & Grand Search Bar (Daraz Class) */
 .solqam-main-nav.sticky-top {
-    background: #FFFFFF;
-    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
-    border-bottom: 1px solid #EEF2F6;
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(18px) saturate(1.35);
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    box-shadow: 0 8px 32px rgba(7, 23, 110, 0.07);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
     z-index: 1080;
 }
 
@@ -174,6 +186,15 @@ body {
     align-items: center;
     gap: 10px;
     text-decoration: none;
+}
+.brand-badge-logo img {
+    height: 58px;
+    width: auto;
+    max-width: 280px;
+    object-fit: contain;
+}
+@media (max-width: 575.98px) {
+    .brand-badge-logo img { height: 48px; }
 }
 
 .brand-logo-text {
@@ -200,18 +221,19 @@ body {
 
 .solqam-search-container {
     position: relative;
-    max-width: 680px;
+    max-width: 100%;
     width: 100%;
 }
 
 .solqam-search-input-group {
-    background: #F8FAFC;
-    border: 2px solid #E2E8F0;
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
     border-radius: var(--sol-radius-full);
     display: flex;
     align-items: center;
-    padding: 3px;
+    padding: 4px 4px 4px 8px;
     transition: all 0.25s ease;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 }
 
 .solqam-search-input-group:focus-within {
@@ -279,8 +301,8 @@ body {
 .header-action-btn {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
+    gap: 6px;
+    padding: 8px 10px;
     border-radius: var(--sol-radius-md);
     color: var(--sol-text-main);
     text-decoration: none;
@@ -288,6 +310,7 @@ body {
     font-size: 0.88rem;
     transition: all 0.2s ease;
     border: 1px solid transparent;
+    white-space: nowrap;
 }
 
 .header-action-btn:hover {
@@ -346,9 +369,9 @@ body {
 
 /* Mega Category Strip */
 .solqam-category-bar {
-    background: #FFFFFF;
-    border-bottom: 1px solid #E2E8F0;
-    padding: 8px 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, #F8FAFF 100%);
+    border-bottom: 1px solid #E8EEF8;
+    padding: 10px 0;
 }
 
 .category-nav-link {
@@ -372,26 +395,57 @@ body {
 
 /* Daraz-Style Hero Banner Section */
 .hero-slider-card {
-    border-radius: var(--sol-radius-lg);
+    border-radius: 28px;
     overflow: hidden;
     position: relative;
-    background: linear-gradient(135deg, #071C8A 0%, #0B30E6 60%, #1A46F0 100%);
+    isolation: isolate;
+    background:
+        radial-gradient(900px 420px at 88% -10%, rgba(240, 20, 47, 0.55), transparent 42%),
+        radial-gradient(700px 320px at -10% 110%, rgba(245, 158, 11, 0.28), transparent 40%),
+        linear-gradient(145deg, #040B3A 0%, #07176E 38%, #0B30E6 78%, #1A46F0 100%);
     color: #ffffff;
-    min-height: 380px;
-    box-shadow: var(--sol-shadow-lg);
+    min-height: 420px;
+    box-shadow: 0 28px 60px -18px rgba(7, 23, 110, 0.55);
+}
+
+.hero-slider-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,.45), transparent 78%);
+    pointer-events: none;
+    z-index: 0;
 }
 
 .hero-side-card {
-    background: #FFFFFF;
-    border-radius: var(--sol-radius-md);
-    border: 1px solid var(--sol-card-border);
-    padding: 20px;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    padding: 22px;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: var(--sol-shadow-sm);
-    transition: all 0.25s ease;
+    box-shadow: 0 16px 40px -16px rgba(7, 23, 110, 0.28);
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-side-card::after {
+    content: "";
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    right: -40px;
+    top: -48px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(11, 48, 230, 0.12), transparent 68%);
+    pointer-events: none;
 }
 
 .hero-side-card:hover {
@@ -402,11 +456,23 @@ body {
 
 /* Flash Sale Section (Daraz Class) */
 .flash-sale-wrapper {
-    background: #FFFFFF;
-    border-radius: var(--sol-radius-lg);
-    padding: 24px;
-    box-shadow: var(--sol-shadow-md);
-    border: 1px solid var(--sol-card-border);
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFF 100%);
+    border-radius: 24px;
+    padding: 26px;
+    box-shadow: 0 18px 50px -24px rgba(7, 23, 110, 0.35);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    position: relative;
+    overflow: hidden;
+}
+
+.flash-sale-wrapper::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #F0142F, #F59E0B, #0B30E6);
 }
 
 .flash-sale-header {
@@ -445,19 +511,19 @@ body {
 .solqam-product-card {
     background: var(--sol-card-bg);
     border: 1px solid var(--sol-card-border);
-    border-radius: var(--sol-radius-md);
+    border-radius: 18px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     height: 100%;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
 }
 
 .solqam-product-card:hover {
-    transform: translateY(-6px);
-    box-shadow: var(--sol-shadow-hover);
-    border-color: var(--sol-primary-light);
+    transform: translateY(-8px);
+    box-shadow: 0 24px 50px -18px rgba(11, 48, 230, 0.28);
+    border-color: rgba(11, 48, 230, 0.35);
 }
 
 .solqam-product-card .card-media {
@@ -629,42 +695,59 @@ body {
 /* Category Circle Tiles (Daraz Class) */
 .category-bubble-card {
     background: #FFFFFF;
-    border: 1px solid var(--sol-card-border);
-    border-radius: var(--sol-radius-md);
-    padding: 16px 10px;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 20px;
+    padding: 18px 12px 16px;
     text-align: center;
     text-decoration: none;
     display: flex;
     flex-direction: column;
     align-items: center;
-    transition: all 0.25s ease;
-    box-shadow: var(--sol-shadow-sm);
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 10px 28px -18px rgba(15, 23, 42, 0.35);
 }
 
 .category-bubble-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--sol-primary);
-    box-shadow: var(--sol-shadow-md);
+    transform: translateY(-6px);
+    border-color: rgba(11, 48, 230, 0.35);
+    box-shadow: 0 20px 40px -18px rgba(11, 48, 230, 0.3);
 }
 
 .category-bubble-icon {
-    width: 68px;
-    height: 68px;
-    border-radius: var(--sol-radius-full);
-    background: var(--sol-primary-subtle);
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: linear-gradient(160deg, #EEF2FF 0%, #FFFFFF 100%);
     color: var(--sol-primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
-    margin-bottom: 10px;
+    font-size: 1.7rem;
+    margin-bottom: 12px;
     transition: all 0.3s ease;
+    box-shadow: inset 0 0 0 1px rgba(11, 48, 230, 0.08);
 }
 
-.category-bubble-card:hover .category-bubble-icon {
-    background: var(--sol-primary);
+.category-bubble-card:hover .category-bubble-icon:not(.has-photo) {
+    background: linear-gradient(145deg, #0B30E6, #07176E);
     color: #FFFFFF;
-    transform: scale(1.08);
+    transform: scale(1.06) rotate(-4deg);
+    box-shadow: 0 10px 20px rgba(11, 48, 230, 0.3);
+}
+.category-bubble-icon.has-photo {
+    padding: 0;
+    overflow: hidden;
+    background: #fff;
+}
+.category-bubble-icon.has-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.category-bubble-card:hover .category-bubble-icon.has-photo {
+    background: #fff;
+    color: inherit;
+    transform: scale(1.06);
 }
 
 .category-bubble-title {
@@ -700,33 +783,44 @@ body {
 
 /* Value Props / Features Strip */
 .features-strip {
-    background: #FFFFFF;
-    border-top: 1px solid #E2E8F0;
-    border-bottom: 1px solid #E2E8F0;
-    padding: 30px 0;
+    background: transparent;
+    border: 0;
+    padding: 8px 0 48px;
 }
 
 .feature-box {
     display: flex;
     align-items: center;
     gap: 16px;
+    background: #FFFFFF;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 20px;
+    padding: 18px 16px;
+    height: 100%;
+    box-shadow: 0 12px 32px -20px rgba(15, 23, 42, 0.4);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.feature-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 36px -18px rgba(11, 48, 230, 0.28);
 }
 
 .feature-icon-circle {
-    width: 54px;
-    height: 54px;
-    border-radius: var(--sol-radius-md);
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.45rem;
     flex-shrink: 0;
 }
 
 /* Daraz Class Footer */
 .solqam-footer {
-    background: #0B132B;
-    color: #94A3B8;
+    background: #07176E;
+    color: #F1F5F9;
     padding-top: 60px;
     padding-bottom: 30px;
     margin-top: auto;
@@ -734,24 +828,50 @@ body {
 
 .solqam-footer h6 {
     color: #FFFFFF;
-    font-weight: 700;
-    font-size: 0.96rem;
+    font-weight: 800;
+    font-size: 1.02rem;
     margin-bottom: 18px;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .solqam-footer a {
-    color: #94A3B8;
+    color: #E2E8F0;
     text-decoration: none;
-    font-size: 0.88rem;
+    font-size: 0.92rem;
+    font-weight: 600;
     display: block;
     margin-bottom: 10px;
     transition: color 0.15s ease;
 }
 
 .solqam-footer a:hover {
-    color: #FFFFFF;
+    color: #FDE68A;
     transform: translateX(2px);
+}
+
+.solqam-footer .footer-blurb {
+    color: #F8FAFC;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    font-weight: 500;
+}
+
+.solqam-footer .footer-trust {
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
+.solqam-footer .footer-note {
+    color: #FDE68A;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.solqam-footer .footer-copy {
+    color: #E2E8F0;
+    font-size: 0.86rem;
+    font-weight: 600;
 }
 
 .payment-badge-grid {
@@ -761,16 +881,26 @@ body {
 }
 
 .payment-chip {
-    background: #1E293B;
-    border: 1px solid #334155;
-    border-radius: 6px;
-    padding: 6px 12px;
-    color: #E2E8F0;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 8px;
+    padding: 7px 12px;
+    color: #FFFFFF;
     font-size: 0.8rem;
-    font-weight: 700;
+    font-weight: 800;
     display: inline-flex;
     align-items: center;
     gap: 6px;
+}
+
+.logistics-chip {
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 0.78rem;
+    padding: 6px 10px;
+    border-radius: 8px;
 }
 
 /* ==========================================================
@@ -781,18 +911,21 @@ body {
 .solqam-sidebar {
     width: 270px;
     min-height: 100vh;
-    background: #0B132B;
-    border-right: 1px solid #1E293B;
+    max-height: 100vh;
+    background: #07176E;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    overflow: hidden;
     transition: all 0.3s ease;
 }
 
 .solqam-sidebar .nav-link {
-    color: #94A3B8;
-    font-weight: 600;
-    font-size: 0.9rem;
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 0.94rem;
+    letter-spacing: 0.01em;
     padding: 11px 16px;
     border-radius: var(--sol-radius-md);
     margin: 3px 12px;
@@ -807,14 +940,11 @@ body {
     background: rgba(255, 255, 255, 0.06);
 }
 
-.solqam-sidebar .nav-link.active {
-    color: #FFFFFF;
-    background: linear-gradient(135deg, #0B30E6 0%, #0722ab 100%);
-    box-shadow: 0 4px 14px rgba(11, 48, 230, 0.35);
-}
-
+.solqam-sidebar .nav-link.active,
 .solqam-admin-sidebar .nav-link.active {
+    color: #FFFFFF;
     background: linear-gradient(135deg, #0B30E6 0%, #F0142F 100%);
+    box-shadow: 0 6px 18px rgba(240, 20, 47, 0.28);
 }
 
 /* KPI Stat Cards */
@@ -980,26 +1110,57 @@ body {
         var(--sol-canvas);
     min-height: 100vh;
 }
-.hub-app .solqam-sidebar {
+.hub-app .solqam-sidebar,
+.admin-hub .solqam-sidebar,
+.seller-hub .solqam-sidebar {
     width: 288px;
     background:
-        linear-gradient(180deg, rgba(11, 48, 230, 0.22) 0%, transparent 28%),
-        linear-gradient(180deg, #07122A 0%, #0B132B 55%, #0A1020 100%);
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
-    padding: 18px 12px 16px;
+        radial-gradient(520px 220px at 100% 0%, rgba(240, 20, 47, 0.42), transparent 58%),
+        radial-gradient(420px 180px at 0% 100%, rgba(245, 158, 11, 0.18), transparent 55%),
+        linear-gradient(180deg, #0B30E6 0%, #07176E 48%, #061FA1 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 14px 10px 12px;
     position: sticky;
     top: 0;
     height: 100vh;
-    overflow-y: auto;
+    max-height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
-.admin-hub .solqam-sidebar {
-    background:
-        linear-gradient(180deg, rgba(240, 20, 47, 0.18) 0%, transparent 26%),
-        linear-gradient(180deg, #140814 0%, #0B132B 50%, #0A1020 100%);
+.sidebar-head,
+.sidebar-foot {
+    flex-shrink: 0;
+}
+.sidebar-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    padding-right: 4px;
+    margin-right: 2px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+.sidebar-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.55);
+    border-radius: 99px;
+}
+.sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.55) rgba(255, 255, 255, 0.08);
 }
 .hub-nav-label {
-    color: rgba(226, 232, 240, 0.45);
-    font-size: 0.68rem;
+    color: #FDE68A;
+    font-size: 0.72rem;
     font-weight: 800;
     letter-spacing: 0.16em;
     text-transform: uppercase;
@@ -1020,12 +1181,13 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.06);
-    color: #93C5FD;
+    background: rgba(255, 255, 255, 0.18);
+    color: #FFFFFF;
     flex-shrink: 0;
 }
-.admin-hub .solqam-sidebar .nav-link .nav-ico {
-    color: #FDA4AF;
+.admin-hub .solqam-sidebar .nav-link .nav-ico,
+.seller-hub .solqam-sidebar .nav-link .nav-ico {
+    color: #FFFFFF;
 }
 .solqam-sidebar .nav-link.active .nav-ico {
     background: rgba(255, 255, 255, 0.18);
@@ -1033,6 +1195,9 @@ body {
 }
 .solqam-sidebar .nav-link span.label {
     flex: 1;
+    color: #FFFFFF;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(7, 23, 110, 0.45);
 }
 .hub-store-card,
 .hub-status-card {
@@ -1081,22 +1246,31 @@ body {
         position: relative;
         height: auto;
         width: 100%;
+        max-height: 62vh;
+        overflow: hidden;
+    }
+    .sidebar-scroll {
+        overflow-y: auto;
+        max-height: calc(62vh - 170px);
+        flex: 1 1 auto;
+        min-height: 0;
     }
     .hub-content { padding: 16px; }
 }
 
 /* Product detail (Daraz-style PDP) */
 .pdp-title {
-    font-size: 1.15rem;
-    font-weight: 700;
-    line-height: 1.4;
+    font-size: 1.42rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.3;
     margin-bottom: 0.75rem;
 }
 .pdp-price-box {
-    background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%);
+    background: linear-gradient(135deg, #FFF7ED 0%, #EEF2FF 100%);
     border: 1px solid #E2E8F0;
-    border-radius: 14px;
-    padding: 14px 16px;
+    border-radius: 16px;
+    padding: 16px 18px;
 }
 .pdp-price {
     font-size: 1.75rem;
@@ -1132,13 +1306,15 @@ body {
 }
 .pdp-main-stage {
     position: relative;
-    min-height: 380px;
-    max-height: 480px;
+    min-height: 400px;
+    max-height: 520px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #F8FAFC;
-    border-radius: 16px;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(11, 48, 230, 0.06), transparent 42%),
+        #F8FAFC;
+    border-radius: 20px;
     overflow: hidden;
     cursor: zoom-in;
 }
@@ -1188,15 +1364,12 @@ body {
     overflow: hidden;
     box-shadow: 0 24px 60px rgba(11, 48, 230, 0.22);
 }
-.command-hero.admin {
-    background:
-        radial-gradient(800px 200px at 100% 0%, rgba(240,20,47,.45), transparent 55%),
-        linear-gradient(135deg, #1A0530 0%, #0B30E6 55%, #F0142F 140%);
-}
+.command-hero.admin,
 .command-hero.seller {
     background:
-        radial-gradient(700px 220px at 90% 120%, rgba(253,186,116,.35), transparent 50%),
-        linear-gradient(135deg, #04122C 0%, #0B30E6 60%, #1D4ED8 120%);
+        radial-gradient(720px 240px at 100% -10%, rgba(240, 20, 47, 0.55), transparent 52%),
+        radial-gradient(480px 200px at 0% 120%, rgba(245, 158, 11, 0.28), transparent 48%),
+        linear-gradient(128deg, #07176E 0%, #0B30E6 52%, #F0142F 130%);
 }
 .command-hero::after {
     content: "";
@@ -1272,3 +1445,436 @@ body {
     border-radius: 18px;
     padding: 14px 16px;
 }
+.ops-hero {
+    border-radius: 28px;
+    padding: 28px 32px 24px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 28px 70px rgba(11, 48, 230, 0.28);
+}
+.ops-hero.admin,
+.ops-hero.seller {
+    background:
+        radial-gradient(820px 260px at 100% -8%, rgba(240, 20, 47, 0.58), transparent 52%),
+        radial-gradient(520px 220px at -5% 110%, rgba(245, 158, 11, 0.32), transparent 50%),
+        linear-gradient(128deg, #07176E 0%, #0B30E6 48%, #F0142F 125%);
+}
+.ops-kicker {
+    font-size: .7rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: #FCD34D;
+    opacity: 1;
+    margin-bottom: 8px;
+}
+.ops-live-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(240, 20, 47, 0.22);
+    border: 1px solid rgba(252, 211, 77, 0.45);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: .8rem;
+    font-weight: 700;
+}
+.ops-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #34D399;
+    box-shadow: 0 0 0 4px rgba(52,211,153,.25);
+}
+.ops-stat span {
+    display: block;
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 800;
+    opacity: .7;
+}
+.ops-stat strong {
+    display: block;
+    font-size: 1.45rem;
+    font-weight: 900;
+    margin-top: 4px;
+}
+.ops-stat em {
+    display: block;
+    font-style: normal;
+    font-size: .75rem;
+    opacity: .78;
+    margin-top: 2px;
+}
+.ops-stat .delta-up { color: #86EFAC; }
+.ops-stat .delta-down { color: #FCA5A5; }
+.ops-stat .delta-flat { color: rgba(255,255,255,.7); }
+.ops-bar {
+    height: 7px;
+    background: #EEF2FF;
+    border-radius: 99px;
+    overflow: hidden;
+}
+.ops-bar span { display: block; height: 100%; border-radius: 99px; }
+.ops-table { font-size: .92rem; }
+.ops-table thead th {
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #64748B;
+    border-bottom-width: 1px;
+}
+.ops-queue {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.ops-queue a {
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid #EEF2FF;
+    border-radius: 16px;
+    padding: 14px;
+    background: linear-gradient(180deg, #fff, #F8FAFF);
+}
+.ops-queue strong { display: block; font-size: 1.4rem; font-weight: 900; color: #0B30E6; }
+.ops-queue span { font-size: .78rem; color: #64748B; }
+.ops-health {
+    height: 10px;
+    background: #EEF2FF;
+    border-radius: 99px;
+    overflow: hidden;
+}
+.ops-health span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #F0142F, #F59E0B, #0B30E6);
+}
+@media (max-width: 1199.98px) {
+    .hub-content { padding: 20px 16px; }
+    .hub-topbar { padding-left: 16px !important; padding-right: 16px !important; }
+    .chart-shell { min-height: 200px; }
+    .pdp-main-stage { min-height: 300px; max-height: 420px; }
+}
+@media (max-width: 991.98px) {
+    .hub-app .solqam-sidebar {
+        max-height: 62vh;
+        overflow: hidden;
+    }
+    .sidebar-scroll {
+        overflow-y: auto !important;
+        max-height: calc(62vh - 170px);
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+    .ops-queue { grid-template-columns: 1fr 1fr; }
+    .hero-slider-card { min-height: 300px; }
+    .solqam-search-input-group { max-width: 100%; }
+}
+@media (max-width: 767px) {
+    .ops-hero { padding: 18px 14px; border-radius: 20px; }
+    .ops-stat strong { font-size: 1.05rem; }
+    .ops-queue { grid-template-columns: 1fr; }
+    .kpi-tile strong { font-size: 1.12rem; }
+    .command-panel { border-radius: 16px; }
+    .pdp-main-stage { min-height: 240px; max-height: 320px; }
+    .pdp-price { font-size: 1.4rem; }
+    .pdp-meta-label { width: 88px; }
+    .hero-slider-card { min-height: 260px; }
+    .hub-content { padding: 14px 12px; }
+    .solqam-topbar { font-size: 0.74rem; }
+    .display-6 { font-size: 1.45rem; }
+}
+@media (max-width: 575.98px) {
+    .solqam-search-btn span { display: none; }
+    .solqam-search-btn { padding: 0.55rem 0.9rem; }
+    .btn-solqam, .btn-sol-primary { padding: 0.5rem 1rem; }
+}
+
+@media (max-width: 767.98px) {
+    .sf-header-row { flex-wrap: wrap; }
+    .sf-header-row .flex-grow-1 { order: 3; flex: 1 0 100%; }
+}
+.table-responsive { -webkit-overflow-scrolling: touch; }
+.hub-topbar .container-fluid { flex-wrap: wrap; gap: 8px; }
+
+/* Storefront advanced layer */
+.sf-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sol-primary);
+    margin-bottom: 6px;
+}
+
+.sf-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.sf-section-head h2,
+.sf-section-head h4 {
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0;
+}
+
+.sf-hero-inner {
+    position: relative;
+    z-index: 2;
+}
+
+.sf-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    backdrop-filter: blur(8px);
+}
+
+.sf-hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    z-index: 2;
+}
+
+.sf-stat {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 14px;
+    padding: 10px 12px;
+    backdrop-filter: blur(10px);
+}
+
+.sf-stat strong {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.sf-stat span {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.72);
+    font-weight: 600;
+}
+
+.sf-side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: 100%;
+}
+
+.sf-rail {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.sf-rail-card {
+    border-radius: 20px;
+    padding: 18px 18px 16px;
+    color: #fff;
+    text-decoration: none;
+    min-height: 118px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 16px 36px -18px rgba(7, 23, 110, 0.45);
+    transition: transform 0.25s ease;
+}
+
+.sf-rail-card:hover {
+    transform: translateY(-4px);
+    color: #fff;
+}
+
+.sf-rail-card h6 {
+    font-weight: 800;
+    margin: 0 0 4px;
+}
+
+.sf-rail-card p {
+    margin: 0;
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+.sf-rail-a { background: linear-gradient(135deg, #F0142F 0%, #9F0619 100%); }
+.sf-rail-b { background: linear-gradient(135deg, #0B30E6 0%, #07176E 100%); }
+.sf-rail-c { background: linear-gradient(135deg, #0F766E 0%, #064E3B 100%); }
+
+.sf-empty {
+    border: 1px dashed #C7D2FE;
+    background: linear-gradient(180deg, #FFFFFF, #F8FAFF);
+    border-radius: 20px;
+    padding: 36px 20px;
+}
+
+@media (max-width: 991.98px) {
+    .sf-rail { grid-template-columns: 1fr; }
+    .sf-hero-stats { grid-template-columns: 1fr; }
+}
+
+.sf-panel {
+    background: #FFFFFF;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-radius: 22px;
+    box-shadow: 0 18px 44px -24px rgba(7, 23, 110, 0.38);
+}
+
+.sf-crumb .breadcrumb {
+    --bs-breadcrumb-divider-color: #94A3B8;
+}
+
+.pay-method-chip {
+    background: #F8FAFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 6px 11px;
+    color: #0F172A;
+    font-size: 0.78rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ck-hero {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.ck-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ck-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    color: #64748B;
+}
+
+.ck-step.is-done { color: #047857; border-color: #A7F3D0; background: #ECFDF5; }
+.ck-step.is-active { color: #fff; background: linear-gradient(135deg, #0B30E6, #07176E); border-color: transparent; }
+
+.ck-step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    background: rgba(11, 48, 230, 0.12);
+}
+
+.ck-step.is-active .ck-step-num { background: rgba(255,255,255,0.2); }
+
+.pay-tile {
+    border: 1.5px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 14px 16px;
+    background: #F8FAFF;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pay-tile:has(input:checked) {
+    border-color: #0B30E6;
+    background: #EEF2FF;
+    box-shadow: 0 0 0 3px rgba(11, 48, 230, 0.12);
+}
+
+.addr-tile {
+    border: 1.5px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 14px 16px;
+    transition: border-color 0.2s ease;
+}
+
+.addr-tile:has(input:checked) {
+    border-color: #0B30E6;
+    background: #F8FAFF;
+}
+
+.ck-summary {
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFF 100%);
+    border-radius: 22px;
+    overflow: hidden;
+}
+
+.ck-summary::before {
+    content: "";
+    display: block;
+    height: 4px;
+    background: linear-gradient(90deg, #F0142F, #F59E0B, #0B30E6);
+}
+
+.pdp-buybar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid #E2E8F0;
+    padding: 10px 0;
+    margin: 16px -8px 0;
+}
+
+#productDetailTabs .nav-link {
+    color: #475569;
+    background: #F1F5F9;
+    border: 0;
+}
+
+#productDetailTabs .nav-link.active {
+    background: linear-gradient(135deg, #0B30E6, #07176E);
+    color: #fff;
+}
+
+.pdp-side-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #EEF2FF;
+    color: var(--sol-primary);
+    flex-shrink: 0;
+}
+
+
+

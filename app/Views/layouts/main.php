@@ -9,12 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260918b">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260929p">
 </head>
 <body class="d-flex flex-column min-vh-100">
 
     <!-- Top Announcement Bar (Daraz Style) -->
-    <div class="solqam-topbar py-1 px-3">
+    <div class="solqam-topbar py-2 px-3">
         <div class="container d-flex justify-content-between align-items-center flex-wrap">
             <div class="d-flex align-items-center gap-3">
                 <span><i class="bi bi-truck text-warning me-1"></i> Express Delivery to 150+ Cities in Pakistan</span>
@@ -36,22 +36,22 @@
     <!-- Main Navigation Header (Daraz Class) -->
     <header class="solqam-main-nav sticky-top py-2">
         <div class="container">
-            <div class="row align-items-center g-2">
+        <div class="sf-header-row d-flex align-items-center gap-2 gap-lg-3">
                 <!-- Brand Logo: SOLQAM -->
-                <div class="col-auto">
+                <div class="flex-shrink-0">
                     <a class="brand-badge-logo" href="<?= site_url('/') ?>" title="Solqam Market Place">
-                        <img src="<?= base_url('assets/images/solqam-logo.svg') ?>" alt="Solqam Market Place" class="d-none d-sm-block" style="height: 42px; width: auto;">
-                        <img src="<?= base_url('assets/images/solqam-logo.svg') ?>" alt="Solqam Market Place" class="d-sm-none" style="height: 34px; width: auto;">
+                        <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20260929h" alt="Solqam Market Place" class="d-none d-sm-block">
+                        <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20260929h" alt="Solqam Market Place" class="d-sm-none">
                     </a>
                 </div>
 
                 <!-- Grand Marketplace Search Bar -->
-                <div class="col">
+                <div class="flex-grow-1 min-w-0">
                     <div class="solqam-search-container mx-auto">
                         <form action="<?= site_url('shop') ?>" method="GET" class="m-0">
                             <div class="solqam-search-input-group">
                                 <i class="bi bi-search ms-3 text-muted"></i>
-                                <input class="solqam-search-input" type="search" name="q" placeholder="Search genuine electronics, fashion, groceries, beauty in Pakistan..." value="<?= esc($_GET['q'] ?? '') ?>" autocomplete="off">
+                                <input class="solqam-search-input" type="search" name="q" placeholder="Search electronics, fashion, groceries..." value="<?= esc($_GET['q'] ?? '') ?>" autocomplete="off">
                                 <button class="solqam-search-btn" type="submit">
                                     <span>Search</span>
                                 </button>
@@ -69,7 +69,7 @@
                 </div>
 
                 <!-- User Actions & Cart -->
-                <div class="col-auto">
+                <div class="flex-shrink-0">
                     <?php
                     $session = session();
                     $user = $session->get('user');
@@ -106,14 +106,14 @@
 
                         <a href="<?= site_url('compare') ?>" class="header-action-btn d-none d-md-inline-flex" title="Compare">
                             <i class="bi bi-sliders2-vertical fs-5 text-solqam"></i>
-                            <span class="d-none d-xl-inline fw-bold">Compare</span>
+                            <span class="d-none d-xxl-inline fw-bold">Compare</span>
                         </a>
                         <a href="<?= site_url('account/wishlist') ?>" class="header-action-btn position-relative" title="Wishlist">
                             <i class="bi bi-heart fs-5 text-solqam"></i>
                             <?php $wl = wishlist_count(); if ($wl > 0): ?>
                                 <span class="cart-badge-counter"><?= $wl ?></span>
                             <?php endif; ?>
-                            <span class="d-none d-xl-inline fw-bold">Wishlist</span>
+                            <span class="d-none d-xxl-inline fw-bold">Wishlist</span>
                         </a>
 
                         <!-- Cart Button with Counter -->
@@ -124,7 +124,7 @@
                                     <span class="cart-badge-counter"><?= $cartCount ?></span>
                                 <?php endif; ?>
                             </div>
-                            <span class="d-none d-xl-inline fw-bold">Cart</span>
+                            <span class="d-none d-xxl-inline fw-bold">Cart</span>
                         </a>
 
                         <!-- Account Dropdown / Auth Buttons -->
@@ -132,7 +132,7 @@
                             <div class="dropdown">
                                 <a class="header-action-btn dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-person-circle fs-5 text-solqam"></i>
-                                    <span class="d-none d-lg-inline"><?= esc(explode(' ', $user['name'])[0]) ?></span>
+                                    <span class="d-none d-xxl-inline"><?= esc(explode(' ', $user['name'])[0]) ?></span>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 mt-2 p-2" style="min-width: 240px;">
                                     <li class="px-3 py-2 border-bottom mb-2 bg-light rounded-3">
@@ -236,14 +236,15 @@
                 <div class="col-lg-4 col-md-6">
                     <div class="mb-3">
                         <a href="<?= site_url('/') ?>" class="text-decoration-none d-inline-block">
-                            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>" alt="Solqam Market Place" style="height: 48px; width: auto;">
+                            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>?v=20260929h" alt="Solqam Market Place" style="height: 62px; width: auto;">
                         </a>
                     </div>
-                    <p class="small text-secondary mb-3 pe-lg-4">
-                        Pakistan's premier multi-vendor eCommerce marketplace. Empowering thousands of genuine local brands and sellers across Karachi, Lahore, Islamabad, and nationwide with automated ledger cashback, COD, and certified JazzCash payments.
+                    <p class="footer-blurb mb-3 pe-lg-4">
+                        Pakistan's premier multi-vendor eCommerce marketplace. Genuine brands nationwide, wallet cashback, Cash on Delivery, and PayFast online pay (JazzCash, EasyPaisa, Visa, Mastercard).
                     </p>
-                    <div class="d-flex align-items-center gap-3 text-white small">
-                        <span><i class="bi bi-patch-check-fill text-primary me-1"></i> SECP Registered</span>
+                    <p class="small mb-3"><a href="mailto:info@solqam.com" class="text-decoration-none text-white-50">info@solqam.com</a></p>
+                    <div class="d-flex align-items-center gap-3 footer-trust small">
+                        <span><i class="bi bi-patch-check-fill text-info me-1"></i> SECP Registered</span>
                         <span><i class="bi bi-shield-lock-fill text-success me-1"></i> 256-Bit SSL Secured</span>
                     </div>
                 </div>
@@ -273,26 +274,29 @@
                 <div class="col-lg-4 col-md-6">
                     <h6>Safe Payments &amp; Logistics</h6>
                     <div class="payment-badge-grid mb-3">
-                        <span class="payment-chip"><i class="bi bi-cash text-success"></i> Cash on Delivery</span>
-                        <span class="payment-chip"><i class="bi bi-phone text-success"></i> EasyPaisa</span>
-                        <span class="payment-chip"><i class="bi bi-phone text-danger"></i> JazzCash</span>
-                        <span class="payment-chip"><i class="bi bi-wallet2 text-warning"></i> Solqam Ledger</span>
-                        <span class="payment-chip"><i class="bi bi-credit-card text-primary"></i> VISA / MasterCard</span>
+                        <span class="payment-chip"><i class="bi bi-cash-coin"></i> Cash on Delivery</span>
+                        <span class="payment-chip"><i class="bi bi-phone"></i> JazzCash</span>
+                        <span class="payment-chip"><i class="bi bi-phone"></i> EasyPaisa</span>
+                        <span class="payment-chip"><i class="bi bi-credit-card-2-front"></i> Visa</span>
+                        <span class="payment-chip"><i class="bi bi-credit-card"></i> Mastercard</span>
+                        <span class="payment-chip"><i class="bi bi-bank"></i> UnionPay</span>
+                        <span class="payment-chip"><i class="bi bi-qr-code"></i> PayPak</span>
+                        <span class="payment-chip"><i class="bi bi-wallet2"></i> Solqam Wallet</span>
                     </div>
-                    <div class="small text-secondary mb-2">Nationwide Logistics Network:</div>
-                    <div class="d-flex gap-2 flex-wrap text-white-50 small">
-                        <span class="badge bg-secondary">TCS Express</span>
-                        <span class="badge bg-secondary">Leopard Courier</span>
-                        <span class="badge bg-secondary">Trax Logistics</span>
-                        <span class="badge bg-secondary">Pakistan Post</span>
+                    <div class="footer-note mb-2">Nationwide logistics:</div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <span class="logistics-chip">TCS Express</span>
+                        <span class="logistics-chip">Leopard Courier</span>
+                        <span class="logistics-chip">Trax Logistics</span>
+                        <span class="logistics-chip">Pakistan Post</span>
                     </div>
                 </div>
             </div>
 
             <hr class="border-secondary opacity-25">
-            <div class="d-flex justify-content-between align-items-center flex-column flex-sm-row small text-secondary pt-2">
+            <div class="d-flex justify-content-between align-items-center flex-column flex-sm-row footer-copy pt-2">
                 <div>&copy; <?= date('Y') ?> Solqam Market Place. All rights reserved.</div>
-                <div class="mt-2 mt-sm-0">Enterprise Multi-Vendor Platform with Instant Ledger Cashback.</div>
+                <div class="mt-2 mt-sm-0">Multi-vendor marketplace for Pakistan.</div>
             </div>
         </div>
     </footer>
