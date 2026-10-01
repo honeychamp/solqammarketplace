@@ -9,7 +9,7 @@ class BannerModel extends Model
     protected $table         = 'banners';
     protected $primaryKey    = 'id';
     protected $returnType    = 'array';
-    protected $allowedFields = ['title', 'subtitle', 'image_path', 'link_url', 'placement', 'sort_order', 'is_active', 'starts_at', 'ends_at'];
+    protected $allowedFields = ['title', 'subtitle', 'badge_text', 'button_text', 'image_path', 'link_url', 'placement', 'sort_order', 'is_active', 'starts_at', 'ends_at'];
     protected $useTimestamps = true;
 
     public function forPlacement(string $placement): array

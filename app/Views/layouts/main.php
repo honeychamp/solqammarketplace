@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260929p">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260930home">
 </head>
 <body class="d-flex flex-column min-vh-100">
 
@@ -170,32 +170,7 @@
         </div>
     </header>
 
-    <nav class="solqam-category-bar d-none d-md-block">
-        <div class="container d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-1 overflow-x-auto">
-                <a href="<?= site_url('shop?sort=best_selling') ?>" class="category-nav-link text-solqam-accent fw-bold">
-                    <i class="bi bi-lightning-charge-fill"></i> Flash Deals
-                </a>
-                <?php foreach (category_tree() as $navCat): ?>
-                    <div class="dropdown">
-                        <a href="<?= site_url('shop?category=' . esc($navCat['slug'])) ?>" class="category-nav-link" <?= !empty($navCat['children']) ? 'data-bs-toggle="dropdown"' : '' ?>>
-                            <i class="bi <?= esc($navCat['icon'] ?: 'bi-grid') ?>"></i> <?= esc($navCat['name']) ?>
-                        </a>
-                        <?php if (!empty($navCat['children'])): ?>
-                            <ul class="dropdown-menu border-0 shadow-lg rounded-3 mt-0">
-                                <?php foreach ($navCat['children'] as $child): ?>
-                                    <li><a class="dropdown-item py-2" href="<?= site_url('shop?category=' . esc($child['slug'])) ?>"><?= esc($child['name']) ?></a></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <a href="<?= site_url('shop') ?>" class="text-solqam text-decoration-none small fw-bold d-none d-xl-inline">
-                All Categories <i class="bi bi-chevron-right"></i>
-            </a>
-        </div>
-    </nav>
+    <?= view('partials/mega_menu') ?>
 
     <!-- Flash Alerts -->
     <div class="container mt-3">
@@ -302,6 +277,24 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (() => {
+        const wrap = document.querySelector('.mega-wrap');
+        if (!wrap) return;
+        const activate = (slug) => {
+            if (!slug) return;
+            wrap.querySelectorAll('.mega-l1-item').forEach((el) => {
+                el.classList.toggle('is-active', el.dataset.mega === slug);
+            });
+            wrap.querySelectorAll('.mega-l2-grid').forEach((el) => {
+                el.classList.toggle('is-active', el.dataset.mega === slug);
+            });
+        };
+        wrap.querySelectorAll('.mega-l1-item, .mega-strip-l1').forEach((item) => {
+            item.addEventListener('mouseenter', () => activate(item.dataset.mega));
+        });
+    })();
+    </script>
     <?= $this->renderSection('scripts') ?>
 </body>
 </html>

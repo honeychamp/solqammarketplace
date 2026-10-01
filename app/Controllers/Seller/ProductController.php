@@ -41,7 +41,7 @@ class ProductController extends BaseController
 
     public function create()
     {
-        $categories = $this->categoryModel->getActiveCategories();
+        $categories = $this->categoryModel->optionsForSelect();
 
         return view('seller/products/create', [
             'title'      => 'Add New Product — Solqam Seller Hub',
@@ -92,7 +92,7 @@ class ProductController extends BaseController
             return redirect()->to('/seller/products')->with('error', 'Product not found.');
         }
 
-        $categories = $this->categoryModel->getActiveCategories();
+        $categories = $this->categoryModel->optionsForSelect();
         $images = $this->productImageModel->where('product_id', $id)->findAll();
         $variants = (new \App\Models\ProductVariantModel())->forProduct((int) $id);
 
@@ -176,7 +176,7 @@ class ProductController extends BaseController
         return $this->response
             ->setHeader('Content-Type', 'text/csv')
             ->setHeader('Content-Disposition', 'attachment; filename="solqam-products.csv"')
-            ->setBody("name,category_id,price,stock,sku,description,brand,cashback_percent\nWireless Earbuds,1,2499,20,SKU-EAR-01,Bluetooth earbuds,Solqam,5\n");
+            ->setBody("name,category_id,price,stock,sku,description,brand,cashback_percent\nWireless Earbuds,20,2499,20,SKU-EAR-01,Bluetooth earbuds,Solqam,5\n");
     }
 
     public function importCsv()
@@ -211,7 +211,7 @@ class ProductController extends BaseController
             $categoryId = (int) ($map['category_id'] ?? 0);
             $price = (float) ($map['price'] ?? 0);
             $stock = (int) ($map['stock'] ?? 0);
-            if ($name === '' || $categoryId <= 0 || $price <= 0) {
+            if ($name === '' || $categoryId <= 0 || $price <= 0 || ! $this->categoryModel->exists($categoryId)) {
                 continue;
             }
             $this->productModel->insert([

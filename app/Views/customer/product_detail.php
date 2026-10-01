@@ -37,7 +37,9 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
         <ol class="breadcrumb small mb-0">
             <li class="breadcrumb-item"><a href="<?= site_url('/') ?>" class="text-solqam text-decoration-none">Home</a></li>
             <li class="breadcrumb-item"><a href="<?= site_url('shop') ?>" class="text-solqam text-decoration-none">Shop</a></li>
-            <li class="breadcrumb-item"><a href="<?= site_url('shop?category=' . esc($product['category_slug'] ?? '')) ?>" class="text-solqam text-decoration-none"><?= esc($product['category_name'] ?? 'Category') ?></a></li>
+            <?php foreach (($categoryPath ?? []) as $crumb): ?>
+                <li class="breadcrumb-item"><a href="<?= site_url('shop?category=' . esc($crumb['slug'])) ?>" class="text-solqam text-decoration-none"><?= esc($crumb['name']) ?></a></li>
+            <?php endforeach; ?>
             <li class="breadcrumb-item active text-truncate" style="max-width: 280px;"><?= esc($product['name']) ?></li>
         </ol>
     </nav>
@@ -205,14 +207,20 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                 <?php if ($shippingZones): ?>
                     <ul class="list-unstyled small mb-3">
                         <?php foreach ($shippingZones as $zone): ?>
-                            <li class="d-flex justify-content-between border-bottom py-1">
+                            <li class="d-flex justify-content-between border-bottom py-1 gap-2">
                                 <span><?= esc($zone['city']) ?></span>
-                                <span class="text-muted"><?= esc($zone['eta_days'] ?? '3-5') ?> days · Rs. <?= number_format((float) $zone['rate'], 0) ?></span>
+                                <span class="text-muted text-end">
+                                    Rs. <?= number_format((float) $zone['rate'], 0) ?>
+                                    <?php if ((float) ($zone['free_above'] ?? 0) > 0): ?>
+                                        <span class="d-block" style="font-size:.7rem;">Free over Rs. <?= number_format((float) $zone['free_above'], 0) ?></span>
+                                    <?php endif; ?>
+                                </span>
                             </li>
                         <?php endforeach; ?>
                     </ul>
+                    <p class="small text-muted">Other cities: highest listed rate until you add a Default city in Admin → Shipping.</p>
                 <?php else: ?>
-                    <p class="small text-muted">Karachi, Lahore, Islamabad: 2–3 days. Nationwide: 3–5 days.</p>
+                    <p class="small text-muted">Delivery is set at checkout from Admin city rates.</p>
                 <?php endif; ?>
                 <div class="d-flex gap-2 mb-3">
                     <i class="bi bi-cash-stack text-success"></i>

@@ -30,6 +30,15 @@ class ProductsController extends BaseApiController
             'page'          => (int) ($this->request->getGet('page') ?? 1),
         ];
 
+        $ids = (new \App\Models\CategoryModel())->catalogIds(
+            $filters['category_slug'] ? (string) $filters['category_slug'] : null,
+            $filters['category_id']
+        );
+        if ($ids !== []) {
+            $filters['category_ids'] = $ids;
+            $filters['category_id']  = $ids[0];
+        }
+
         $products = $this->productModel->getCatalog($filters);
 
         return $this->respondSuccess($products, 'Products retrieved successfully.');

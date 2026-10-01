@@ -6,7 +6,13 @@
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb small">
             <li class="breadcrumb-item"><a href="<?= site_url('/') ?>" class="text-decoration-none text-solqam">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Catalog &amp; Shop</li>
+            <li class="breadcrumb-item"><a href="<?= site_url('shop') ?>" class="text-decoration-none text-solqam">Shop</a></li>
+            <?php foreach (($categoryPath ?? []) as $crumb): ?>
+                <li class="breadcrumb-item"><a href="<?= site_url('shop?category=' . esc($crumb['slug'])) ?>" class="text-decoration-none text-solqam"><?= esc($crumb['name']) ?></a></li>
+            <?php endforeach; ?>
+            <?php if (empty($categoryPath)): ?>
+                <li class="breadcrumb-item active" aria-current="page">Catalog</li>
+            <?php endif; ?>
         </ol>
     </nav>
 
@@ -31,21 +37,11 @@
                             <a href="<?= site_url('shop' . (!empty($filters['search']) ? '?q=' . urlencode($filters['search']) : '')) ?>" class="text-decoration-none small py-1 px-2 rounded-2 <?= empty($filters['category_id']) && empty($filters['category_slug']) ? 'bg-solqam text-white fw-bold' : 'text-dark hover-bg' ?>">
                                 All Categories
                             </a>
-                            <?php foreach ($categories as $cat): ?>
-                                <?php $isSelected = ($filters['category_id'] == $cat['id'] || $filters['category_slug'] == $cat['slug']); ?>
-                                <a href="<?= site_url('shop?category=' . esc($cat['slug']) . (!empty($filters['search']) ? '&q=' . urlencode($filters['search']) : '')) ?>" class="text-decoration-none small py-1 px-2 rounded-2 d-flex justify-content-between align-items-center <?= $isSelected ? 'bg-solqam text-white fw-bold' : 'text-secondary hover-bg' ?>">
-                                    <span><?= esc($cat['name']) ?></span>
-                                    <?php if ($isSelected): ?>
-                                        <i class="bi bi-check2"></i>
-                                    <?php endif; ?>
-                                </a>
-                                <?php foreach ($cat['children'] ?? [] as $child): ?>
-                                    <?php $childSel = ($filters['category_id'] == $child['id'] || $filters['category_slug'] == $child['slug']); ?>
-                                    <a href="<?= site_url('shop?category=' . esc($child['slug']) . (!empty($filters['search']) ? '&q=' . urlencode($filters['search']) : '')) ?>" class="text-decoration-none small py-1 ps-3 pe-2 rounded-2 <?= $childSel ? 'bg-solqam text-white fw-bold' : 'text-muted' ?>">
-                                        — <?= esc($child['name']) ?>
-                                    </a>
-                                <?php endforeach; ?>
-                            <?php endforeach; ?>
+                            <?= view('shared/category_filter_nodes', [
+                                'nodes'   => $categories,
+                                'filters' => $filters,
+                                'depth'   => 0,
+                            ]) ?>
                         </div>
                     </div>
 
@@ -192,7 +188,7 @@
                                                 Rs. <?= number_format($origPrice, 0) ?>
                                             </div>
                                             <?php endif; ?>
-                                            <span class="free-shipping-tag">Free Delivery</span>
+                                            <?= delivery_tag_html() ?>
                                             <div class="small text-success fw-semibold mt-1"><?= esc(cashback_percent_label($product)) ?> cashback</div>
                                         </div>
                                         <div class="d-flex gap-1">

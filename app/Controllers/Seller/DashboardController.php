@@ -20,6 +20,15 @@ class DashboardController extends BaseController
         $status   = seller_approval_status($sellerId);
         if ($status !== 'approved') {
             $profile = (new \App\Models\SellerProfileModel())->getByUserId($sellerId);
+            if ($status !== 'rejected' && ! session()->get('seller_pending_mail_sent')) {
+                $user = session()->get('user') ?? [];
+                try {
+                    \App\Services\Mail\MailService::sendSellerPending($user, $profile);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Seller pending email failed: ' . $e->getMessage());
+                }
+                session()->set('seller_pending_mail_sent', 1);
+            }
 
             return view('seller/pending', [
                 'title'           => 'Seller Hub — Pending approval',

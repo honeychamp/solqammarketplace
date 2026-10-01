@@ -2,7 +2,7 @@
 <?= $this->section('content') ?>
 <div class="mb-4">
     <h4 class="fw-bold mb-1">City delivery charges</h4>
-    <p class="text-secondary small mb-0">Set a rate per city. At checkout the customer’s address city is matched (Lahore = lahore) and that charge is applied automatically. Add a city named <code>Default</code> for any city you did not list.</p>
+    <p class="text-secondary small mb-0">Set a rate per city. Checkout matches the customer’s city. Add a city named <code>Default</code> for unlisted cities; otherwise those cities pay the <strong>highest</strong> listed rate (not free). “Free above Rs.” of <strong>0</strong> means delivery is never free for that city.</p>
 </div>
 <div class="card-custom p-4 mb-4">
     <form action="<?= site_url('admin/shipping/store') ?>" method="POST" class="row g-2 align-items-end">
@@ -21,7 +21,7 @@
         </div>
         <div class="col-md-2">
             <label class="form-label small">Free above Rs.</label>
-            <input type="number" step="1" min="0" name="free_above" class="form-control" value="3000">
+            <input type="number" step="1" min="0" name="free_above" class="form-control" value="0">
         </div>
         <div class="col-md-2">
             <label class="form-label small">ETA days</label>

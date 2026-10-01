@@ -49,7 +49,7 @@ class MyProductController extends BaseController
 
     public function create()
     {
-        $categories = $this->categoryModel->getActiveCategories();
+        $categories = $this->categoryModel->optionsForSelect();
 
         return view('admin/my-products/create', [
             'title'      => 'Add New Product — Admin Store',
@@ -100,7 +100,7 @@ class MyProductController extends BaseController
             return redirect()->to('/admin/my-products')->with('error', 'Product not found or access denied.');
         }
 
-        $categories = $this->categoryModel->getActiveCategories();
+        $categories = $this->categoryModel->optionsForSelect();
         $images     = $this->productImageModel->where('product_id', $id)->findAll();
         $variants   = (new ProductVariantModel())->forProduct((int) $id);
 

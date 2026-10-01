@@ -17,7 +17,7 @@
                         <tbody>
                             <?php foreach (($categories ?? []) as $cat): ?>
                                 <tr>
-                                    <td><?= esc($cat['name']) ?></td>
+                                    <td><?= esc($cat['path_label'] ?? $cat['name']) ?></td>
                                     <td class="text-end fw-bold"><?= number_format((float) ($cat['effective_commission'] ?? 10), 1) ?>%</td>
                                 </tr>
                             <?php endforeach; ?>

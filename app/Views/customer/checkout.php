@@ -285,7 +285,15 @@
 
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-secondary">Doorstep delivery</span>
-                        <span class="text-muted small" id="shipNote"><?= !empty($shippingQuote['is_free']) ? 'Free over Rs. ' . number_format($shippingQuote['free_above'] ?? 3000, 0) : 'Admin city rate' ?></span>
+                        <span class="text-muted small" id="shipNote"><?php
+                            if (!empty($shippingQuote['is_free']) && (float) ($shippingQuote['free_above'] ?? 0) > 0) {
+                                echo 'Free over Rs. ' . number_format($shippingQuote['free_above'], 0);
+                            } elseif (!empty($shippingQuote['matched'])) {
+                                echo 'Admin rate for ' . esc($shippingQuote['matched']);
+                            } else {
+                                echo 'Unlisted city: highest admin delivery rate';
+                            }
+                        ?></span>
                     </div>
 
                     <div class="d-flex justify-content-between mb-3">
@@ -366,9 +374,9 @@
                 if (amt) amt.innerHTML = q.is_free ? '<span class="text-success">FREE</span>' : ('Rs. ' + shipping.toFixed(2));
                 if (eta) eta.textContent = '(' + (q.eta_days || '3-5') + ' days)';
                 if (note) {
-                    note.textContent = q.is_free
-                        ? ('Free over Rs. ' + Number(q.free_above || 0).toLocaleString())
-                        : (q.matched ? ('Rate for ' + q.matched) : 'Default delivery rate');
+                    note.textContent = q.is_free && Number(q.free_above || 0) > 0
+                        ? ('Free over Rs. ' + Number(q.free_above).toLocaleString())
+                        : (q.matched ? ('Rate for ' + q.matched) : 'Unlisted city: highest admin delivery rate');
                 }
                 calculatePayable();
             })

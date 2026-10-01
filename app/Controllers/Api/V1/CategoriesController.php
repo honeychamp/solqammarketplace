@@ -15,8 +15,7 @@ class CategoriesController extends BaseApiController
 
     public function index()
     {
-        $categories = $this->categoryModel->getActiveCategories();
-        return $this->respondSuccess($categories, 'Categories retrieved.');
+        return $this->respondSuccess($this->categoryModel->getTree(), 'Categories retrieved.');
     }
 
     public function show($id = null)
@@ -28,6 +27,10 @@ class CategoriesController extends BaseApiController
         if (!$category) {
             return $this->respondFail('Category not found.', null, 404);
         }
+
+        $category['breadcrumb']    = $this->categoryModel->breadcrumb((int) $category['id']);
+        $category['descendant_ids'] = $this->categoryModel->getSelfAndDescendantIds((int) $category['id']);
+        $category['children']      = $this->categoryModel->where('parent_id', $category['id'])->where('is_active', 1)->orderBy('name', 'ASC')->findAll();
 
         return $this->respondSuccess($category, 'Category details.');
     }

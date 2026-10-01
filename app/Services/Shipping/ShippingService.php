@@ -24,22 +24,34 @@ class ShippingService
     public function quote(?string $city, ?string $province, float $subtotal): array
     {
         $zone = $this->matchZone($city, $province);
+        $fromFallback = false;
 
-        $rate      = $zone ? (float) $zone['rate'] : 249.00;
-        $freeAbove = $zone ? (float) $zone['free_above'] : 3000.00;
+        if (! $zone) {
+            $fromFallback = true;
+            $zone         = $this->unlistedCityFallback();
+        }
+
+        $rate      = $zone ? (float) $zone['rate'] : 0.0;
+        $freeAbove = $zone ? (float) ($zone['free_above'] ?? 0) : 0.0;
         $eta       = $zone['eta_days'] ?? '3-5';
-        $matched   = $zone['city'] ?? null;
-        $amount    = $subtotal >= $freeAbove ? 0.0 : $rate;
+        $matched   = $fromFallback ? null : ($zone['city'] ?? null);
+        $isFree    = $freeAbove > 0 && $subtotal >= $freeAbove;
+        $amount    = $isFree ? 0.0 : $rate;
+        if ($rate <= 0) {
+            $isFree = true;
+            $amount = 0.0;
+        }
 
         return [
-            'amount'     => $amount,
+            'amount'     => round($amount, 2),
             'rate'       => $rate,
             'free_above' => $freeAbove,
             'eta_days'   => $eta,
-            'is_free'    => $amount <= 0,
+            'is_free'    => $isFree,
             'city'       => trim((string) $city),
             'matched'    => $matched,
-            'is_default' => $zone ? $this->isDefaultLabel((string) $zone['city']) : true,
+            'is_default' => $zone ? $this->isDefaultLabel((string) $zone['city']) : false,
+            'unlisted'   => $fromFallback,
         ];
     }
 
@@ -77,7 +89,64 @@ class ShippingService
             }
         }
 
-        return $zones[0] ?? null;
+        return null;
+    }
+
+    public function unlistedCityFallback(): ?array
+    {
+        $zones = $this->zoneModel->orderBy('id', 'ASC')->findAll();
+        if ($zones === []) {
+            return null;
+        }
+
+        $maxRate = 0.0;
+        $eta     = '3-5';
+        foreach ($zones as $zone) {
+            if ($this->isDefaultLabel((string) $zone['city'])) {
+                continue;
+            }
+            $rate = (float) $zone['rate'];
+            if ($rate >= $maxRate) {
+                $maxRate = $rate;
+                $eta     = $zone['eta_days'] ?? $eta;
+            }
+        }
+
+        return [
+            'city'       => 'Default',
+            'rate'       => $maxRate,
+            'free_above' => 0,
+            'eta_days'   => $eta,
+        ];
+    }
+
+    public function publicHint(): array
+    {
+        $zones = array_values(array_filter(
+            $this->zoneModel->orderBy('city', 'ASC')->findAll(),
+            fn ($z) => ! $this->isDefaultLabel((string) $z['city'])
+        ));
+        if ($zones === []) {
+            return [
+                'has_rates' => false,
+                'min_rate'  => 0.0,
+                'max_rate'  => 0.0,
+                'label'     => 'At checkout',
+            ];
+        }
+
+        $rates = array_map(static fn ($z) => (float) $z['rate'], $zones);
+        $min   = min($rates);
+        $max   = max($rates);
+
+        return [
+            'has_rates' => true,
+            'min_rate'  => $min,
+            'max_rate'  => $max,
+            'label'     => $min === $max
+                ? 'Rs. ' . number_format($min, 0)
+                : 'From Rs. ' . number_format($min, 0),
+        ];
     }
 
     public function isDefaultLabel(string $city): bool

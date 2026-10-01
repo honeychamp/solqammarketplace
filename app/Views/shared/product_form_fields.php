@@ -15,9 +15,10 @@ $p = static fn (string $key, $default = '') => old($key, $product[$key] ?? $defa
         <select name="category_id" class="form-select" required>
             <option value="">Select Category</option>
             <?php foreach ($categories as $cat): ?>
-                <option value="<?= $cat['id'] ?>" <?= (string) $p('category_id') === (string) $cat['id'] ? 'selected' : '' ?>><?= esc($cat['name']) ?></option>
+                <option value="<?= $cat['id'] ?>" <?= (string) $p('category_id') === (string) $cat['id'] ? 'selected' : '' ?>><?= esc($cat['label'] ?? $cat['name']) ?></option>
             <?php endforeach; ?>
         </select>
+        <div class="form-text">Pick the deepest match (Samsung), not only Electronics.</div>
     </div>
     <div class="col-md-6">
         <label class="form-label fw-bold small">SKU</label>

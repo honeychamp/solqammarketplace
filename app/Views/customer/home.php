@@ -5,98 +5,126 @@
     <div class="container">
         <div class="row g-3 g-lg-4 align-items-stretch">
             <div class="col-lg-8">
-                <?php if (!empty($heroBanners)): ?>
-                    <div id="heroCarousel" class="carousel slide h-100 rounded-4 overflow-hidden shadow-sm" data-bs-ride="carousel">
-                        <div class="carousel-inner h-100">
-                            <?php foreach ($heroBanners as $i => $banner): ?>
-                                <div class="carousel-item <?= $i === 0 ? 'active' : '' ?>">
-                                    <a href="<?= esc($banner['link_url'] ?: site_url('shop')) ?>" class="d-block text-decoration-none">
-                                        <?php if (!empty($banner['image_path'])): ?>
-                                            <img src="<?= esc($banner['image_path']) ?>" class="d-block w-100" alt="<?= esc($banner['title']) ?>" style="min-height: 280px; object-fit: cover;">
-                                        <?php else: ?>
-                                            <div class="hero-slider-card p-4 p-md-5">
-                                                <h2 class="text-white fw-bold"><?= esc($banner['title']) ?></h2>
-                                                <p class="text-white-50"><?= esc($banner['subtitle']) ?></p>
-                                            </div>
-                                        <?php endif; ?>
-                                    </a>
+                <?php
+                $heroSlides = !empty($heroBanners) ? $heroBanners : [[
+                    'title'       => 'Shop genuine brands. Earn wallet cashback on every order.',
+                    'subtitle'    => 'Electronics, fashion, groceries and beauty from verified sellers — with Cash on Delivery, JazzCash, EasyPaisa and cards.',
+                    'link_url'    => site_url('shop'),
+                    'image_path'  => '',
+                    'badge_text'  => 'Solqam Festival - Pakistan',
+                    'button_text' => 'Shop mega deals',
+                ]];
+                ?>
+                <div id="heroCarousel" class="carousel slide h-100 rounded-4 overflow-hidden shadow-sm" data-bs-ride="carousel">
+                    <div class="carousel-inner h-100">
+                        <?php foreach ($heroSlides as $i => $banner): ?>
+                            <?php
+                            $img = trim((string) ($banner['image_path'] ?? ''));
+                            if ($img !== '' && ! preg_match('#^https?://#i', $img) && strpos($img, '//') !== 0) {
+                                $img = base_url(ltrim($img, '/'));
+                            }
+                            $href  = $banner['link_url'] ?: site_url('shop');
+                            $btn   = trim((string) ($banner['button_text'] ?? $banner['button'] ?? '')) ?: 'Shop mega deals';
+                            $badge = trim((string) ($banner['badge_text'] ?? $banner['badge'] ?? '')) ?: 'Solqam Festival - Pakistan';
+                            $photoStyle = $img !== ''
+                                ? 'background-image: url(\'' . htmlspecialchars($img, ENT_QUOTES, 'UTF-8') . '\');'
+                                : '';
+                            ?>
+                            <div class="carousel-item <?= $i === 0 ? 'active' : '' ?>">
+                                <div class="hero-slider-card <?= $img !== '' ? 'has-photo' : '' ?> p-4 p-md-5 d-flex flex-column justify-content-between h-100" style="<?= $photoStyle ?>">
+                                    <div class="sf-hero-inner">
+                                        <span class="sf-hero-badge mb-3">
+                                            <i class="bi bi-stars"></i> <?= esc($badge) ?>
+                                        </span>
+                                        <h1 class="display-6 fw-black text-white fw-bold mb-3" style="max-width: 560px; line-height: 1.15;">
+                                            <?= esc($banner['title']) ?>
+                                        </h1>
+                                        <p class="lead mb-4" style="max-width: 500px; font-size: 1.05rem; color: rgba(255,255,255,.82);">
+                                            <?= esc($banner['subtitle']) ?>
+                                        </p>
+                                        <div class="d-flex flex-wrap gap-3">
+                                            <a href="<?= esc($href) ?>" class="btn btn-solqam-accent px-4 py-2 rounded-pill">
+                                                <i class="bi bi-bag-check-fill me-2"></i> <?= esc($btn) ?>
+                                            </a>
+                                            <a href="<?= site_url('register?role=seller') ?>" class="btn btn-outline-light px-4 py-2 rounded-pill fw-semibold">
+                                                <i class="bi bi-shop me-2"></i> Open a store
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="sf-hero-stats mt-4">
+                                        <div class="sf-stat">
+                                            <strong>150+</strong>
+                                            <span>Cities delivered</span>
+                                        </div>
+                                        <div class="sf-stat">
+                                            <strong>COD + cards</strong>
+                                            <span>Safe checkout</span>
+                                        </div>
+                                        <div class="sf-stat">
+                                            <strong>7-day</strong>
+                                            <span>Easy returns</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php if (count($heroBanners) > 1): ?>
-                            <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
-                            <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
-                        <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                <?php else: ?>
-                <div class="hero-slider-card p-4 p-md-5 d-flex flex-column justify-content-between h-100">
-                    <div class="sf-hero-inner">
-                        <span class="sf-hero-badge mb-3">
-                            <i class="bi bi-stars"></i> Solqam Festival · Pakistan
-                        </span>
-                        <h1 class="display-6 fw-black text-white fw-bold mb-3" style="max-width: 560px; line-height: 1.15;">
-                            Shop genuine brands. Earn wallet cashback on every order.
-                        </h1>
-                        <p class="lead mb-4" style="max-width: 500px; font-size: 1.05rem; color: rgba(255,255,255,.82);">
-                            Electronics, fashion, groceries and beauty from verified sellers — with Cash on Delivery, JazzCash, EasyPaisa and cards.
-                        </p>
-                        <div class="d-flex flex-wrap gap-3">
-                            <a href="<?= site_url('shop') ?>" class="btn btn-solqam-accent px-4 py-2 rounded-pill">
-                                <i class="bi bi-bag-check-fill me-2"></i> Shop mega deals
-                            </a>
-                            <a href="<?= site_url('register?role=seller') ?>" class="btn btn-outline-light px-4 py-2 rounded-pill fw-semibold">
-                                <i class="bi bi-shop me-2"></i> Open a store
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="sf-hero-stats mt-4">
-                        <div class="sf-stat">
-                            <strong>150+</strong>
-                            <span>Cities delivered</span>
-                        </div>
-                        <div class="sf-stat">
-                            <strong>COD + cards</strong>
-                            <span>Safe checkout</span>
-                        </div>
-                        <div class="sf-stat">
-                            <strong>7-day</strong>
-                            <span>Easy returns</span>
-                        </div>
-                    </div>
+                    <?php if (count($heroSlides) > 1): ?>
+                        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
             </div>
 
             <div class="col-lg-4">
                 <div class="sf-side-stack">
-                    <div class="hero-side-card">
+                    <?php
+                    $defaultSides = [
+                        [
+                            'badge_text'  => 'SOLQAM MALL',
+                            'title'       => 'Authentic tech & lifestyle',
+                            'subtitle'    => 'Brand warranty, 7-day doorstep returns, and Mall-only sellers.',
+                            'button_text' => 'Shop Solqam Mall',
+                            'link_url'    => site_url('shop?mall=1'),
+                            'image_path'  => '',
+                            'accent'      => false,
+                        ],
+                        [
+                            'badge_text'  => 'SELLER HUB',
+                            'title'       => 'Sell to millions nationwide',
+                            'subtitle'    => 'Reach Karachi, Lahore, Islamabad and 150+ cities from one hub.',
+                            'button_text' => 'Register as a seller',
+                            'link_url'    => site_url('register?role=seller'),
+                            'image_path'  => '',
+                            'accent'      => true,
+                        ],
+                    ];
+                    $sideCards = !empty($sideBanners) ? $sideBanners : $defaultSides;
+                    foreach ($sideCards as $si => $side):
+                        $sideHref = $side['link_url'] ?: site_url('shop');
+                        $sideBtn  = trim((string) ($side['button_text'] ?? '')) ?: 'Shop now';
+                        $sideBadge = trim((string) ($side['badge_text'] ?? '')) ?: 'SOLQAM';
+                        $sideImg  = trim((string) ($side['image_path'] ?? ''));
+                        if ($sideImg !== '' && ! preg_match('#^https?://#i', $sideImg) && strpos($sideImg, '//') !== 0) {
+                            $sideImg = base_url(ltrim($sideImg, '/'));
+                        }
+                        $sideStyle = $sideImg !== ''
+                            ? 'background-image: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86)), url(\'' . htmlspecialchars($sideImg, ENT_QUOTES, 'UTF-8') . '\'); background-size: cover; background-position: center;'
+                            : (($side['accent'] ?? ($si === 1)) ? 'background: linear-gradient(160deg, #FFF7ED 0%, #FFFFFF 55%);' : '');
+                    ?>
+                    <div class="hero-side-card" style="<?= $sideStyle ?>">
                         <div>
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-solqam text-white px-2 py-1 rounded">SOLQAM MALL</span>
-                                <span class="text-success small fw-bold"><i class="bi bi-check2-circle me-1"></i>Official</span>
+                                <span class="badge <?= ($si % 2 === 1) ? 'bg-solqam-accent' : 'bg-solqam' ?> text-white px-2 py-1 rounded"><?= esc($sideBadge) ?></span>
                             </div>
-                            <h5 class="fw-bold text-dark mb-1">Authentic tech &amp; lifestyle</h5>
-                            <p class="text-muted small mb-3">Brand warranty, 7-day doorstep returns, and Mall-only sellers.</p>
+                            <h5 class="fw-bold text-dark mb-1"><?= esc($side['title']) ?></h5>
+                            <p class="text-muted small mb-3"><?= esc($side['subtitle']) ?></p>
                         </div>
-                        <a href="<?= site_url('shop?mall=1') ?>" class="btn btn-solqam-outline btn-sm w-100 rounded-pill">
-                            Shop Solqam Mall <i class="bi bi-arrow-right ms-1"></i>
+                        <a href="<?= esc($sideHref) ?>" class="btn <?= ($si % 2 === 1) ? 'btn-solqam' : 'btn-solqam-outline' ?> btn-sm w-100 rounded-pill">
+                            <?= esc($sideBtn) ?> <i class="bi bi-arrow-right ms-1"></i>
                         </a>
                     </div>
-
-                    <div class="hero-side-card" style="background: linear-gradient(160deg, #FFF7ED 0%, #FFFFFF 55%);">
-                        <div>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-solqam-accent text-white px-2 py-1 rounded">SELLER HUB</span>
-                                <span class="text-danger small fw-bold">0% join fee</span>
-                            </div>
-                            <h5 class="fw-bold text-dark mb-1">Sell to millions nationwide</h5>
-                            <p class="text-muted small mb-3">Reach Karachi, Lahore, Islamabad and 150+ cities from one hub.</p>
-                        </div>
-                        <a href="<?= site_url('register?role=seller') ?>" class="btn btn-solqam btn-sm w-100 rounded-pill">
-                            <i class="bi bi-shop me-1"></i> Register as a seller
-                        </a>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
@@ -105,7 +133,8 @@
 
 <section class="pb-2">
     <div class="container">
-        <div class="sf-rail">
+        <div class="sf-rail <?= empty($hasFlashDeal) ? 'sf-rail-compact' : '' ?>">
+            <?php if (!empty($hasFlashDeal)): ?>
             <a href="<?= site_url('shop?sort=best_selling') ?>" class="sf-rail-card sf-rail-a">
                 <div>
                     <h6><i class="bi bi-lightning-charge-fill me-1"></i> Flash Sale</h6>
@@ -113,6 +142,7 @@
                 </div>
                 <span class="small fw-bold">Shop now →</span>
             </a>
+            <?php endif; ?>
             <a href="<?= site_url('shop?mall=1') ?>" class="sf-rail-card sf-rail-b">
                 <div>
                     <h6><i class="bi bi-award-fill me-1"></i> Solqam Mall</h6>
@@ -182,6 +212,7 @@
     </div>
 </section>
 
+<?php if (!empty($hasFlashDeal)): ?>
 <section class="pb-4">
     <div class="container">
         <div class="flash-sale-wrapper">
@@ -189,7 +220,7 @@
                 <div class="d-flex align-items-center gap-3">
                     <div>
                         <div class="sf-eyebrow mb-1"><i class="bi bi-lightning-charge-fill"></i> Limited time</div>
-                        <h4 class="fw-bold mb-0 text-dark">Flash Sale</h4>
+                        <h4 class="fw-bold mb-0 text-dark"><?= esc($flashSale['title'] ?? 'Flash Sale') ?></h4>
                     </div>
                     <div class="countdown-box ms-md-2" data-ends="<?= esc($flashSale['ends_at'] ?? '') ?>">
                         <span class="text-muted small fw-semibold me-1 d-none d-sm-inline">Ends in</span>
@@ -215,8 +246,9 @@
         </div>
     </div>
 </section>
+<?php endif; ?>
 
-<?php if (!empty($megaSale)): ?>
+<?php if (!empty($megaSale) && !empty($megaProducts)): ?>
 <section class="pb-4">
     <div class="container">
         <div class="flash-sale-wrapper" style="border-color: rgba(240,20,47,.35);">
@@ -251,6 +283,37 @@
     </div>
 </section>
 <?php endif; ?>
+
+<section class="py-4 py-lg-5" id="products">
+    <div class="container">
+        <div class="sf-section-head">
+            <div>
+                <div class="sf-eyebrow">Catalog</div>
+                <h4 class="fw-bold text-dark">All products</h4>
+            </div>
+            <span class="text-muted small"><?= number_format((int) ($homeTotal ?? 0)) ?> items</span>
+        </div>
+        <?php if (empty($homeProducts)): ?>
+            <div class="text-center py-5 bg-white rounded-4 shadow-sm border p-5">
+                <i class="bi bi-bag fs-1 text-muted mb-3 d-block"></i>
+                <h5 class="fw-bold text-dark">No products yet</h5>
+                <p class="text-muted small mb-0">Approved seller listings will appear here.</p>
+            </div>
+        <?php else: ?>
+            <div class="row g-3">
+                <?php foreach ($homeProducts as $product): ?>
+                    <?= view('customer/_product_tile', ['product' => $product, 'colClass' => 'col-6 col-md-4 col-lg-2']) ?>
+                <?php endforeach; ?>
+            </div>
+            <?= view('customer/_page_links', [
+                'pages'   => (int) ($homePages ?? 1),
+                'pageNow' => (int) ($homePage ?? 1),
+                'baseUrl' => site_url('/'),
+                'anchor'  => '#products',
+            ]) ?>
+        <?php endif; ?>
+    </div>
+</section>
 
 <section class="features-strip">
     <div class="container">

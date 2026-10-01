@@ -20,14 +20,31 @@ class CategoryController extends BaseController
     public function index()
     {
         $categories = $this->categoryModel->orderBy('parent_id', 'ASC')->orderBy('name', 'ASC')->findAll();
+        $byId       = [];
+        foreach ($categories as $row) {
+            $byId[(int) $row['id']] = $row;
+        }
         foreach ($categories as &$cat) {
             $cat['effective_commission'] = $this->commissionService->rateForCategory((int) $cat['id']);
+            $cat['depth']                = $this->categoryModel->depthOf((int) $cat['id']);
+            $parts                       = [$cat['name']];
+            $pid                         = (int) ($cat['parent_id'] ?? 0);
+            $guard                       = 0;
+            while ($pid && isset($byId[$pid]) && $guard++ < 8) {
+                array_unshift($parts, $byId[$pid]['name']);
+                $pid = (int) ($byId[$pid]['parent_id'] ?? 0);
+            }
+            $cat['path_label']   = implode(' → ', $parts);
+            $cat['parent_name']  = ! empty($cat['parent_id']) && isset($byId[(int) $cat['parent_id']])
+                ? $byId[(int) $cat['parent_id']]['name']
+                : 'Top-level';
         }
         unset($cat);
 
         return view('admin/categories/index', [
-            'title'      => 'Manage Categories — Solqam Admin Console',
-            'categories' => $categories,
+            'title'          => 'Manage Categories — Solqam Admin Console',
+            'categories'     => $categories,
+            'parentOptions'  => $this->categoryModel->optionsForParent(),
         ]);
     }
 
@@ -39,18 +56,33 @@ class CategoryController extends BaseController
         }
 
         $parentId = $this->request->getPost('parent_id') ?: null;
-        $rate     = $this->parseCommissionPercent($parentId !== null);
+        if ($parentId) {
+            $parentDepth = $this->categoryModel->depthOf((int) $parentId);
+            if ($parentDepth < 1) {
+                return redirect()->back()->with('error', 'Parent category was not found.');
+            }
+            if ($parentDepth >= 4) {
+                return redirect()->back()->with('error', 'Categories stop at 4 levels (like Daraz). Choose a higher parent.');
+            }
+        }
 
-        $this->categoryModel->insert([
-            'name'               => $name,
-            'slug'               => $this->categoryModel->uniqueSlug($name),
-            'description'        => $this->request->getPost('description'),
-            'parent_id'          => $parentId,
-            'icon'               => $this->request->getPost('icon'),
-            'commission_percent' => $rate,
-            'image'              => $this->storeCategoryImage(),
-            'is_active'          => 1,
-        ]);
+        $rate = $this->parseCommissionPercent($parentId !== null);
+
+        $payload = [
+            'name'        => $name,
+            'slug'        => $this->categoryModel->uniqueSlug($name),
+            'description' => $this->request->getPost('description'),
+            'parent_id'   => $parentId,
+            'icon'        => $this->request->getPost('icon'),
+            'image'       => $this->storeCategoryImage(),
+            'is_active'   => 1,
+        ];
+
+        if ($this->categoryModel->db->fieldExists('commission_percent', 'categories')) {
+            $payload['commission_percent'] = $rate;
+        }
+
+        $this->categoryModel->insert($payload);
 
         return $this->redirectAfterHub('/admin/categories', 'success', 'Category created.');
     }
@@ -70,9 +102,10 @@ class CategoryController extends BaseController
             $parentId = $parentId === '' ? null : $parentId;
         }
 
-        $payload = [
-            'commission_percent' => $this->parseCommissionPercent($parentId !== null && $parentId !== ''),
-        ];
+        $payload = [];
+        if ($this->categoryModel->db->fieldExists('commission_percent', 'categories')) {
+            $payload['commission_percent'] = $this->parseCommissionPercent($parentId !== null && $parentId !== '');
+        }
 
         $name = trim((string) $this->request->getPost('name'));
         if ($name !== '') {
@@ -96,6 +129,17 @@ class CategoryController extends BaseController
 
     public function delete($id)
     {
+        $id  = (int) $id;
+        $cat = $this->categoryModel->find($id);
+        if (! $cat) {
+            return redirect()->to('/admin/categories')->with('error', 'Category not found.');
+        }
+
+        $childCount = $this->categoryModel->where('parent_id', $id)->countAllResults();
+        if ($childCount > 0) {
+            return redirect()->to('/admin/categories')->with('error', 'Move or delete subcategories first. This category still has ' . $childCount . ' child rows.');
+        }
+
         $this->categoryModel->delete($id);
 
         return redirect()->to('/admin/categories')->with('success', 'Category removed.');

@@ -52,6 +52,29 @@ if (!function_exists('cashback_percent_label')) {
     }
 }
 
+if (!function_exists('delivery_hint')) {
+    function delivery_hint(): array
+    {
+        try {
+            return (new \App\Services\Shipping\ShippingService())->publicHint();
+        } catch (\Throwable $e) {
+            return ['has_rates' => false, 'min_rate' => 0.0, 'max_rate' => 0.0, 'label' => 'At checkout'];
+        }
+    }
+}
+
+if (!function_exists('delivery_tag_html')) {
+    function delivery_tag_html(): string
+    {
+        $hint = delivery_hint();
+        if (empty($hint['has_rates'])) {
+            return '<span class="delivery-rate-tag">Delivery at checkout</span>';
+        }
+
+        return '<span class="delivery-rate-tag">' . esc($hint['label']) . ' delivery</span>';
+    }
+}
+
 if (!function_exists('cashback_chip')) {
     function cashback_chip($source = null): string
     {

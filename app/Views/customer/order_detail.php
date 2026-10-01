@@ -223,7 +223,10 @@
 
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-secondary">Delivery Charge</span>
-                    <span class="text-success fw-bold">FREE</span>
+                    <?php $shipAmt = (float) ($order['shipping_amount'] ?? 0); ?>
+                    <span class="fw-bold <?= $shipAmt <= 0 ? 'text-success' : 'text-dark' ?>">
+                        <?= $shipAmt <= 0 ? 'FREE' : 'Rs. ' . number_format($shipAmt, 2) ?>
+                    </span>
                 </div>
 
                 <hr>

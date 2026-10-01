@@ -161,6 +161,57 @@ class MailService
         return self::send($email, 'Solqam verification code', $html);
     }
 
+    public static function sendSellerPending(array $user, ?array $profile = null): bool
+    {
+        $email = (string) ($user['email'] ?? '');
+        $name  = (string) ($user['name'] ?? 'Seller');
+        $store = (string) ($profile['store_name'] ?? $user['store_name'] ?? 'your store');
+        $hub   = site_url('seller/dashboard');
+        $html  = self::wrap(
+            'Store received — pending approval',
+            '<p>Hello ' . htmlspecialchars($name) . ',</p>'
+            . '<p>Thank you for registering <strong>' . htmlspecialchars($store) . '</strong> on Solqam Market Place.</p>'
+            . '<p>Your seller account is <strong>pending admin approval</strong>. You can open the Seller Hub, but you cannot add products, process orders, or receive payouts until Solqam approves your store.</p>'
+            . '<p>We will email you as soon as an administrator approves your account.</p>'
+            . '<p><a href="' . htmlspecialchars($hub) . '" style="display:inline-block;background:#0B30E6;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700;">Open Seller Hub</a></p>'
+        );
+
+        return self::send($email, 'Solqam — your seller account is pending approval', $html);
+    }
+
+    public static function sendSellerApproved(array $user, ?array $profile = null): bool
+    {
+        $email = (string) ($user['email'] ?? '');
+        $name  = (string) ($user['name'] ?? 'Seller');
+        $store = (string) ($profile['store_name'] ?? $user['store_name'] ?? 'your store');
+        $hub   = site_url('seller/dashboard');
+        $html  = self::wrap(
+            'Seller account approved',
+            '<p>Hello ' . htmlspecialchars($name) . ',</p>'
+            . '<p>Good news — <strong>' . htmlspecialchars($store) . '</strong> has been approved on Solqam Market Place.</p>'
+            . '<p>You can now list products, manage orders, run campaigns, and use payouts from the Seller Hub.</p>'
+            . '<p><a href="' . htmlspecialchars($hub) . '" style="display:inline-block;background:#16A34A;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700;">Go to Seller Hub</a></p>'
+        );
+
+        return self::send($email, 'Solqam — your seller account is approved', $html);
+    }
+
+    public static function sendSellerRejected(array $user, ?array $profile = null, string $reason = ''): bool
+    {
+        $email = (string) ($user['email'] ?? '');
+        $name  = (string) ($user['name'] ?? 'Seller');
+        $store = (string) ($profile['store_name'] ?? $user['store_name'] ?? 'your store');
+        $html  = self::wrap(
+            'Seller application update',
+            '<p>Hello ' . htmlspecialchars($name) . ',</p>'
+            . '<p>Solqam did not approve <strong>' . htmlspecialchars($store) . '</strong>.</p>'
+            . ($reason !== '' ? '<p>Reason: ' . htmlspecialchars($reason) . '</p>' : '')
+            . '<p>If you believe this is a mistake, email <a href="mailto:info@solqam.com">info@solqam.com</a>.</p>'
+        );
+
+        return self::send($email, 'Solqam — seller application not approved', $html);
+    }
+
     public static function orderUpdate(string $email, string $orderNumber, string $status, string $extra = ''): void
     {
         $html = self::wrap(

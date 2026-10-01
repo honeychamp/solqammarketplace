@@ -73,6 +73,15 @@ class SellerController extends BaseController
             'status' => 'active',
         ]);
 
+        $owner = $this->userModel->find((int) $profile['user_id']);
+        if ($owner) {
+            try {
+                \App\Services\Mail\MailService::sendSellerApproved($owner, $profile);
+            } catch (\Throwable $e) {
+                log_message('error', 'Seller approved email failed: ' . $e->getMessage());
+            }
+        }
+
         return $this->redirectAfterHub('/admin/sellers', 'success', "Seller '{$profile['store_name']}' has been activated successfully.");
     }
 
@@ -93,6 +102,15 @@ class SellerController extends BaseController
         $this->userModel->update($profile['user_id'], [
             'status' => 'suspended',
         ]);
+
+        $owner = $this->userModel->find((int) $profile['user_id']);
+        if ($owner) {
+            try {
+                \App\Services\Mail\MailService::sendSellerRejected($owner, $profile, $reason);
+            } catch (\Throwable $e) {
+                log_message('error', 'Seller rejected email failed: ' . $e->getMessage());
+            }
+        }
 
         return $this->redirectAfterHub('/admin/sellers', 'info', "Seller '{$profile['store_name']}' has been suspended.");
     }

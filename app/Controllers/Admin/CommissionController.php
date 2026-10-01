@@ -22,7 +22,9 @@ class CommissionController extends BaseController
 
     public function index()
     {
-        $categories = $this->categoryModel->orderBy('parent_id', 'ASC')->orderBy('name', 'ASC')->findAll();
+        $categories = $this->categoryModel->withPaths(
+            $this->categoryModel->orderBy('parent_id', 'ASC')->orderBy('name', 'ASC')->findAll()
+        );
         foreach ($categories as &$cat) {
             $cat['effective_commission'] = $this->commissionService->rateForCategory((int) $cat['id']);
         }

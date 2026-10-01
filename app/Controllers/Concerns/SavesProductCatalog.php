@@ -18,8 +18,13 @@ trait SavesProductCatalog
         $returnDays = $this->request->getPost('return_days');
         $cashback   = $this->request->getPost('cashback_percent');
 
+        $categoryId = (int) $this->request->getPost('category_id');
+        if ($categoryId <= 0 || ! (new \App\Models\CategoryModel())->exists($categoryId)) {
+            $categoryId = 0;
+        }
+
         return [
-            'category_id'      => (int) $this->request->getPost('category_id'),
+            'category_id'      => $categoryId,
             'description'      => $this->request->getPost('description'),
             'highlights'       => $highlights !== '' ? $highlights : null,
             'specifications'   => $specs !== '' ? $specs : null,

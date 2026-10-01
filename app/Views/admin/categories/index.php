@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1">Marketplace Categories</h4>
-        <p class="text-secondary small mb-0">Set an image and seller commission % per category. Admin-store products never take commission.</p>
+        <p class="text-secondary small mb-0">Daraz-style tree: up to 4 levels (e.g. Electronics → Mobiles → Smartphones → Samsung). Seller commission can inherit from the parent. Admin-store products stay at 0%.</p>
     </div>
     <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#newCatModal">
         <i class="bi bi-plus-lg me-1"></i> Add Category
@@ -17,8 +17,8 @@
             <thead class="table-light small">
                 <tr>
                     <th>Image</th>
-                    <th>Category</th>
-                    <th>Parent</th>
+                    <th>Category path</th>
+                    <th>Level</th>
                     <th>Commission %</th>
                     <th>Status</th>
                     <th class="text-end">Action</th>
@@ -35,10 +35,12 @@
                             <?php endif; ?>
                         </td>
                         <td>
-                            <div class="fw-bold text-dark"><?= esc($cat['name']) ?></div>
+                            <div class="fw-bold text-dark" style="padding-left: <?= max(0, ((int) ($cat['depth'] ?? 1) - 1) * 14) ?>px;">
+                                <?= esc($cat['path_label'] ?? $cat['name']) ?>
+                            </div>
                             <code class="small"><?= esc($cat['slug']) ?></code>
                         </td>
-                        <td class="small"><?= !empty($cat['parent_id']) ? '#' . $cat['parent_id'] : 'Top-level' ?></td>
+                        <td class="small">L<?= (int) ($cat['depth'] ?? 1) ?> · <?= esc($cat['parent_name'] ?? 'Top-level') ?></td>
                         <td>
                             <form action="<?= site_url('admin/categories/update/' . $cat['id']) ?>" method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-2" style="min-width:180px;">
                                 <?= csrf_field() ?>
@@ -80,18 +82,17 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Category Name</label>
-                        <input type="text" name="name" class="form-control" placeholder="e.g. Health &amp; Beauty" required>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Smartphones" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Parent Category (optional)</label>
+                        <label class="form-label small fw-bold">Parent (leave empty for L1)</label>
                         <select name="parent_id" class="form-select">
-                            <option value="">Top-level</option>
-                            <?php foreach ($categories as $parent): ?>
-                                <?php if (empty($parent['parent_id'])): ?>
-                                    <option value="<?= $parent['id'] ?>"><?= esc($parent['name']) ?></option>
-                                <?php endif; ?>
+                            <option value="">Top-level (Level 1)</option>
+                            <?php foreach (($parentOptions ?? []) as $parent): ?>
+                                <option value="<?= $parent['id'] ?>"><?= esc($parent['label']) ?> (L<?= (int) $parent['depth'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
+                        <div class="form-text">Pick a parent up to Level 3 so the new row can be Level 4 (Samsung under Smartphones).</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Seller commission %</label>

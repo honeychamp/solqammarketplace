@@ -31,16 +31,9 @@ class CatalogController extends BaseController
     {
         $categorySlug = $this->request->getGet('category');
         $categoryId   = $this->request->getGet('category_id');
-        $categoryIds  = [];
-
-        if ($categorySlug) {
-            $cat = $this->categoryModel->where('slug', $categorySlug)->first();
-            if ($cat) {
-                $categoryId  = $cat['id'];
-                $categoryIds = $this->categoryModel->getSelfAndDescendantIds((int) $cat['id']);
-            }
-        } elseif ($categoryId) {
-            $categoryIds = $this->categoryModel->getSelfAndDescendantIds((int) $categoryId);
+        $categoryIds  = $this->categoryModel->catalogIds($categorySlug, $categoryId);
+        if ($categoryIds !== []) {
+            $categoryId = $categoryIds[0];
         }
 
         $filters = [
@@ -98,6 +91,7 @@ class CatalogController extends BaseController
             'filters'    => $filters,
             'searchHint' => $searchHint ?? null,
             'catalogTotal' => $total,
+            'categoryPath' => $categoryId ? $this->categoryModel->breadcrumb((int) $categoryId) : [],
             'catalogPages' => $pageCount,
             'recent'     => $this->recentProducts(),
         ]);
@@ -149,15 +143,17 @@ class CatalogController extends BaseController
             }
         }
 
+        $relatedIds = $this->categoryModel->catalogIds(null, $product['category_id'] ?? 0);
         $relatedProducts = $this->productModel->getCatalog([
-            'category_id' => $product['category_id'],
-            'limit'       => 8,
+            'category_ids' => $relatedIds !== [] ? $relatedIds : null,
+            'category_id'  => $product['category_id'] ?? null,
+            'limit'        => 8,
         ]);
         $relatedProducts = array_values(array_filter($relatedProducts, static fn ($row) => (int) $row['id'] !== (int) $id));
         $relatedProducts = array_slice($relatedProducts, 0, 4);
 
         $followerCount = (new StoreFollowModel())->followerCount((int) $product['seller_id']);
-        $shippingZones = (new ShippingZoneModel())->orderBy('city', 'ASC')->findAll(6);
+        $shippingZones = (new ShippingZoneModel())->orderBy('city', 'ASC')->findAll();
 
         $colorFamily = [];
         $sizeOptions = [];
@@ -198,6 +194,7 @@ class CatalogController extends BaseController
             'canReview'        => $canReview,
             'deliveredOrderId' => $deliveredOrderId,
             'relatedProducts'  => $relatedProducts,
+            'categoryPath'     => $this->categoryModel->breadcrumb((int) ($product['category_id'] ?? 0)),
             'questions'        => $questions,
             'flashPrice'       => $flashPrice,
             'inWishlist'       => $inWishlist,

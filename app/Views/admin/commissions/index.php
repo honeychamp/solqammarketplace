@@ -26,7 +26,7 @@
                     <tbody>
                         <?php foreach ($categories as $cat): ?>
                             <tr>
-                                <td class="fw-semibold"><?= esc($cat['name']) ?></td>
+                                <td class="fw-semibold"><?= esc($cat['path_label'] ?? $cat['name']) ?></td>
                                 <td>
                                     <form action="<?= site_url('admin/commissions') ?>" method="POST" class="d-flex gap-2">
                                         <?= csrf_field() ?>
@@ -39,7 +39,7 @@
                                     </form>
                                 </td>
                                 <td><?= number_format((float) ($cat['effective_commission'] ?? 10), 1) ?>%</td>
-                                <td class="small text-muted"><?= !empty($cat['parent_id']) ? 'Child' : 'Top-level' ?></td>
+                                <td class="small text-muted">L<?= (int) ($cat['depth'] ?? 1) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>

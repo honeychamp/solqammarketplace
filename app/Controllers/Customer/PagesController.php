@@ -11,7 +11,9 @@ class PagesController extends BaseController
     public function commission()
     {
         $service = new CommissionService();
-        $categories = (new CategoryModel())->getActiveCategories();
+        $categories = (new CategoryModel())->withPaths(
+            (new CategoryModel())->orderBy('parent_id', 'ASC')->orderBy('name', 'ASC')->findAll()
+        );
         foreach ($categories as &$cat) {
             $cat['effective_commission'] = $service->rateForCategory((int) $cat['id']);
         }
@@ -49,6 +51,7 @@ class PagesController extends BaseController
     {
         return view('customer/pages/shipping', [
             'title' => 'Shipping & Delivery — Solqam Market Place',
+            'zones' => (new \App\Models\ShippingZoneModel())->orderBy('city', 'ASC')->findAll(),
         ]);
     }
 }

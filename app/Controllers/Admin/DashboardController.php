@@ -123,7 +123,7 @@ class DashboardController extends BaseController
             ->findAll(8);
 
         $commission = (new CommissionModel())->getActiveRule();
-        $categoryRates = (new CategoryModel())->orderBy('name', 'ASC')->findAll(12);
+        $categoryRates = (new CategoryModel())->where('parent_id', null)->where('is_active', 1)->orderBy('sort_order', 'ASC')->orderBy('name', 'ASC')->findAll(12);
         $commissionService = new \App\Services\Commission\CommissionService();
         foreach ($categoryRates as &$crow) {
             $crow['effective_commission'] = $commissionService->rateForCategory((int) $crow['id']);
