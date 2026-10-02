@@ -94,7 +94,7 @@ class ProductModel extends Model
 
         if ($product) {
             $imageModel = new ProductImageModel();
-            $product['images'] = $imageModel->where('product_id', $id)->findAll();
+            $product['images'] = $imageModel->forProduct($id);
             $primary = $imageModel->where('product_id', $id)->where('is_primary', 1)->first();
             $product['primary_image'] = $primary['image_path'] ?? null;
             if (!$product['primary_image'] && !empty($product['images'])) {
@@ -233,6 +233,40 @@ class ProductModel extends Model
         $offset = ($page - 1) * $limit;
 
         return $builder->findAll($limit, $offset);
+    }
+
+    public function insertCatalog(array $data): int
+    {
+        $row = $this->onlyExistingColumns($data);
+        $this->skipValidation(true);
+        $id = $this->insert($row, true);
+        if (! $id) {
+            log_message('error', 'Product insert failed: ' . json_encode($this->errors()));
+
+            return 0;
+        }
+
+        return (int) $id;
+    }
+
+    public function updateCatalog(int $id, array $data): bool
+    {
+        $row = $this->onlyExistingColumns($data);
+        $this->skipValidation(true);
+
+        return (bool) $this->update($id, $row);
+    }
+
+    protected function onlyExistingColumns(array $data): array
+    {
+        $out = [];
+        foreach ($data as $key => $value) {
+            if ($this->productsHas($key)) {
+                $out[$key] = $value;
+            }
+        }
+
+        return $out;
     }
 
     protected function applyPublicSellerScope($builder): void

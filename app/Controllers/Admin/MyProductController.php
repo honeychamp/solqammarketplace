@@ -76,17 +76,29 @@ class MyProductController extends BaseController
         $name = $this->request->getPost('name');
         $slug = url_title($name, '-', true) . '-' . substr(md5(uniqid()), 0, 5);
 
-        $productId = $this->productModel->insert(array_merge($this->catalogProductPayload(), [
-            'seller_id' => $adminId,
-            'name'      => $name,
-            'slug'      => $slug,
-            'sku'       => $this->request->getPost('sku') ?: ('ADM-' . strtoupper(substr(md5(uniqid()), 0, 6))),
-            'status'    => 'active',
-        ]));
+        try {
+            $payload = array_merge($this->catalogProductPayload(), [
+                'seller_id' => $adminId,
+                'name'      => $name,
+                'slug'      => $slug,
+                'sku'       => $this->request->getPost('sku') ?: ('ADM-' . strtoupper(substr(md5(uniqid()), 0, 6))),
+                'status'    => 'active',
+            ]);
+            if ((int) ($payload['category_id'] ?? 0) <= 0) {
+                return redirect()->back()->withInput()->with('error', 'Select a valid category. Add one first: Admin → Categories.');
+            }
+            $productId = $this->productModel->insertCatalog($payload);
+            if ($productId <= 0) {
+                return redirect()->back()->withInput()->with('error', 'Product could not be saved. Check category and try again.');
+            }
+            $this->savePrimaryImage($productId);
+            $this->saveGalleryImages($productId, true);
+            $this->saveVariants($productId);
+        } catch (\Throwable $e) {
+            log_message('error', 'Admin add product: ' . $e->getMessage());
 
-        $this->savePrimaryImage((int) $productId);
-        $this->saveGalleryImages((int) $productId, true);
-        $this->saveVariants((int) $productId);
+            return redirect()->back()->withInput()->with('error', 'Product could not be saved: ' . $e->getMessage());
+        }
 
         return redirect()->to('/admin/my-products')->with('success', 'Product listed on marketplace successfully!');
     }
@@ -101,7 +113,7 @@ class MyProductController extends BaseController
         }
 
         $categories = $this->categoryModel->optionsForSelect();
-        $images     = $this->productImageModel->where('product_id', $id)->findAll();
+        $images     = $this->productImageModel->forProduct((int) $id);
         $variants   = (new ProductVariantModel())->forProduct((int) $id);
 
         return view('admin/my-products/edit', [
@@ -134,7 +146,7 @@ class MyProductController extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $this->productModel->update($id, array_merge($this->catalogProductPayload(), [
+        $this->productModel->updateCatalog((int) $id, array_merge($this->catalogProductPayload(), [
             'name'   => $this->request->getPost('name'),
             'sku'    => $this->request->getPost('sku'),
             'status' => $this->request->getPost('status'),

@@ -9,8 +9,8 @@ trait SavesProductCatalog
 {
     protected function catalogProductPayload(): array
     {
-        $brand     = trim((string) $this->request->getPost('brand'));
-        $warranty  = trim((string) $this->request->getPost('warranty_info'));
+        $brand      = trim((string) $this->request->getPost('brand'));
+        $warranty   = trim((string) $this->request->getPost('warranty_info'));
         $highlights = trim((string) $this->request->getPost('highlights'));
         $specs      = trim((string) $this->request->getPost('specifications'));
         $sizeGuide  = trim((string) $this->request->getPost('size_guide'));
@@ -39,79 +39,133 @@ trait SavesProductCatalog
         ];
     }
 
+    protected function imageHasSort(): bool
+    {
+        try {
+            return \Config\Database::connect()->fieldExists('sort_order', 'product_images');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    protected function imageRow(int $productId, string $path, int $primary, int $sort): array
+    {
+        $row = [
+            'product_id' => $productId,
+            'image_path' => $path,
+            'is_primary' => $primary,
+        ];
+        if ($this->imageHasSort()) {
+            $row['sort_order'] = $sort;
+        }
+
+        return $row;
+    }
+
+    protected function storeUploadedFile($file): ?string
+    {
+        if (! $file || ! $file->isValid() || $file->hasMoved()) {
+            return null;
+        }
+        $uploadDir = FCPATH . 'uploads/products';
+        if (! is_dir($uploadDir) && ! @mkdir($uploadDir, 0755, true) && ! is_dir($uploadDir)) {
+            log_message('error', 'Cannot create upload dir: ' . $uploadDir);
+
+            return null;
+        }
+        $newName = $file->getRandomName();
+        $file->move($uploadDir, $newName);
+
+        return base_url('uploads/products/' . $newName);
+    }
+
     protected function savePrimaryImage(int $productId): void
     {
         $imageModel = $this->productImageModel ?? new ProductImageModel();
         $img = $this->request->getFile('image_file');
-        $imagePath = null;
+        $imagePath = $this->storeUploadedFile($img);
 
-        if ($img && $img->isValid() && !$img->hasMoved()) {
-            $newName = $img->getRandomName();
-            $uploadDir = FCPATH . 'uploads/products';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-            $img->move($uploadDir, $newName);
-            $imagePath = base_url('uploads/products/' . $newName);
-        } elseif ($this->request->getPost('image_url')) {
-            $imagePath = $this->request->getPost('image_url');
-        } else {
+        if (! $imagePath && $this->request->getPost('image_url')) {
+            $imagePath = (string) $this->request->getPost('image_url');
+        } elseif (! $imagePath) {
             $imagePath = base_url('assets/images/product-placeholder.svg');
         }
 
-        if ($imagePath) {
-            $imageModel->insert([
-                'product_id' => $productId,
-                'image_path' => $imagePath,
-                'is_primary' => 1,
-            ]);
-        }
+        $imageModel->insert($this->imageRow($productId, $imagePath, 1, 0));
     }
 
     protected function replacePrimaryImage(int $productId): void
     {
         $imageModel = $this->productImageModel ?? new ProductImageModel();
-        $img = $this->request->getFile('image_file');
-        if (!$img || !$img->isValid() || $img->hasMoved()) {
-            return;
+        $path = $this->storeUploadedFile($this->request->getFile('image_file'));
+        if ($path) {
+            $imageModel->where('product_id', $productId)->set(['is_primary' => 0])->update();
+            $imageModel->insert($this->imageRow($productId, $path, 1, 0));
         }
-        $newName = $img->getRandomName();
-        $uploadDir = FCPATH . 'uploads/products';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-        $img->move($uploadDir, $newName);
-        $imagePath = base_url('uploads/products/' . $newName);
-        $imageModel->where('product_id', $productId)->set(['is_primary' => 0])->update();
-        $imageModel->insert([
-            'product_id' => $productId,
-            'image_path' => $imagePath,
-            'is_primary' => 1,
-        ]);
     }
 
     protected function saveGalleryImages(int $productId, bool $keepPrimary): void
     {
         $imageModel = $this->productImageModel ?? new ProductImageModel();
+        $order = array_values(array_filter((array) $this->request->getPost('gallery_order'), static fn ($v) => $v !== '' && $v !== null));
         $files = $this->request->getFileMultiple('gallery_files') ?? [];
-        $uploadDir = FCPATH . 'uploads/products';
-        if (! is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+
+        if ($order === []) {
+            $sort = 1;
+            $hasPrimary = $keepPrimary;
+            foreach ($files as $file) {
+                $path = $this->storeUploadedFile($file);
+                if (! $path) {
+                    continue;
+                }
+                $imageModel->insert($this->imageRow($productId, $path, $hasPrimary ? 0 : 1, $sort++));
+                $hasPrimary = true;
+            }
+
+            return;
         }
 
-        $hasPrimary = $keepPrimary;
-        foreach ($files as $file) {
-            if (! $file || ! $file->isValid() || $file->hasMoved()) {
-                continue;
+        $listedExisting = [];
+        foreach ($order as $token) {
+            if (str_starts_with((string) $token, 'id:')) {
+                $listedExisting[] = (int) substr((string) $token, 3);
             }
-            $newName = $file->getRandomName();
-            $file->move($uploadDir, $newName);
-            $imageModel->insert([
-                'product_id' => $productId,
-                'image_path' => base_url('uploads/products/' . $newName),
-                'is_primary' => $hasPrimary ? 0 : 1,
-            ]);
-            $hasPrimary = true;
+        }
+
+        $oldGallery = $imageModel->where('product_id', $productId)->where('is_primary', 0)->findAll();
+        foreach ($oldGallery as $row) {
+            $id = (int) $row['id'];
+            if (! in_array($id, $listedExisting, true)) {
+                $imageModel->delete($id);
+            }
+        }
+
+        $sort = 1;
+        foreach ($order as $token) {
+            $token = (string) $token;
+            if (str_starts_with($token, 'id:')) {
+                $id = (int) substr($token, 3);
+                if ($id <= 0) {
+                    continue;
+                }
+                $row = $imageModel->where('id', $id)->where('product_id', $productId)->first();
+                if (! $row) {
+                    continue;
+                }
+                $update = ['is_primary' => 0];
+                if ($this->imageHasSort()) {
+                    $update['sort_order'] = $sort;
+                }
+                $imageModel->update($id, $update);
+                $sort++;
+            } elseif (str_starts_with($token, 'new:')) {
+                $idx = (int) substr($token, 4);
+                $path = $this->storeUploadedFile($files[$idx] ?? null);
+                if (! $path) {
+                    continue;
+                }
+                $imageModel->insert($this->imageRow($productId, $path, 0, $sort++));
+            }
         }
     }
 

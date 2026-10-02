@@ -120,6 +120,7 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
 // --------------------------------------------------------------------
 // Dedicated Admin Authentication Routes (Isolated from Customer & Seller)
 // --------------------------------------------------------------------
+$routes->get('admin', 'Admin\AuthController::entry');
 $routes->match(['GET', 'POST'], 'admin/login', 'Admin\AuthController::login');
 $routes->get('admin/logout', 'Admin\AuthController::logout');
 

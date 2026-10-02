@@ -19,6 +19,18 @@ class AuthController extends BaseController
     }
 
     /**
+     * /admin → login (or dashboard if already signed in as admin)
+     */
+    public function entry()
+    {
+        if ($this->authService->isLoggedIn() && session()->get('user.role') === 'admin') {
+            return redirect()->to('/admin/dashboard');
+        }
+
+        return redirect()->to('/admin/login');
+    }
+
+    /**
      * Dedicated Administrator Login Portal
      */
     public function login()
