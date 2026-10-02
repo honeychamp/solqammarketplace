@@ -32,6 +32,17 @@ class UserModel extends Model
     protected $updatedField  = 'updated_at';
     protected $deletedField  = 'deleted_at';
 
+    protected function initialize()
+    {
+        try {
+            if (! $this->db->fieldExists('deleted_at', $this->table)) {
+                $this->useSoftDeletes = false;
+            }
+        } catch (\Throwable $e) {
+            $this->useSoftDeletes = false;
+        }
+    }
+
     // Validation
     protected $validationRules      = [
         'name'     => 'required|min_length[2]|max_length[150]',

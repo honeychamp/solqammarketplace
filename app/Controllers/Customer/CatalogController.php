@@ -31,7 +31,12 @@ class CatalogController extends BaseController
     {
         $categorySlug = $this->request->getGet('category');
         $categoryId   = $this->request->getGet('category_id');
-        $categoryIds  = $this->categoryModel->catalogIds($categorySlug, $categoryId);
+        $categoryIds  = [];
+        try {
+            $categoryIds = $this->categoryModel->catalogIds($categorySlug, $categoryId);
+        } catch (\Throwable $e) {
+            $categoryIds = [];
+        }
         if ($categoryIds !== []) {
             $categoryId = $categoryIds[0];
         }
@@ -67,7 +72,12 @@ class CatalogController extends BaseController
                 $searchHint = $short;
             }
         }
-        $flashMap   = $this->pricingService->getFlashPriceMap();
+        $flashMap = [];
+        try {
+            $flashMap = $this->pricingService->getFlashPriceMap();
+        } catch (\Throwable $e) {
+            $flashMap = [];
+        }
         foreach ($products as &$p) {
             if (isset($flashMap[(int) $p['id']])) {
                 $p['flash_price'] = $flashMap[(int) $p['id']];
@@ -75,13 +85,23 @@ class CatalogController extends BaseController
         }
         unset($p);
 
-        $categories = $this->categoryModel->getTree();
-        $brands = $this->productModel->select('brand')
-            ->where('status', 'active')
-            ->where('brand !=', '')
-            ->groupBy('brand')
-            ->orderBy('brand', 'ASC')
-            ->findAll();
+        $categories = [];
+        try {
+            $categories = $this->categoryModel->getTree();
+        } catch (\Throwable $e) {
+            $categories = [];
+        }
+        $brands = [];
+        try {
+            $brands = $this->productModel->select('brand')
+                ->where('status', 'active')
+                ->where('brand !=', '')
+                ->groupBy('brand')
+                ->orderBy('brand', 'ASC')
+                ->findAll();
+        } catch (\Throwable $e) {
+            $brands = [];
+        }
 
         return view('customer/catalog', [
             'title'      => 'Browse Products — Solqam Market Place',

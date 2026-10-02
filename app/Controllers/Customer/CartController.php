@@ -43,12 +43,19 @@ class CartController extends BaseController
             $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
         }
 
+        $estimatedCashback = 0.0;
+        try {
+            $estimatedCashback = cart_cashback_total($items);
+        } catch (\Throwable $e) {
+            $estimatedCashback = 0.0;
+        }
+
         return view('customer/cart', [
             'title'           => 'Shopping Cart — Solqam Market Place',
             'cart'            => $cart,
             'items'           => $items,
             'subtotal'        => $subtotal,
-            'estimatedCashback' => cart_cashback_total($items),
+            'estimatedCashback' => $estimatedCashback,
         ]);
     }
 

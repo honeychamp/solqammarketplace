@@ -1672,6 +1672,8 @@ body {
     .ops-queue { grid-template-columns: 1fr 1fr; }
     .hero-slider-card { min-height: 300px; }
     .solqam-search-input-group { max-width: 100%; }
+    .solqam-search-btn span { display: none; }
+    .solqam-search-btn { padding: 0.55rem 0.9rem; }
 }
 @media (max-width: 767px) {
     .ops-hero { padding: 18px 14px; border-radius: 20px; }

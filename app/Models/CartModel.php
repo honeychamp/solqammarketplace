@@ -23,6 +23,17 @@ class CartModel extends Model
 
     public function getOrCreateCart(?int $userId, ?string $sessionId): array
     {
+        try {
+            return $this->findOrCreateCart($userId, $sessionId);
+        } catch (\Throwable $e) {
+            log_message('error', 'Cart: ' . $e->getMessage());
+
+            return ['id' => 0, 'user_id' => $userId, 'session_id' => $sessionId];
+        }
+    }
+
+    protected function findOrCreateCart(?int $userId, ?string $sessionId): array
+    {
         if ($userId) {
             $cart = $this->where('user_id', $userId)->first();
             if (!$cart && $sessionId) {

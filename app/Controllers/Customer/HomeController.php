@@ -24,19 +24,31 @@ class HomeController extends BaseController
             $categories = [];
         }
         if (empty($categories)) {
-            $categories = $categoryModel->getActiveCategories();
+            try {
+                $categories = $categoryModel->getActiveCategories();
+            } catch (\Throwable $e) {
+                $categories = [];
+            }
         }
 
         $perPage = 30;
         $page    = max(1, (int) ($this->request->getGet('page') ?? 1));
         $filters = ['limit' => $perPage, 'page' => $page, 'sort' => 'latest'];
-        $homeTotal = $productModel->countCatalog($filters);
-        $homePages = max(1, (int) ceil($homeTotal / $perPage));
-        if ($page > $homePages) {
-            $page = $homePages;
-            $filters['page'] = $page;
+        $homeTotal = 0;
+        $homeProducts = [];
+        try {
+            $homeTotal = $productModel->countCatalog($filters);
+            $homePages = max(1, (int) ceil($homeTotal / $perPage));
+            if ($page > $homePages) {
+                $page = $homePages;
+                $filters['page'] = $page;
+            }
+            $homeProducts = $productModel->getCatalog($filters);
+        } catch (\Throwable $e) {
+            log_message('error', 'Homepage catalog: ' . $e->getMessage());
+            $homePages = 1;
         }
-        $homeProducts = $productModel->getCatalog($filters);
+        $homePages = $homePages ?? max(1, (int) ceil($homeTotal / $perPage));
         $flashSale = null;
         $flashProducts = [];
         $megaSale = null;

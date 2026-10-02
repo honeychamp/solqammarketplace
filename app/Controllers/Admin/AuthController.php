@@ -66,8 +66,10 @@ class AuthController extends BaseController
                 $this->authService->setSession($user);
                 return redirect()->to('/admin/dashboard')->with('success', 'Welcome to Solqam Admin.');
 
-            } catch (Exception $e) {
-                return redirect()->back()->withInput()->with('error', $e->getMessage());
+            } catch (\Throwable $e) {
+                log_message('error', 'Admin login: ' . $e->getMessage());
+
+                return redirect()->back()->withInput()->with('error', 'Could not sign in. Confirm an admin row exists in the users table (phpMyAdmin).');
             }
         }
 
