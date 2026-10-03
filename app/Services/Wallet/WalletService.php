@@ -80,15 +80,25 @@ class WalletService
     }
 
     /**
+     * Unpaid failed-delivery charges sitting as a negative wallet balance.
+     */
+    public function getOutstandingDebt(int $userId): float
+    {
+        return max(0.0, round(-$this->getBalance($userId), 2));
+    }
+
+    /**
      * Append a DEBIT entry to the ledger.
-     * Throws exception or fails if computed balance is insufficient.
+     * Throws if balance is insufficient unless $allowNegative is true
+     * (failed-delivery courier fee that the buyer still owes).
      */
     public function debit(
         int $userId,
         float $amount,
         string $referenceType,
         ?int $referenceId,
-        string $description
+        string $description,
+        bool $allowNegative = false
     ): bool {
         if ($amount <= 0) {
             return false;
@@ -98,9 +108,8 @@ class WalletService
 
         $this->db->transStart();
 
-        // Check computed balance within transaction
         $currentBalance = $this->walletModel->calculateBalance($walletId);
-        if ($currentBalance < round($amount, 2)) {
+        if (! $allowNegative && $currentBalance < round($amount, 2)) {
             $this->db->transRollback();
             throw new RuntimeException("Insufficient wallet balance: Rs. {$currentBalance} available, Rs. {$amount} requested.");
         }

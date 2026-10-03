@@ -45,11 +45,17 @@
         $currentStep = $statuses[$order['status']] ?? 1;
         $isCancelled = $order['status'] === 'cancelled';
         $isReturned  = $order['status'] === 'returned';
+        $isUndelivered = $order['status'] === 'undelivered';
         ?>
 
-        <?php if ($isCancelled || $isReturned): ?>
-            <div class="alert alert-danger py-2 mb-0 border-0 shadow-sm rounded-3">
-                <i class="bi bi-exclamation-octagon-fill me-1"></i> This order is marked as <strong><?= ucfirst($order['status']) ?></strong>.
+        <?php if ($isCancelled || $isReturned || $isUndelivered): ?>
+            <div class="alert <?= $isUndelivered ? 'alert-warning' : 'alert-danger' ?> py-2 mb-0 border-0 shadow-sm rounded-3">
+                <i class="bi bi-exclamation-octagon-fill me-1"></i>
+                <?php if ($isUndelivered): ?>
+                    This order was <strong>not received</strong>. Courier fee was charged to your wallet (wallet may show minus). That remaining amount is added to your next purchase.
+                <?php else: ?>
+                    This order is marked as <strong><?= ucfirst($order['status']) ?></strong>.
+                <?php endif; ?>
             </div>
         <?php else: ?>
             <div class="row text-center g-2 position-relative">
@@ -221,6 +227,14 @@
                     </div>
                 <?php endif; ?>
 
+                <?php $arrearsPaid = (float) ($order['delivery_arrears'] ?? 0); ?>
+                <?php if ($arrearsPaid > 0): ?>
+                    <div class="d-flex justify-content-between mb-2 text-danger">
+                        <span>Previous unpaid courier fee</span>
+                        <span class="fw-bold">Rs. <?= number_format($arrearsPaid, 2) ?></span>
+                    </div>
+                <?php endif; ?>
+
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-secondary">Delivery Charge</span>
                     <?php $shipAmt = (float) ($order['shipping_amount'] ?? 0); ?>
@@ -251,6 +265,9 @@
                     <div class="mt-3 p-3 border rounded-3 small">
                         <strong>Pay later KYC</strong>
                         <div><?= esc($order['pay_later']['full_name']) ?> · <?= esc($order['pay_later']['cnic_number']) ?></div>
+                        <?php if ((float) ($order['pay_later_wallet'] ?? 0) > 0 && empty($order['pay_later_cleared'])): ?>
+                            <div class="text-danger mt-1">Wallet minus Rs. <?= number_format((float) $order['pay_later_wallet'], 2) ?> until this remaining is paid.</div>
+                        <?php endif; ?>
                         <div class="text-muted"><?= esc($order['pay_later']['address_text']) ?></div>
                     </div>
                 <?php endif; ?>

@@ -24,14 +24,15 @@
             ?>
             <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
                 <h5 class="fw-bold mb-0">Fulfillment Pipeline &amp; Action</h5>
-                <span class="badge fs-6 bg-<?= match($pkgStatus) { 'delivered' => 'success', 'shipped' => 'primary', 'confirmed' => 'info', 'cancelled' => 'danger', default => 'warning text-dark' } ?> px-3 py-2 rounded-pill">
+                <span class="badge fs-6 bg-<?= match($pkgStatus) { 'delivered' => 'success', 'shipped' => 'primary', 'confirmed' => 'info', 'cancelled' => 'danger', 'undelivered' => 'danger', default => 'warning text-dark' } ?> px-3 py-2 rounded-pill">
                     <i class="bi <?= match($pkgStatus) {
                         'delivered' => 'bi-check-circle-fill',
                         'shipped' => 'bi-truck',
                         'confirmed' => 'bi-hand-thumbs-up-fill',
                         'cancelled' => 'bi-x-circle-fill',
+                        'undelivered' => 'bi-x-octagon-fill',
                         default => 'bi-clock-history'
-                    } ?> me-1"></i> Your package: <?= ucfirst($pkgStatus) ?>
+                    } ?> me-1"></i> Your package: <?= $pkgStatus === 'undelivered' ? 'Not received' : ucfirst($pkgStatus) ?>
                 </span>
             </div>
             <?php $fulfillBy = $shipment['fulfill_by'] ?? 'seller'; ?>
@@ -81,6 +82,7 @@
                                 <option value="delivered">Delivered (Handed to Customer)</option>
                             <?php elseif ($pkgStatus === 'shipped'): ?>
                                 <option value="delivered">Delivered (Handed to Customer)</option>
+                                <option value="undelivered">Not received (charge courier fee to buyer wallet)</option>
                             <?php endif; ?>
                         </select>
                         <input type="text" name="courier" class="form-control form-control-sm" style="max-width: 160px;" placeholder="TCS / Leopard" value="<?= esc($shipment['courier'] ?? $order['courier'] ?? '') ?>">
@@ -89,6 +91,10 @@
                             <i class="bi bi-arrow-right-circle me-1"></i> Apply Status
                         </button>
                     </form>
+                </div>
+            <?php elseif ($pkgStatus === 'undelivered'): ?>
+                <div class="alert alert-danger border-0 small mb-0 rounded-3">
+                    <strong>Not received:</strong> Buyer did not take the parcel. Courier fee was charged to their wallet (wallet may go minus). Product stock was restored.
                 </div>
             <?php elseif ($pkgStatus === 'delivered'): ?>
                 <div class="alert alert-success border-0 bg-success-subtle text-success small mb-0 rounded-3 d-flex align-items-center gap-2">

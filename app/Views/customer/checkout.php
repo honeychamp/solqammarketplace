@@ -153,7 +153,7 @@
                                     <input class="form-check-input ms-0 me-2" type="radio" name="payment_method" id="pay_later" value="pay_later">
                                     <label class="form-check-label w-100 ps-1" for="pay_later">
                                         <div class="fw-bold text-dark"><i class="bi bi-calendar2-week text-warning fs-5"></i> Pay later (wallet shortfall)</div>
-                                        <small class="text-secondary d-block mt-1">Use wallet when balance is short. CNIC + utility bill required.</small>
+                                        <small class="text-secondary d-block mt-1">Wallet shortfall wallet mein minus dikhega jab tak baad mein pay na ho.</small>
                                     </label>
                                 </div>
                             </div>
@@ -232,12 +232,20 @@
                                 <i class="bi bi-wallet2 text-warning fs-5 me-1"></i>
                                 <strong style="color: var(--sol-primary);">Solqam Cash Wallet</strong>
                             </div>
-                            <span class="badge rounded-pill bg-white fw-bold shadow-xs" style="color: var(--sol-primary);">
-                                Available: Rs. <?= number_format($walletBalance, 2) ?>
+                            <span class="badge rounded-pill bg-white fw-bold shadow-xs <?= ($walletBalance ?? 0) < 0 ? 'text-danger' : '' ?>" style="color: var(--sol-primary);">
+                                <?php if (($walletBalance ?? 0) < 0): ?>
+                                    Minus: Rs. <?= number_format(abs((float) $walletBalance), 2) ?>
+                                <?php else: ?>
+                                    Available: Rs. <?= number_format($walletBalance, 2) ?>
+                                <?php endif; ?>
                             </span>
                         </div>
 
-                        <?php if ($walletBalance > 0): ?>
+                        <?php if (($walletDebt ?? 0) > 0): ?>
+                            <div class="alert alert-danger py-2 px-3 small mb-2 mt-2">
+                                Your wallet is in minus by <strong>Rs. <?= number_format((float) $walletDebt, 2) ?></strong> (unpaid courier fee). This remaining amount is added to this order.
+                            </div>
+                        <?php elseif ($walletBalance > 0): ?>
                             <div class="form-check mt-2">
                                 <input class="form-check-input" type="checkbox" name="use_wallet" id="use_wallet" value="1" checked onchange="calculatePayable()">
                                 <label class="form-check-label small fw-bold text-dark" for="use_wallet">
@@ -278,6 +286,11 @@
                         </span>
                     </div>
 
+                    <div id="arrearsRow" class="d-flex justify-content-between mb-2 text-danger <?= empty($walletDebt) ? 'd-none' : '' ?>">
+                        <span>Unpaid courier fee (wallet minus)</span>
+                        <span class="fw-bold font-monospace">Rs. <span id="arrearsAmount"><?= number_format((float) ($walletDebt ?? 0), 2) ?></span></span>
+                    </div>
+
                     <div id="walletDeductionRow" class="d-flex justify-content-between mb-2 text-success d-none">
                         <span>Wallet Ledger Deduction</span>
                         <span class="fw-bold font-monospace">- Rs. <span id="walletDiscountAmount">0.00</span></span>
@@ -303,10 +316,11 @@
 
                     <hr>
 
-                    <div class="d-flex justify-content-between mb-4">
+                    <div class="d-flex justify-content-between mb-2">
                         <span class="fs-5 fw-bold text-dark">Final Payable</span>
                         <span class="fs-5 fw-bold text-primary font-monospace">Rs. <span id="finalPayableDisplay"><?= number_format($subtotal, 2) ?></span></span>
                     </div>
+                    <p class="small text-muted mb-4" id="remainingPayNote"></p>
 
                     <button type="submit" class="btn btn-sol-primary btn-lg w-100 rounded-pill py-2.5 fw-bold shadow-sm">
                         Confirm &amp; Place Order <i class="bi bi-shield-check ms-1"></i>
@@ -336,6 +350,7 @@
 
     const subtotal = <?= (float) $subtotal ?>;
     const walletBalance = <?= (float) $walletBalance ?>;
+    const walletDebt = <?= (float) ($walletDebt ?? 0) ?>;
     let shipping = <?= (float) ($shippingQuote['amount'] ?? 0) ?>;
     const couponDiscount = <?= (float) ($couponDiscount ?? 0) ?>;
     const quoteUrl = <?= json_encode(site_url('checkout/shipping-quote')) ?>;
@@ -400,14 +415,15 @@
         const remainderHint = document.getElementById('remainderHint');
         const hiddenWallet = document.getElementById('pay_wallet_hidden');
         const radios = document.querySelectorAll('#remainderPayBox input[type="radio"][name="payment_method"]');
+        const remainingNote = document.getElementById('remainingPayNote');
 
-        let payable = afterCoupon;
+        let payable = afterCoupon + walletDebt;
         let usedWallet = 0;
-        if (useWalletCheckbox && useWalletCheckbox.checked) {
-            usedWallet = Math.min(walletBalance, afterCoupon);
-            payable = Math.max(0, afterCoupon - usedWallet);
-            deductionRow.classList.remove('d-none');
-            discountAmountSpan.textContent = usedWallet.toFixed(2);
+        if (useWalletCheckbox && useWalletCheckbox.checked && walletBalance > 0) {
+            usedWallet = Math.min(walletBalance, payable);
+            payable = Math.max(0, payable - usedWallet);
+            if (deductionRow) deductionRow.classList.remove('d-none');
+            if (discountAmountSpan) discountAmountSpan.textContent = usedWallet.toFixed(2);
             if (hint) {
                 const leftover = Math.max(0, walletBalance - usedWallet);
                 hint.textContent = payable <= 0
@@ -420,6 +436,11 @@
         }
 
         payableDisplay.textContent = payable.toFixed(2);
+        if (remainingNote) {
+            remainingNote.textContent = walletDebt > 0
+                ? ('Remaining to pay: Rs. ' + payable.toFixed(2) + ' (this order + unpaid courier Rs. ' + walletDebt.toFixed(2) + ').')
+                : '';
+        }
 
         const walletCovers = useWalletCheckbox && useWalletCheckbox.checked && payable <= 0;
         const walletShort = useWalletCheckbox && useWalletCheckbox.checked && payable > 0;

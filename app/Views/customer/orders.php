@@ -36,6 +36,7 @@
                     'placed'    => 'bg-warning text-dark',
                     'cancelled' => 'bg-danger text-white',
                     'returned'  => 'bg-dark text-white',
+                    'undelivered' => 'bg-danger text-white',
                     default     => 'bg-secondary text-white',
                 };
                 ?>
@@ -71,6 +72,8 @@
                                         <span class="text-primary"><i class="bi bi-truck me-1"></i> Dispatched &amp; In Transit</span>
                                     <?php elseif ($o['status'] === 'confirmed'): ?>
                                         <span class="text-info"><i class="bi bi-check2-circle me-1"></i> Confirmed by Seller</span>
+                                    <?php elseif ($o['status'] === 'undelivered'): ?>
+                                        <span class="text-danger"><i class="bi bi-x-octagon me-1"></i> Not received — courier fee charged to wallet</span>
                                     <?php elseif ($o['status'] === 'placed'): ?>
                                         <span class="text-warning"><i class="bi bi-hourglass-split me-1"></i> Order Placed &bull; Awaiting Seller Confirmation</span>
                                     <?php else: ?>

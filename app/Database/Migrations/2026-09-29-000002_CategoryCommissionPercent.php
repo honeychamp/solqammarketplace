@@ -8,8 +8,10 @@ class CategoryCommissionPercent extends Migration
 {
     public function up()
     {
-        $fields = $this->db->getFieldNames('categories');
-        if (in_array('commission_percent', $fields, true)) {
+        if (method_exists($this->db, 'resetDataCache')) {
+            $this->db->resetDataCache();
+        }
+        if ($this->db->fieldExists('commission_percent', 'categories')) {
             return;
         }
 

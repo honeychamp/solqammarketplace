@@ -3,7 +3,6 @@
 namespace Config;
 
 use CodeIgniter\Events\Events;
-use CodeIgniter\Exceptions\FrameworkException;
 
 /*
  * --------------------------------------------------------------------
@@ -24,17 +23,19 @@ use CodeIgniter\Exceptions\FrameworkException;
 
 Events::on('pre_system', static function (): void {
     if (ENVIRONMENT !== 'testing') {
-        $value = ini_get('zlib.output_compression');
+        // CloudLinux PHP Selector / LiteSpeed often force zlib.output_compression.
+        // CI4 would Whoops; turn it off instead of crashing the storefront.
+        @ini_set('zlib.output_compression', '0');
+        $value  = ini_get('zlib.output_compression');
+        $zlibOn = filter_var($value, FILTER_VALIDATE_BOOLEAN) || (int) $value > 0;
 
-        if (filter_var($value, FILTER_VALIDATE_BOOLEAN) || (int) $value > 0) {
-            throw FrameworkException::forEnabledZlibOutputCompression();
+        if (! $zlibOn) {
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+
+            ob_start(static fn ($buffer) => $buffer);
         }
-
-        while (ob_get_level() > 0) {
-            ob_end_flush();
-        }
-
-        ob_start(static fn ($buffer) => $buffer);
     }
 
     /*
@@ -47,4 +48,8 @@ Events::on('pre_system', static function (): void {
         Events::on('DBQuery', 'CodeIgniter\Debug\Toolbar\Collectors\Database::collect');
         service('toolbar')->respond();
     }
+});
+
+Events::on('post_controller_constructor', static function (): void {
+    \App\Services\Platform\SchemaHeal::run();
 });

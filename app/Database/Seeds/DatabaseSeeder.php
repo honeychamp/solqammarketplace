@@ -22,5 +22,8 @@ class DatabaseSeeder extends Seeder
                 'updated_at' => $now,
             ]);
         }
+
+        $this->call(CategoryMegaMenuSeeder::class);
+        $this->call(LiveMarketplaceSeeder::class);
     }
 }

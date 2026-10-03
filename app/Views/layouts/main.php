@@ -100,7 +100,7 @@
                             ?>
                             <a href="<?= site_url('account/wallet') ?>" class="wallet-badge-pill d-none d-md-inline-flex" title="Solqam Instant Cashback Wallet">
                                 <i class="bi bi-coin text-warning fs-6"></i>
-                                <span>Rs. <?= number_format($walletBalance, 0) ?></span>
+                                <span>Rs. <?= $walletBalance < 0 ? '−' : '' ?><?= number_format(abs($walletBalance), 0) ?></span>
                             </a>
                         <?php endif; ?>
 

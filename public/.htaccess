@@ -1,5 +1,7 @@
-# Disable directory browsing
-Options -Indexes
+# Disable directory browsing (avoid Options +FollowSymLinks — LiteSpeed/PHP selector 500s if Options is denied)
+<IfModule mod_authz_core.c>
+	Options -Indexes
+</IfModule>
 
 # ----------------------------------------------------------------------
 # Rewrite engine
@@ -8,7 +10,6 @@ Options -Indexes
 # Turning on the rewrite engine is necessary for the following rules and features.
 # FollowSymLinks must be enabled for this to work.
 <IfModule mod_rewrite.c>
-	Options +FollowSymlinks
 	RewriteEngine On
 
 	# If you installed CodeIgniter in a subfolder, you will need to

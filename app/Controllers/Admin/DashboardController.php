@@ -60,7 +60,7 @@ class DashboardController extends BaseController
         $adminOpenIds = $db->table('order_items')
             ->select('order_id')
             ->where('seller_id', $adminId)
-            ->whereNotIn('fulfillment_status', ['delivered', 'cancelled', 'returned'])
+            ->whereNotIn('fulfillment_status', ['delivered', 'cancelled', 'returned', 'undelivered'])
             ->groupBy('order_id')
             ->get()
             ->getResultArray();

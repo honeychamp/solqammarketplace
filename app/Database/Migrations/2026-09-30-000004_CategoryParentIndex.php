@@ -19,7 +19,13 @@ class CategoryParentIndex extends Migration
             }
         }
 
-        $this->db->query('ALTER TABLE categories ADD INDEX parent_id (parent_id)');
+        try {
+            $this->db->query('ALTER TABLE categories ADD INDEX parent_id (parent_id)');
+        } catch (\Throwable $e) {
+            if (stripos($e->getMessage(), 'Duplicate') === false) {
+                throw $e;
+            }
+        }
     }
 
     public function down()

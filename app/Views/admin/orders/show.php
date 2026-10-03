@@ -35,6 +35,7 @@ $adminPkgStatus = $adminShipment['status'] ?? 'placed';
                     <option value="confirmed" <?= $adminPkgStatus === 'confirmed' ? 'selected' : '' ?>>Confirmed</option>
                     <option value="shipped" <?= $adminPkgStatus === 'shipped' ? 'selected' : '' ?>>Shipped</option>
                     <option value="delivered" <?= $adminPkgStatus === 'delivered' ? 'selected' : '' ?>>Delivered</option>
+                    <option value="undelivered" <?= $adminPkgStatus === 'undelivered' ? 'selected' : '' ?>>Not received (charge courier fee)</option>
                     <?php if (empty(array_filter($order['items'], static fn ($i) => empty($i['is_admin_item'])))): ?>
                     <option value="cancelled" <?= $order['status'] === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
                     <?php endif; ?>

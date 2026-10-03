@@ -110,7 +110,7 @@ class OrderController extends BaseController
     {
         $adminId       = (int) session()->get('user.id');
         $newStatus     = $this->request->getPost('status');
-        $validStatuses = ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+        $validStatuses = ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled', 'undelivered'];
 
         if (!in_array($newStatus, $validStatuses, true)) {
             return redirect()->back()->with('error', 'Invalid status value.');

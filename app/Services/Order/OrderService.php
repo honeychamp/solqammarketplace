@@ -110,9 +110,10 @@ class OrderService
         }
 
         $goodsAfterDiscount = max(0.0, $totalAmount - $couponDiscount);
-        $payableBeforeWallet = $goodsAfterDiscount + $shippingAmount;
-
         $walletBalance = $this->walletService->getBalance($userId);
+        $deliveryArrears = $this->walletService->getOutstandingDebt($userId);
+        $payableBeforeWallet = $goodsAfterDiscount + $shippingAmount + $deliveryArrears;
+
         $walletAmountUsed = 0.0;
         if ($useWallet && $walletBalance > 0) {
             $walletAmountUsed = min($walletBalance, $payableBeforeWallet);
@@ -162,31 +163,34 @@ class OrderService
         $this->db->transStart();
 
         try {
-            $orderId = $this->orderModel->insert([
+            $orderId = $this->orderModel->insert($this->onlyTableColumns('orders', [
                 'order_number'       => $orderNumber,
                 'user_id'            => $userId,
                 'address_id'         => $addressId,
                 'total_amount'       => $totalAmount,
                 'discount_amount'    => $couponDiscount,
                 'shipping_amount'    => $shippingAmount,
+                'delivery_arrears'   => $deliveryArrears,
                 'coupon_id'          => $couponId,
                 'coupon_code'        => $normalizedCoupon,
                 'coupon_discount'    => $couponDiscount,
                 'wallet_amount_used' => $walletAmountUsed,
+                'pay_later_wallet'   => ($paymentMethod === 'pay_later') ? $finalPayable : 0.0,
+                'pay_later_cleared'  => 0,
                 'final_payable'      => $finalPayable,
                 'commission_rate'    => $commissionRate,
                 'commission_amount'  => $commissionAmount,
                 'cashback_amount'    => $cashbackTotal,
                 'status'             => 'placed',
                 'notes'              => $notes,
-            ]);
+            ]));
+            if ((int) $orderId <= 0) {
+                throw new RuntimeException($this->dbError('Order could not be saved.'));
+            }
 
             foreach ($cartItems as $item) {
                 $subtotal = (float) $item['unit_price'] * (int) $item['quantity'];
-                $locked = $this->db->query(
-                    'SELECT id, stock FROM products WHERE id = ? FOR UPDATE',
-                    [(int) $item['product_id']]
-                )->getRowArray();
+                $locked = $this->lockProductStock((int) $item['product_id']);
                 if (! $locked || (int) $locked['stock'] < (int) $item['quantity']) {
                     throw new RuntimeException('Insufficient stock for product: ' . ($item['product_name'] ?? ''));
                 }
@@ -200,7 +204,7 @@ class OrderService
                 $itemCashbackRate = cashback_rate($item);
                 $itemCashback = cashback_amount($subtotal, $itemCashbackRate);
 
-                $this->orderItemModel->insert([
+                $itemId = $this->orderItemModel->insert($this->onlyTableColumns('order_items', [
                     'order_id'          => $orderId,
                     'product_id'        => $item['product_id'],
                     'variant_id'        => $item['variant_id'] ?? null,
@@ -214,16 +218,21 @@ class OrderService
                     'cashback_percent'  => $itemCashbackRate,
                     'cashback_amount'   => $itemCashback,
                     'fulfillment_status'=> 'placed',
-                ]);
+                ]));
+                if ((int) $itemId <= 0) {
+                    throw new RuntimeException($this->dbError('Order item could not be saved.'));
+                }
 
                 $this->db->table('products')
                     ->where('id', $item['product_id'])
                     ->decrement('stock', $item['quantity']);
-                $this->db->table('products')
-                    ->where('id', $item['product_id'])
-                    ->increment('sold_count', $item['quantity']);
+                if ($this->tableHas('products', 'sold_count')) {
+                    $this->db->table('products')
+                        ->where('id', $item['product_id'])
+                        ->increment('sold_count', $item['quantity']);
+                }
 
-                if (!empty($item['variant_id'])) {
+                if (!empty($item['variant_id']) && $this->db->tableExists('product_variants')) {
                     $this->db->table('product_variants')
                         ->where('id', $item['variant_id'])
                         ->decrement('stock', $item['quantity']);
@@ -239,6 +248,28 @@ class OrderService
                     'order_payment',
                     $orderId,
                     "Payment for Order {$orderNumber}"
+                );
+            }
+
+            if ($deliveryArrears > 0) {
+                $this->walletService->credit(
+                    $userId,
+                    $deliveryArrears,
+                    'delivery_arrears',
+                    (int) $orderId,
+                    "Unpaid courier / Pay later balance added to Order {$orderNumber} payable"
+                );
+                $this->markOpenPayLaterCleared($userId, (int) $orderId);
+            }
+
+            if ($paymentMethod === 'pay_later' && $finalPayable > 0) {
+                $this->walletService->debit(
+                    $userId,
+                    $finalPayable,
+                    'pay_later',
+                    (int) $orderId,
+                    "Pay later remaining for Order {$orderNumber} — wallet minus until paid",
+                    true
                 );
             }
 
@@ -273,15 +304,17 @@ class OrderService
                 $gatewayResponse = json_encode(['method' => 'wallet_full']);
             }
 
-            $this->paymentModel->insert([
-                'order_id'         => $orderId,
-                'payment_method'   => $paymentMethod,
-                'transaction_ref'  => $transactionRef,
-                'amount'           => $finalPayable,
-                'status'           => $paymentStatus,
-                'gateway_response' => $gatewayResponse,
-                'paid_at'          => ($paymentStatus === 'paid') ? date('Y-m-d H:i:s') : null,
-            ]);
+            if ($this->db->tableExists('payments')) {
+                $this->paymentModel->insert($this->onlyTableColumns('payments', [
+                    'order_id'         => $orderId,
+                    'payment_method'   => $paymentMethod,
+                    'transaction_ref'  => $transactionRef,
+                    'amount'           => $finalPayable,
+                    'status'           => $paymentStatus,
+                    'gateway_response' => $gatewayResponse,
+                    'paid_at'          => ($paymentStatus === 'paid') ? date('Y-m-d H:i:s') : null,
+                ]));
+            }
 
             if ($paymentMethod === 'pay_later') {
                 (new PayLaterApplicationModel())->insert([
@@ -314,7 +347,7 @@ class OrderService
             $this->db->transComplete();
 
             if ($this->db->transStatus() === false) {
-                throw new RuntimeException('Checkout transaction failed.');
+                throw new RuntimeException($this->dbError('Checkout transaction failed.'));
             }
 
             $buyer = (new UserModel())->find($userId);
@@ -349,7 +382,56 @@ class OrderService
         } catch (Exception $e) {
             $this->db->transRollback();
             throw $e;
+        } catch (\Throwable $e) {
+            $this->db->transRollback();
+            throw new RuntimeException($this->dbError('Checkout failed: ' . $e->getMessage()));
         }
+    }
+
+    protected function tableHas(string $table, string $field): bool
+    {
+        try {
+            return $this->db->fieldExists($field, $table);
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    protected function onlyTableColumns(string $table, array $row): array
+    {
+        $out = [];
+        foreach ($row as $key => $value) {
+            if ($this->tableHas($table, $key)) {
+                $out[$key] = $value;
+            }
+        }
+
+        return $out;
+    }
+
+    protected function dbError(string $fallback): string
+    {
+        $err = $this->db->error();
+        $msg = trim((string) ($err['message'] ?? ''));
+
+        return $msg !== '' ? ($fallback . ' ' . $msg) : $fallback;
+    }
+
+    protected function lockProductStock(int $productId): ?array
+    {
+        try {
+            $row = $this->db->query(
+                'SELECT id, stock FROM products WHERE id = ? FOR UPDATE',
+                [$productId]
+            )->getRowArray();
+            if ($row) {
+                return $row;
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Product stock lock: ' . $e->getMessage());
+        }
+
+        return $this->db->table('products')->select('id, stock')->where('id', $productId)->get()->getRowArray();
     }
 
     public function confirmOnlinePayment(array $verified, string $gateway): bool
@@ -478,7 +560,7 @@ class OrderService
 
     public function updateOrderStatus(int $orderId, string $newStatus, ?string $note = null, array $extra = []): bool
     {
-        $allowedTransitions = ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled', 'returned'];
+        $allowedTransitions = ['placed', 'confirmed', 'shipped', 'delivered', 'cancelled', 'returned', 'undelivered'];
         if (!in_array($newStatus, $allowedTransitions, true)) {
             throw new RuntimeException("Invalid order status: {$newStatus}");
         }
@@ -494,6 +576,10 @@ class OrderService
 
         if (in_array($newStatus, ['confirmed', 'shipped', 'delivered'], true)) {
             $this->assertOnlinePaymentCleared($orderId);
+        }
+
+        if ($newStatus === 'undelivered' && ! in_array((string) $order['status'], ['shipped', 'undelivered'], true)) {
+            throw new RuntimeException('Mark undelivered only after the parcel was handed to courier.');
         }
 
         $this->db->transStart();
@@ -530,43 +616,24 @@ class OrderService
                     }
                 }
             }
+            $this->settlePayLaterWallet($order);
         } elseif ($newStatus === 'cancelled') {
-            $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
-            foreach ($items as $item) {
-                $this->db->table('products')
-                    ->where('id', $item['product_id'])
-                    ->increment('stock', $item['quantity']);
-                if (!empty($item['variant_id'])) {
-                    $this->db->table('product_variants')
-                        ->where('id', $item['variant_id'])
-                        ->increment('stock', $item['quantity']);
-                }
-            }
-
-            if ((float) $order['wallet_amount_used'] > 0) {
-                $this->walletService->credit(
-                    (int) $order['user_id'],
-                    (float) $order['wallet_amount_used'],
-                    'refund',
+            $this->restockItems($this->orderItemModel->where('order_id', $orderId)->findAll());
+            $this->refundWalletOnVoid($order, 'Cancelled');
+            $this->reversePayLaterWallet($order);
+            $this->restoreDeliveryArrearsOnVoid($order);
+        } elseif ($newStatus === 'undelivered') {
+            if (empty($extra['skip_void_effects'])) {
+                $this->restockItems($this->orderItemModel->where('order_id', $orderId)->findAll());
+                $this->chargeFailedDeliveryFee(
+                    $order,
+                    (float) ($order['shipping_amount'] ?? 0),
                     $orderId,
-                    "Refund of wallet amount for Cancelled Order {$order['order_number']}"
+                    "Courier fee for undelivered order {$order['order_number']}"
                 );
             }
-
-            $cb = $this->cashbackRow((int) $orderId);
-            if ($cb && (float) $cb['amount'] > 0) {
-                try {
-                    $this->walletService->debit(
-                        (int) $order['user_id'],
-                        (float) $cb['amount'],
-                        'refund',
-                        $orderId,
-                        "Reverse cashback for Cancelled Order {$order['order_number']}"
-                    );
-                } catch (\Throwable $e) {
-                    // Ledger already spent; order still cancels.
-                }
-            }
+            $this->refundWalletOnVoid($order, 'Not received');
+            $this->reversePayLaterWallet($order);
         }
 
         $this->orderModel->update($orderId, $updateData);
@@ -642,9 +709,9 @@ class OrderService
 
     public function updateSellerShipment(int $orderId, int $sellerId, string $newStatus, array $extra = [], bool $asAdminCourier = false): bool
     {
-        $allowed = ['confirmed', 'shipped', 'delivered'];
+        $allowed = ['confirmed', 'shipped', 'delivered', 'undelivered'];
         if (!in_array($newStatus, $allowed, true)) {
-            throw new RuntimeException('Sellers may update to Confirmed, Shipped, or Delivered.');
+            throw new RuntimeException('Package status may be Confirmed, Shipped, Delivered, or Not received.');
         }
         $this->assertOnlinePaymentCleared($orderId);
 
@@ -661,11 +728,15 @@ class OrderService
         }
 
         $fulfillBy = (string) ($shipment['fulfill_by'] ?? 'seller');
-        if ($fulfillBy === 'admin' && ! $asAdminCourier && ! $this->isAdminSeller($sellerId) && in_array($newStatus, ['shipped', 'delivered'], true)) {
-            throw new RuntimeException('This package is assigned to Solqam delivery. You cannot mark it shipped or delivered.');
+        if ($fulfillBy === 'admin' && ! $asAdminCourier && ! $this->isAdminSeller($sellerId) && in_array($newStatus, ['shipped', 'delivered', 'undelivered'], true)) {
+            throw new RuntimeException('This package is assigned to Solqam delivery. You cannot mark it shipped, delivered, or not received.');
         }
         if ($fulfillBy === 'seller' && $asAdminCourier && ! $this->isAdminSeller($sellerId)) {
             throw new RuntimeException('Seller is delivering this package. Admin courier is not assigned.');
+        }
+
+        if ($newStatus === 'undelivered' && ! in_array((string) ($shipment['status'] ?? ''), ['shipped', 'undelivered'], true)) {
+            throw new RuntimeException('Mark not received only after this package was handed to courier.');
         }
 
         $data = ['status' => $newStatus];
@@ -689,14 +760,42 @@ class OrderService
             $this->settlePackageOnDelivered($orderId, $sellerId, $method);
         }
 
+        if ($newStatus === 'undelivered') {
+            $orderRow = $this->orderModel->find($orderId);
+            $this->restockItems($this->orderItemModel->where('order_id', $orderId)->where('seller_id', $sellerId)->findAll());
+            $fee = (float) ($shipment['shipping_amount'] ?? 0);
+            if ($fee <= 0 && $orderRow) {
+                $fee = (float) ($orderRow['shipping_amount'] ?? 0);
+            }
+            if ($orderRow) {
+                $this->chargeFailedDeliveryFee(
+                    $orderRow,
+                    $fee,
+                    (int) $shipment['id'],
+                    "Courier fee — buyer did not receive package on order {$orderRow['order_number']}"
+                );
+            }
+        }
+
         $packages = $shipmentModel->where('order_id', $orderId)->findAll();
         if ($packages === []) {
             return $this->updateOrderStatus($orderId, $newStatus, null, $extra);
         }
 
         $statuses = array_column($packages, 'status');
-        if (!in_array('placed', $statuses, true) && !in_array('confirmed', $statuses, true) && !in_array('shipped', $statuses, true) && count(array_unique($statuses)) === 1 && $statuses[0] === 'delivered') {
+        $open = array_intersect($statuses, ['placed', 'confirmed', 'shipped']);
+        $closed = array_unique($statuses);
+        if ($open === [] && $closed === ['delivered']) {
             return $this->updateOrderStatus($orderId, 'delivered', null, $extra);
+        }
+        if ($open === [] && $closed === ['undelivered']) {
+            $orderRow = $this->orderModel->find($orderId);
+            if ($orderRow) {
+                $this->refundWalletOnVoid($orderRow, 'Not received');
+            }
+            return $this->updateOrderStatus($orderId, 'undelivered', null, array_merge($extra, [
+                'skip_void_effects' => true,
+            ]));
         }
         if (in_array('shipped', $statuses, true) || in_array('delivered', $statuses, true)) {
             $order = $this->orderModel->find($orderId);
@@ -864,6 +963,157 @@ class OrderService
         }
     }
 
+    protected function restockItems(array $items): void
+    {
+        foreach ($items as $item) {
+            $this->db->table('products')
+                ->where('id', $item['product_id'])
+                ->increment('stock', $item['quantity']);
+            if (! empty($item['variant_id'])) {
+                $this->db->table('product_variants')
+                    ->where('id', $item['variant_id'])
+                    ->increment('stock', $item['quantity']);
+            }
+        }
+    }
+
+    protected function refundWalletOnVoid(array $order, string $reason): void
+    {
+        $orderId = (int) $order['id'];
+        if ((float) ($order['wallet_amount_used'] ?? 0) > 0 && ! $this->hasLedger($orderId, 'refund', 'wallet amount')) {
+            $this->walletService->credit(
+                (int) $order['user_id'],
+                (float) $order['wallet_amount_used'],
+                'refund',
+                $orderId,
+                "Refund of wallet amount for {$reason} Order {$order['order_number']}"
+            );
+        }
+
+        $cb = $this->cashbackRow($orderId);
+        if ($cb && (float) $cb['amount'] > 0) {
+            try {
+                $this->walletService->debit(
+                    (int) $order['user_id'],
+                    (float) $cb['amount'],
+                    'refund',
+                    $orderId,
+                    "Reverse cashback for {$reason} Order {$order['order_number']}"
+                );
+            } catch (\Throwable $e) {
+                // Ledger already spent; void still proceeds.
+            }
+        }
+    }
+
+    protected function restoreDeliveryArrearsOnVoid(array $order): void
+    {
+        $arrears = (float) ($order['delivery_arrears'] ?? 0);
+        if ($arrears <= 0) {
+            return;
+        }
+        $orderId = (int) $order['id'];
+        if ($this->hasLedger($orderId, 'delivery_fee', 'Restored unpaid courier')) {
+            return;
+        }
+        $this->walletService->debit(
+            (int) $order['user_id'],
+            $arrears,
+            'delivery_fee',
+            $orderId,
+            "Restored unpaid courier fee after void of Order {$order['order_number']}",
+            true
+        );
+    }
+
+    protected function markOpenPayLaterCleared(int $userId, int $exceptOrderId): void
+    {
+        if (! $this->tableHas('orders', 'pay_later_cleared')) {
+            return;
+        }
+        $this->db->table('orders')
+            ->where('user_id', $userId)
+            ->where('pay_later_cleared', 0)
+            ->where('pay_later_wallet >', 0)
+            ->where('id !=', $exceptOrderId)
+            ->update(['pay_later_cleared' => 1]);
+    }
+
+    protected function flagPayLaterCleared(int $orderId): void
+    {
+        if (! $this->tableHas('orders', 'pay_later_cleared')) {
+            return;
+        }
+        $this->orderModel->update($orderId, ['pay_later_cleared' => 1]);
+    }
+
+    protected function settlePayLaterWallet(array $order): void
+    {
+        $amount = round((float) ($order['pay_later_wallet'] ?? 0), 2);
+        if ($amount <= 0 || (int) ($order['pay_later_cleared'] ?? 0) === 1) {
+            return;
+        }
+        $orderId = (int) $order['id'];
+        if (! $this->hasLedger($orderId, 'pay_later_settled')) {
+            $this->walletService->credit(
+                (int) $order['user_id'],
+                $amount,
+                'pay_later_settled',
+                $orderId,
+                "Pay later amount collected for Order {$order['order_number']}"
+            );
+        }
+        $this->flagPayLaterCleared($orderId);
+    }
+
+    protected function reversePayLaterWallet(array $order): void
+    {
+        $amount = round((float) ($order['pay_later_wallet'] ?? 0), 2);
+        if ($amount <= 0 || (int) ($order['pay_later_cleared'] ?? 0) === 1) {
+            return;
+        }
+        $orderId = (int) $order['id'];
+        if (! $this->hasLedger($orderId, 'pay_later_settled') && ! $this->hasLedger($orderId, 'refund', 'Pay later')) {
+            $this->walletService->credit(
+                (int) $order['user_id'],
+                $amount,
+                'refund',
+                $orderId,
+                "Reverse Pay later wallet minus for Order {$order['order_number']}"
+            );
+        }
+        $this->flagPayLaterCleared($orderId);
+    }
+
+    /**
+     * COD / unpaid shipping still owed after courier ran but buyer did not take the parcel.
+     * Prepaid PayFast already collected the fee — do not debit wallet again.
+     */
+    protected function chargeFailedDeliveryFee(array $order, float $fee, int $referenceId, string $label): void
+    {
+        $fee = round($fee, 2);
+        if ($fee <= 0 || $referenceId <= 0) {
+            return;
+        }
+        if ($this->hasLedger($referenceId, 'delivery_fee')) {
+            return;
+        }
+
+        $payment = $this->paymentModel->where('order_id', (int) $order['id'])->first();
+        if ($payment && ($payment['status'] ?? '') === 'paid' && is_online_gateway($payment['payment_method'] ?? '')) {
+            return;
+        }
+
+        $this->walletService->debit(
+            (int) $order['user_id'],
+            $fee,
+            'delivery_fee',
+            $referenceId,
+            $label,
+            true
+        );
+    }
+
     protected function hasLedger(int $orderId, string $type, string $needle = ''): bool
     {
         $builder = $this->db->table('wallet_transactions')
@@ -947,6 +1197,15 @@ class OrderService
 
     protected function createShipments(int $orderId, array $cartItems, float $shippingAmount): void
     {
+        try {
+            if (! $this->db->tableExists('shipments')) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Shipments table: ' . $e->getMessage());
+
+            return;
+        }
         $sellerIds = [];
         foreach ($cartItems as $item) {
             $sellerIds[(int) $item['seller_id']] = true;
@@ -960,13 +1219,13 @@ class OrderService
         $shipmentModel = new ShipmentModel();
         foreach ($ids as $i => $sellerId) {
             $amt = ($i === $count - 1) ? round($shippingAmount - ($share * ($count - 1)), 2) : $share;
-            $shipmentModel->insert([
-                'order_id'         => $orderId,
-                'seller_id'        => $sellerId,
-                'fulfill_by'       => $this->isAdminSeller((int) $sellerId) ? 'admin' : 'seller',
-                'status'           => 'placed',
-                'shipping_amount'  => $amt,
-            ]);
+            $shipmentModel->insert($this->onlyTableColumns('shipments', [
+                'order_id'        => $orderId,
+                'seller_id'       => $sellerId,
+                'fulfill_by'      => $this->isAdminSeller((int) $sellerId) ? 'admin' : 'seller',
+                'status'          => 'placed',
+                'shipping_amount' => $amt,
+            ]));
         }
     }
 

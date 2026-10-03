@@ -69,9 +69,11 @@ class MailService
             ];
             $firstPort = $attempts[0]['port'];
             if ($firstPort === 465) {
+                $attempts[] = ['port' => 465, 'crypto' => ''];
                 $attempts[] = ['port' => 587, 'crypto' => 'tls'];
             } elseif ($firstPort === 587) {
                 $attempts[] = ['port' => 465, 'crypto' => 'ssl'];
+                $attempts[] = ['port' => 465, 'crypto' => ''];
             }
 
             $ok = false;

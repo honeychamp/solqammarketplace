@@ -72,9 +72,9 @@ class OrderController extends BaseController
         }
 
         $newStatus = $this->request->getPost('status');
-        $sellerAllowedStatuses = ['confirmed', 'shipped', 'delivered'];
+        $sellerAllowedStatuses = ['confirmed', 'shipped', 'delivered', 'undelivered'];
         if (!in_array($newStatus, $sellerAllowedStatuses, true)) {
-            return redirect()->back()->with('error', 'Invalid status. Sellers may update to: Confirmed, Shipped, or Delivered.');
+            return redirect()->back()->with('error', 'Invalid status. Use Confirmed, Shipped, Delivered, or Not received.');
         }
 
         try {

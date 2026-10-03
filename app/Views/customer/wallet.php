@@ -25,7 +25,18 @@
                         <i class="bi bi-shield-check me-1"></i> Audit Protected
                     </span>
                 </div>
-                <h1 class="display-5 fw-bold mb-2 font-monospace">Rs. <?= number_format($balance, 2) ?></h1>
+                <h1 class="display-5 fw-bold mb-2 font-monospace <?= $balance < 0 ? 'text-warning' : '' ?>">
+                    <?php if ($balance < 0): ?>
+                        − Rs. <?= number_format(abs($balance), 2) ?>
+                    <?php else: ?>
+                        Rs. <?= number_format($balance, 2) ?>
+                    <?php endif; ?>
+                </h1>
+                <?php if ($balance < 0): ?>
+                    <div class="alert alert-warning text-dark py-2 px-3 small mb-3">
+                        You are in minus. Unpaid courier or Pay later remaining Rs. <?= number_format(abs($balance), 2) ?> is added to your next product purchase.
+                    </div>
+                <?php endif; ?>
                 <div class="small opacity-75 mb-3">PKR &bull; Zero static balance column &bull; Dynamic ledger sum</div>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge bg-white rounded-pill px-3 py-1.5 small fw-bold" style="color: var(--sol-primary);">
@@ -61,10 +72,16 @@
                             <strong>Pay at checkout:</strong> If wallet is more than the bill, only the bill is deducted and leftover stays in wallet. If wallet is less, remaining is JazzCash / EasyPaisa / card or Pay later (CNIC + bill copies).
                         </div>
                     </li>
-                    <li class="d-flex">
-                        <i class="bi bi-check-circle-fill text-success fs-5 me-3 flex-shrink-0"></i>
+                    <li class="d-flex mb-3">
+                        <i class="bi bi-truck text-danger fs-5 me-3 flex-shrink-0"></i>
                         <div>
-                            <strong>Append-Only Integrity:</strong> Entries are immutable. Current balance is computed mathematically via <code>SUM(CASE WHEN credit THEN amount ELSE -amount END)</code>.
+                            <strong>Not received after courier:</strong> If the parcel is dispatched and you do not take it, the delivery fee is still charged to this wallet. If the wallet is short, the balance goes minus. Your next order adds that remaining amount under the product total.
+                        </div>
+                    </li>
+                    <li class="d-flex">
+                        <i class="bi bi-calendar2-week text-warning fs-5 me-3 flex-shrink-0"></i>
+                        <div>
+                            <strong>Pay later remaining:</strong> Jo amount baad mein deni hai woh wallet mein minus show hoti hai jab tak aap pay na karein. Agli purchase par ye remaining amount product ke sath add ho jati hai. Collect / deliver hone par minus clear.
                         </div>
                     </li>
                 </ul>

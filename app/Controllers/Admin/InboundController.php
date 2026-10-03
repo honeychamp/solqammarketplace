@@ -10,15 +10,28 @@ class InboundController extends BaseController
 {
     public function index()
     {
-        $packages = (new ShipmentModel())
-            ->select('shipments.*, orders.order_number, orders.final_payable, seller_profiles.store_name, users.name as seller_name')
-            ->join('orders', 'orders.id = shipments.order_id')
-            ->join('seller_profiles', 'seller_profiles.user_id = shipments.seller_id', 'left')
-            ->join('users', 'users.id = shipments.seller_id', 'left')
-            ->where('shipments.fulfill_by', 'admin')
-            ->whereNotIn('shipments.status', ['delivered', 'cancelled'])
-            ->orderBy('shipments.id', 'DESC')
-            ->findAll(100);
+        $packages = [];
+        try {
+            $db = \Config\Database::connect();
+            if (! $db->tableExists('shipments')) {
+                throw new \RuntimeException('shipments table missing');
+            }
+            $model = new ShipmentModel();
+            $model->select('shipments.*, orders.order_number, orders.final_payable, seller_profiles.store_name, users.name as seller_name')
+                ->join('orders', 'orders.id = shipments.order_id')
+                ->join('seller_profiles', 'seller_profiles.user_id = shipments.seller_id', 'left')
+                ->join('users', 'users.id = shipments.seller_id', 'left');
+            if ($db->fieldExists('fulfill_by', 'shipments')) {
+                $model->where('shipments.fulfill_by', 'admin');
+            }
+            $packages = $model
+                ->whereNotIn('shipments.status', ['delivered', 'cancelled', 'undelivered'])
+                ->orderBy('shipments.id', 'DESC')
+                ->findAll(100);
+        } catch (\Throwable $e) {
+            log_message('error', 'Admin inbound: ' . $e->getMessage());
+            $packages = [];
+        }
 
         return view('admin/inbound/index', [
             'title'    => 'Seller inbound — Solqam delivery',

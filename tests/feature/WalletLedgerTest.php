@@ -115,4 +115,20 @@ final class WalletLedgerTest extends CIUnitTestCase
         $balance = $this->walletService->getBalance($this->testUserId);
         $this->assertSame(250.00, $balance);
     }
+
+    public function testDebitAllowNegativeGoesBelowZero(): void
+    {
+        $this->walletService->debit(
+            $this->testUserId,
+            350.00,
+            'delivery_fee',
+            404,
+            'Failed delivery courier fee',
+            true
+        );
+
+        $balance = $this->walletService->getBalance($this->testUserId);
+        $this->assertSame(-350.00, $balance);
+        $this->assertSame(350.00, $this->walletService->getOutstandingDebt($this->testUserId));
+    }
 }

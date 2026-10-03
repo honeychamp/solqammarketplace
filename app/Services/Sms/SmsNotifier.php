@@ -78,6 +78,11 @@ class SmsNotifier
         self::send($phone, "Solqam: Order {$orderNumber} cancelled. Wallet amounts are refunded if used.", 'order_cancelled');
     }
 
+    public static function orderUndelivered(string $phone, string $orderNumber): void
+    {
+        self::send($phone, "Solqam: Order {$orderNumber} was not received. Courier fee is charged to your wallet (wallet can go minus). It will be added to your next order.", 'order_undelivered');
+    }
+
     public static function notifyOrderStatus(array $order, string $newStatus, array $extra = []): void
     {
         $phone = (string) ($extra['phone'] ?? '');
@@ -91,6 +96,7 @@ class SmsNotifier
             'shipped'   => self::orderShipped($phone, $num, (string) ($extra['courier'] ?? $order['courier'] ?? ''), (string) ($extra['tracking_number'] ?? $order['tracking_number'] ?? '')),
             'delivered' => self::orderDelivered($phone, $num),
             'cancelled' => self::orderCancelled($phone, $num),
+            'undelivered' => self::orderUndelivered($phone, $num),
             default     => null,
         };
     }

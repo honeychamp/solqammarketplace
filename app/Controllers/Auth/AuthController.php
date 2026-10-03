@@ -182,8 +182,8 @@ class AuthController extends BaseController
 
                 $mailOk = \App\Services\Mail\MailService::$lastOk;
                 $flash = $mailOk
-                    ? 'Account created. We sent a verification code to your email.'
-                    : 'Account created, but the verification email did not send. Open Resend code. If it still fails, SMTP is blocking delivery to Gmail.';
+                    ? 'Account created. We sent a verification code to your email. Check inbox and spam.'
+                    : self::otpMailFailMessage((string) ($post['email'] ?? ''));
 
                 return redirect()->to('/verify-otp')->with($mailOk ? 'success' : 'error', $flash);
 
@@ -257,12 +257,13 @@ class AuthController extends BaseController
         $this->authService->resendSignupOtp($phone);
 
         $mailOk = \App\Services\Mail\MailService::$lastOk;
+        $user   = $this->userModel->where('phone', $phone)->first();
 
         return redirect()->to('/verify-otp')->with(
             $mailOk ? 'success' : 'error',
             $mailOk
-                ? 'A new code was sent to your email.'
-                : 'The email still did not send. Check inbox/spam, and confirm SMTP in .env (from address must be allowed to send to Gmail).'
+                ? 'A new code was sent to your email. Check inbox and spam.'
+                : self::otpMailFailMessage((string) ($user['email'] ?? ''))
         );
     }
 
@@ -364,6 +365,27 @@ class AuthController extends BaseController
         return view('auth/forgot_reset', [
             'title' => 'Set New Password — Solqam Market Place',
         ]);
+    }
+
+    protected static function otpMailFailMessage(string $email): string
+    {
+        $email = strtolower(trim($email));
+        $host  = strtolower((string) parse_url('http://' . $email, PHP_URL_HOST));
+        if (str_contains($email, '@')) {
+            $host = substr($email, strrpos($email, '@') + 1);
+        }
+        $debug = strtolower(\App\Services\Mail\MailService::$lastError);
+        $sameDomain = $host === 'solqam.com' || str_ends_with($host, '.solqam.com');
+        $unknownBox = str_contains($debug, 'user unknown')
+            || str_contains($debug, 'no such user')
+            || str_contains($debug, 'mailbox unavailable')
+            || str_contains($debug, '550');
+
+        if ($sameDomain || $unknownBox) {
+            return 'Account created, but this email address has no mailbox (so the code could not be delivered). Use a real Gmail, Yahoo or Outlook address — then the code arrives. You can still sign in with your password.';
+        }
+
+        return 'Account created, but the verification email did not send. Use Resend code. Real Gmail/Yahoo inboxes receive OTP when SMTP is working. You can still sign in with your password.';
     }
 
     public function logout()

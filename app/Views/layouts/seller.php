@@ -108,7 +108,7 @@
             <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-wallet2"></i></span><span class="label">Payouts</span></span></li>
             <?php endif; ?>
             <li class="nav-item mt-3">
-                <a href="<?= site_url('/') ?>" target="_blank" class="nav-link">
+                <a href="<?= site_url('store/' . (int) session()->get('user.id')) ?>" target="_blank" class="nav-link">
                     <span class="nav-ico"><i class="bi bi-shop-window"></i></span><span class="label">View storefront</span>
                 </a>
             </li>

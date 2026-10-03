@@ -53,6 +53,7 @@ class CheckoutController extends BaseController
 
         $addresses     = $this->addressModel->getUserAddresses($userId);
         $walletBalance = $this->walletService->getBalance($userId);
+        $walletDebt    = $this->walletService->getOutstandingDebt($userId);
         $defaultAddr   = $addresses[0] ?? null;
         $shippingQuote = $this->shippingService->quote(
             $defaultAddr['city'] ?? null,
@@ -78,6 +79,7 @@ class CheckoutController extends BaseController
             'subtotal'       => $subtotal,
             'addresses'      => $addresses,
             'walletBalance'  => $walletBalance,
+            'walletDebt'     => $walletDebt,
             'shippingQuote'  => $shippingQuote,
             'couponCode'     => $couponCode,
             'couponDiscount' => $couponDiscount,

@@ -44,6 +44,7 @@
                                     <select name="status" class="form-select form-select-sm" style="width:130px">
                                         <option value="shipped">Shipped</option>
                                         <option value="delivered">Delivered</option>
+                                        <option value="undelivered">Not received</option>
                                     </select>
                                     <input type="text" name="courier" class="form-control form-control-sm" placeholder="Courier" style="width:110px">
                                     <input type="text" name="tracking_number" class="form-control form-control-sm" placeholder="Tracking" style="width:110px">
