@@ -11,8 +11,8 @@
                     'subtitle'    => 'Electronics, fashion, groceries and beauty from verified sellers — with Cash on Delivery, JazzCash, EasyPaisa and cards.',
                     'link_url'    => site_url('shop'),
                     'image_path'  => '',
-                    'badge_text'  => 'Solqam Festival - Pakistan',
-                    'button_text' => 'Shop mega deals',
+                    'badge_text'  => 'Solqam Marketplace',
+                    'button_text' => 'Shop now',
                 ]];
                 ?>
                 <div id="heroCarousel" class="carousel slide h-100 rounded-4 overflow-hidden shadow-sm" data-bs-ride="carousel">
@@ -24,8 +24,8 @@
                                 $img = base_url(ltrim($img, '/'));
                             }
                             $href  = $banner['link_url'] ?: site_url('shop');
-                            $btn   = trim((string) ($banner['button_text'] ?? $banner['button'] ?? '')) ?: 'Shop mega deals';
-                            $badge = trim((string) ($banner['badge_text'] ?? $banner['badge'] ?? '')) ?: 'Solqam Festival - Pakistan';
+                            $btn   = trim((string) ($banner['button_text'] ?? $banner['button'] ?? '')) ?: 'Shop now';
+                            $badge = trim((string) ($banner['badge_text'] ?? $banner['badge'] ?? '')) ?: 'Solqam Marketplace';
                             $photoStyle = $img !== ''
                                 ? 'background-image: url(\'' . htmlspecialchars($img, ENT_QUOTES, 'UTF-8') . '\');'
                                 : '';
@@ -240,7 +240,7 @@
                 <?= view('customer/_deal_grid', [
                     'dealProducts' => $flashProducts ?? [],
                     'emptyTitle'   => 'No flash deals live',
-                    'emptyCopy'    => 'Timer stays 00 until an active Flash Sale has approved SKUs. Sellers join from Seller Hub; admin approves.',
+                    'emptyCopy'    => 'Timed deals will appear here when a flash sale is running.',
                 ]) ?>
             </div>
         </div>
@@ -255,7 +255,7 @@
             <div class="flash-sale-header flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div>
-                        <div class="sf-eyebrow mb-1 text-solqam-accent">Festival</div>
+                        <div class="sf-eyebrow mb-1 text-solqam-accent">Mega sale</div>
                         <h4 class="fw-bold mb-0 text-dark"><?= esc($megaSale['title'] ?? 'Mega Sale') ?></h4>
                     </div>
                     <div class="countdown-box ms-md-2" data-ends="<?= esc($megaSale['ends_at'] ?? '') ?>">
@@ -267,7 +267,7 @@
                         <span class="countdown-digit">00</span>
                     </div>
                 </div>
-                <a href="<?= site_url('shop') ?>" class="btn btn-solqam-accent btn-sm px-3 rounded-pill text-white">Shop festival</a>
+                <a href="<?= site_url('shop') ?>" class="btn btn-solqam-accent btn-sm px-3 rounded-pill text-white">Shop the sale</a>
             </div>
             <?php if (!empty($megaSale['rules_note'])): ?>
                 <p class="small text-muted mb-3"><?= esc($megaSale['rules_note']) ?></p>
@@ -275,8 +275,8 @@
             <div class="row g-3">
                 <?= view('customer/_deal_grid', [
                     'dealProducts' => $megaProducts ?? [],
-                    'emptyTitle'   => 'Festival is live — deals coming',
-                    'emptyCopy'    => 'Sellers can join this Mega Sale from Seller Hub. Approved SKUs appear here.',
+                    'emptyTitle'   => 'Mega sale is on',
+                    'emptyCopy'    => 'Sale products will appear here once they are listed.',
                 ]) ?>
             </div>
         </div>

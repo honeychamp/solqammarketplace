@@ -26,7 +26,7 @@ class OrderController extends BaseController
         $orders = $this->orderModel->getCustomerOrders($userId);
 
         return view('customer/orders', [
-            'title'  => 'My Orders — Solqam Market Place',
+            'title'  => 'My Orders — Solqam Marketplace',
             'orders' => $orders,
         ]);
     }
@@ -43,7 +43,7 @@ class OrderController extends BaseController
         $existingReturn = $this->returnModel->where('order_id', $id)->first();
 
         return view('customer/order_detail', [
-            'title'          => "Order {$order['order_number']} — Solqam Market Place",
+            'title'          => "Order {$order['order_number']} — Solqam Marketplace",
             'order'          => $order,
             'existingReturn' => $existingReturn,
         ]);

@@ -23,13 +23,13 @@
             </thead>
             <tbody>
             <?php if (empty($buyers)): ?>
-                <tr><td colspan="7" class="text-center text-muted py-5">No buyers yet.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-5">No buyers yet.</td></tr>
             <?php else: ?>
                 <?php foreach ($buyers as $b): ?>
                     <tr>
                         <td class="fw-semibold"><?= esc($b['name']) ?></td>
                         <td><?= esc($b['phone']) ?></td>
-                        <td><?= (int) $b['orders'] ?></td>
+                        <td><?= (int) ($b['lines'] ?? $b['orders']) ?></td>
                         <td>Rs. <?= number_format($b['goods'], 0) ?></td>
                         <td class="text-success">Rs. <?= number_format($b['cashback'] ?? 0, 0) ?></td>
                         <td class="text-danger">Rs. <?= number_format($b['commission'], 0) ?></td>

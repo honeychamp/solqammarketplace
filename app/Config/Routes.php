@@ -14,6 +14,8 @@ $routes->get('compare', 'Customer\CatalogController::compare');
 $routes->get('compare/toggle/(:num)', 'Customer\CatalogController::compareToggle/$1');
 $routes->get('/', 'Customer\HomeController::index');
 $routes->get('shop', 'Customer\CatalogController::index');
+$routes->get('flash-deals', 'Customer\CatalogController::flashDeals');
+$routes->get('categories', 'Customer\CatalogController::index');
 $routes->get('track', 'Customer\TrackController::index');
 $routes->post('track', 'Customer\TrackController::index');
 $routes->get('store/(:num)', 'Customer\StoreController::show/$1');

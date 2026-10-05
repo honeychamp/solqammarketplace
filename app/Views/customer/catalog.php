@@ -54,7 +54,7 @@
                         </div>
                         <div class="input-group input-group-sm">
                             <span class="input-group-text bg-light">Max</span>
-                            <input type="number" name="max_price" class="form-control" placeholder="e.g. 15000" value="<?= esc($filters['max_price'] ?? '') ?>">
+                            <input type="number" name="max_price" class="form-control" placeholder="Max" value="<?= esc($filters['max_price'] ?? '') ?>">
                         </div>
                     </div>
 

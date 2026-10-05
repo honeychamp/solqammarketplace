@@ -488,18 +488,22 @@ body {
     overflow: hidden;
     position: relative;
     isolation: isolate;
-    background:
+    background-color: #07176E;
+    background-image:
         radial-gradient(900px 420px at 88% -10%, rgba(240, 20, 47, 0.55), transparent 42%),
         radial-gradient(700px 320px at -10% 110%, rgba(245, 158, 11, 0.28), transparent 40%),
         linear-gradient(145deg, #040B3A 0%, #07176E 38%, #0B30E6 78%, #1A46F0 100%);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
     color: #ffffff;
     min-height: 420px;
     box-shadow: 0 28px 60px -18px rgba(7, 23, 110, 0.55);
 }
 
 .hero-slider-card.has-photo {
-    background-size: cover;
-    background-position: center;
+    background-image: none;
+    background-color: #040B3A;
 }
 .hero-slider-card.has-photo::after {
     content: "";
@@ -1148,7 +1152,7 @@ body {
     }
 }
 
-/* Brand lockup — Solqam Market Place */
+/* Brand lockup — Solqam Marketplace */
 .brand-lockup {
     display: inline-flex;
     flex-direction: column;
@@ -1840,7 +1844,12 @@ body {
 @media (max-width: 991.98px) {
     .sf-rail,
     .sf-rail.sf-rail-compact { grid-template-columns: 1fr; }
+    .sf-hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
     .sf-hero-stats { grid-template-columns: 1fr; }
+    .hero-slider-card .btn { white-space: nowrap; }
+    img, svg { max-width: 100%; }
 }
 
 .sf-panel {

@@ -166,7 +166,7 @@ class DashboardController extends BaseController
         uasort($productSales, fn($a, $b) => $b['revenue'] <=> $a['revenue']);
 
         return view('seller/performance', [
-            'title'        => 'Seller Performance — Solqam Market Place',
+            'title'        => 'Seller Performance — Solqam Marketplace',
             'productSales' => $productSales,
         ]);
     }

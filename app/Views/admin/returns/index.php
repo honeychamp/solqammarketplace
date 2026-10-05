@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1">Returns &amp; Refunds Management</h4>
-        <p class="text-secondary small mb-0">Review buyer claims. Approvals automatically credit the customer's Solqam Wallet Ledger</p>
+        <p class="text-secondary small mb-0">Approve to credit the buyer and cut the same goods from seller or Solqam Mall wallets.</p>
     </div>
 </div>
 
@@ -48,7 +48,7 @@
                                 <?php if ($r['status'] === 'requested'): ?>
                                     <form action="<?= site_url('admin/returns/' . $r['id'] . '/approve') ?>" method="POST" class="d-inline">
                                         <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 me-1" onclick="return confirm('Approve this return? Rs. <?= number_format($r['refund_amount'], 2) ?> will be credited immediately to customer wallet ledger.');">
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 me-1" onclick="return confirm('Approve? Buyer wallet +Rs. <?= number_format($r['refund_amount'], 2) ?>. Seller/admin wallets will be cut for the goods.');">
                                             <i class="bi bi-check-lg"></i> Approve &amp; Refund
                                         </button>
                                     </form>

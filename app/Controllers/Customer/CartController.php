@@ -51,7 +51,7 @@ class CartController extends BaseController
         }
 
         return view('customer/cart', [
-            'title'           => 'Shopping Cart — Solqam Market Place',
+            'title'           => 'Shopping Cart — Solqam Marketplace',
             'cart'            => $cart,
             'items'           => $items,
             'subtotal'        => $subtotal,

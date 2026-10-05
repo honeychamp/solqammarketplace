@@ -5,7 +5,7 @@
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5">
                 <h1 class="h3 fw-bold mb-2">Seller policies</h1>
-                <p class="text-muted">Rules for listing, dispatch, and customer care on Solqam Market Place.</p>
+                <p class="text-muted">Rules for listing, dispatch, and customer care on Solqam Marketplace.</p>
                 <h5 class="fw-bold">Listings</h5>
                 <ul class="text-secondary">
                     <li>Products must be genuine, accurately described, and legally sellable in Pakistan.</li>

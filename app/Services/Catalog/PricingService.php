@@ -70,8 +70,15 @@ class PricingService
             return [];
         }
 
+        $db = \Config\Database::connect();
+        $cashback = $db->fieldExists('cashback_percent', 'products')
+            ? 'products.cashback_percent'
+            : '0 as cashback_percent';
+        $sold = $db->fieldExists('sold_count', 'products')
+            ? 'products.sold_count'
+            : '0 as sold_count';
         $items = $this->flashItemModel
-            ->select('flash_sale_items.*, products.name, products.price as original_price, products.stock, products.sold_count, products.cashback_percent, seller_profiles.store_name, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
+            ->select("flash_sale_items.*, products.name, products.price as original_price, products.stock, {$sold}, {$cashback}, seller_profiles.store_name, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image")
             ->join('products', 'products.id = flash_sale_items.product_id')
             ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
             ->where('flash_sale_items.flash_sale_id', $sale['id'])

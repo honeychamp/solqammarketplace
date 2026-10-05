@@ -6,7 +6,7 @@
         <div class="col-md-8 col-lg-7">
             <div class="card shadow-sm border-0 rounded-4 p-4 p-md-5 bg-white">
                 <div class="text-center mb-4">
-                    <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20260929h" alt="Solqam Market Place" height="72" class="mb-3">
+                    <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20261005c" alt="Solqam Marketplace" height="72" class="mb-3">
                     <h3 class="fw-bold text-dark mb-1">Join SOLQAM Marketplace</h3>
                     <p class="text-secondary small">Pakistan's premier multi-vendor e-commerce platform</p>
                 </div>
@@ -52,7 +52,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold small text-muted">Full Name <span class="text-danger">*</span></label>
-                                <input type="text" name="name" id="customer_name" class="form-control" placeholder="e.g. Ahmed Raza" value="<?= old('name') ?>" required>
+                                <input type="text" name="name" id="customer_name" class="form-control" placeholder="Full name" value="<?= old('name') ?>" required>
                             </div>
 
                             <div class="row g-3 mb-3">
@@ -97,11 +97,11 @@
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">Owner Full Name <span class="text-danger">*</span></label>
-                                    <input type="text" name="name" id="seller_name" class="form-control" placeholder="e.g. Tariq Mehmood" value="<?= old('name') ?>" required>
+                                    <input type="text" name="name" id="seller_name" class="form-control" placeholder="Owner full name" value="<?= old('name') ?>" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">Store / Brand Name <span class="text-danger">*</span></label>
-                                    <input type="text" name="store_name" id="seller_store_name" class="form-control" placeholder="e.g. Solqam Express Store" value="<?= old('store_name') ?>" required>
+                                    <input type="text" name="store_name" id="seller_store_name" class="form-control" placeholder="Store name" value="<?= old('store_name') ?>" required>
                                 </div>
                             </div>
 

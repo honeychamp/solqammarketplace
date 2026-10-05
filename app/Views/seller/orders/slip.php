@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title><?= esc($title ?? 'Packing slip') ?></title>
+    <?= view('partials/favicon') ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>@media print { .no-print { display: none !important; } }</style>
 </head>

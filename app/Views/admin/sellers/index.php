@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1">Marketplace Sellers</h4>
-        <p class="text-secondary small mb-0">New sellers stay pending until you approve them. Until then they can sign in but cannot list products or handle orders.</p>
+        <p class="text-secondary small mb-0">New sellers stay pending until you approve them. The customers column is unique buyers who ordered from that store.</p>
     </div>
 </div>
 
@@ -27,6 +27,7 @@
                         <th>Store / Business</th>
                         <th>Owner</th>
                         <th>City</th>
+                        <th>Customers</th>
                         <th>CNIC / NTN</th>
                         <th>Status</th>
                         <th class="text-end">Action</th>
@@ -44,6 +45,12 @@
                                 <small class="text-muted"><i class="bi bi-telephone me-1"></i> <?= esc($s['owner_phone']) ?></small>
                             </td>
                             <td><?= esc($s['city'] ?: 'Pakistan') ?></td>
+                            <td>
+                                <a href="<?= site_url('admin/sellers/' . $s['id']) ?>#seller-buyers" class="fw-bold text-decoration-none">
+                                    <?= (int) ($s['customer_count'] ?? 0) ?>
+                                </a>
+                                <div class="small text-muted">unique buyers</div>
+                            </td>
                             <td><code><?= esc($s['cnic_or_ntn'] ?: 'Not Provided') ?></code></td>
                             <td>
                                 <span class="badge bg-<?= match($s['approval_status']) { 'approved' => 'success', 'pending' => 'warning text-dark', default => 'danger' } ?>">

@@ -16,7 +16,7 @@ class AccountController extends BaseController
         $transactions = $walletService->getTransactions($userId, 50);
 
         return view('customer/wallet', [
-            'title'        => 'My Solqam Wallet Ledger — Solqam Market Place',
+            'title'        => 'My Solqam Wallet Ledger — Solqam Marketplace',
             'balance'      => $balance,
             'transactions' => $transactions,
         ]);
@@ -53,7 +53,7 @@ class AccountController extends BaseController
         $addresses = $addressModel->getUserAddresses($userId);
 
         return view('customer/addresses', [
-            'title'     => 'My Address Book — Solqam Market Place',
+            'title'     => 'My Address Book — Solqam Marketplace',
             'addresses' => $addresses,
         ]);
     }

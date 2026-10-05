@@ -8,7 +8,7 @@ namespace App\Services\Platform;
  */
 class SchemaHeal
 {
-    public const VERSION = 6;
+    public const VERSION = 7;
 
     public static function run(): void
     {
@@ -114,6 +114,7 @@ class SchemaHeal
             }
 
             self::ensureAdminMallStores($db);
+            self::healBannersTable($db, $forge);
 
             if (! is_dir(WRITEPATH . 'cache')) {
                 @mkdir(WRITEPATH . 'cache', 0755, true);
@@ -133,6 +134,37 @@ class SchemaHeal
             $forge->addColumn($table, [$column => $def]);
         } catch (\Throwable $e) {
             log_message('error', "SchemaHeal {$table}.{$column}: " . $e->getMessage());
+        }
+    }
+
+    protected static function healBannersTable($db, $forge): void
+    {
+        if (! $db->tableExists('banners')) {
+            return;
+        }
+        self::addColumn($db, $forge, 'banners', 'badge_text', [
+            'type'       => 'VARCHAR',
+            'constraint' => 80,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'banners', 'button_text', [
+            'type'       => 'VARCHAR',
+            'constraint' => 80,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'banners', 'starts_at', [
+            'type' => 'DATETIME',
+            'null' => true,
+        ]);
+        self::addColumn($db, $forge, 'banners', 'ends_at', [
+            'type' => 'DATETIME',
+            'null' => true,
+        ]);
+        try {
+            $db->query("UPDATE `banners` SET `starts_at` = NULL WHERE `starts_at` IS NOT NULL AND (`starts_at` = '0000-00-00 00:00:00' OR `starts_at` = '0000-00-00')");
+            $db->query("UPDATE `banners` SET `ends_at` = NULL WHERE `ends_at` IS NOT NULL AND (`ends_at` = '0000-00-00 00:00:00' OR `ends_at` = '0000-00-00')");
+        } catch (\Throwable $e) {
+            log_message('error', 'SchemaHeal banners dates: ' . $e->getMessage());
         }
     }
 

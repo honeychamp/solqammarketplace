@@ -10,7 +10,7 @@ class Payments extends BaseConfig
 
     public string $payfastMerchantId = '';
     public string $payfastSecuredKey = '';
-    public string $payfastMerchantName = 'Solqam Market Place';
+    public string $payfastMerchantName = 'Solqam Marketplace';
     public string $payfastTokenSandbox = 'https://ipguat.apps.net.pk/Ecommerce/api/Transaction/GetAccessToken';
     public string $payfastTokenLive = 'https://ipg.apps.net.pk/Ecommerce/api/Transaction/GetAccessToken';
     public string $payfastCheckoutSandbox = 'https://ipguat.apps.net.pk/Ecommerce/api/Transaction/PostTransaction';

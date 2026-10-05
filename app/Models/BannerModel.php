@@ -21,14 +21,26 @@ class BannerModel extends Model
             ->findAll();
 
         return array_values(array_filter($rows, static function ($b) use ($now) {
-            if (! empty($b['starts_at']) && $b['starts_at'] > $now) {
+            $starts = self::usableDate($b['starts_at'] ?? null);
+            $ends   = self::usableDate($b['ends_at'] ?? null);
+            if ($starts !== null && $starts > $now) {
                 return false;
             }
-            if (! empty($b['ends_at']) && $b['ends_at'] < $now) {
+            if ($ends !== null && $ends < $now) {
                 return false;
             }
 
             return true;
         }));
+    }
+
+    protected static function usableDate($value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || str_starts_with($value, '0000-00-00')) {
+            return null;
+        }
+
+        return $value;
     }
 }

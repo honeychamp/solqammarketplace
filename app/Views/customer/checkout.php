@@ -62,7 +62,7 @@
                         <div class="row g-2 mb-2">
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-muted">Recipient Full Name</label>
-                                <input type="text" name="recipient_name" class="form-control" placeholder="e.g. Usman Ali">
+                                <input type="text" name="recipient_name" class="form-control" placeholder="Full name">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-muted">Mobile Number (Active)</label>

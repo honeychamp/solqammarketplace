@@ -76,7 +76,7 @@ class HomeController extends BaseController
         $hasFlashDeal = ! empty($flashSale) && ! empty($flashProducts);
 
         return view('customer/home', [
-            'title'            => 'Solqam Market Place — Pakistan Multi-Vendor Marketplace',
+            'title'            => 'Solqam Marketplace — Pakistan Multi-Vendor Marketplace',
             'categories'       => $categories,
             'homeProducts'     => $homeProducts,
             'homeTotal'        => $homeTotal,

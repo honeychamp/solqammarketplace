@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($title ?? 'Admin Console Login — Solqam Marketplace') ?></title>
+    <?= view('partials/favicon') ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -96,7 +97,7 @@
 <div class="admin-login-wrap">
     <div class="admin-login-card">
         <div class="text-center mb-3">
-            <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20261002a" alt="Solqam Market Place" class="admin-logo mb-2">
+            <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20261005c" alt="Solqam Marketplace" class="admin-logo mb-2">
             <div class="mb-2"><span class="admin-chip"><i class="bi bi-shield-lock-fill"></i> Admin only</span></div>
             <h1 class="fw-bold mb-0" style="font-size: 1.15rem; color: #0F172A;">Admin Console</h1>
             <p class="mb-0 mt-1" style="font-size: 0.78rem; color: #64748B;">Sign in to manage Solqam</p>

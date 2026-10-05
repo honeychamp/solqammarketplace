@@ -218,7 +218,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <p class="small text-muted">Other cities: highest listed rate until you add a Default city in Admin → Shipping.</p>
+                    <p class="small text-muted">Rates for other cities are confirmed at checkout.</p>
                 <?php else: ?>
                     <p class="small text-muted">Delivery is set at checkout from Admin city rates.</p>
                 <?php endif; ?>

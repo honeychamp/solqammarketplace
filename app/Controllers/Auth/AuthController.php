@@ -71,7 +71,7 @@ class AuthController extends BaseController
         }
 
         return view('auth/login', [
-            'title' => 'Sign In — Solqam Market Place',
+            'title' => 'Sign In — Solqam Marketplace',
         ]);
     }
 
@@ -193,7 +193,7 @@ class AuthController extends BaseController
         }
 
         return view('auth/register', [
-            'title'       => 'Create an Account — Solqam Market Place',
+            'title'       => 'Create an Account — Solqam Marketplace',
             'defaultRole' => $defaultRole,
         ]);
     }
@@ -226,7 +226,7 @@ class AuthController extends BaseController
                     );
                 }
 
-                return redirect()->to('/')->with('success', 'Email verified. Welcome to Solqam Market Place.');
+                return redirect()->to('/')->with('success', 'Email verified. Welcome to Solqam Marketplace.');
             }
 
             return redirect()->to('/verify-otp')->with('error', 'Invalid or expired verification code. Please try again.');
@@ -239,7 +239,7 @@ class AuthController extends BaseController
         $user = $this->userModel->where('phone', $phone)->first();
 
         return view('auth/verify_otp', [
-            'title' => 'Verify email — Solqam Market Place',
+            'title' => 'Verify email — Solqam Marketplace',
             'email' => $user['email'] ?? '',
         ]);
     }
@@ -293,7 +293,7 @@ class AuthController extends BaseController
         }
 
         return view('auth/forgot_password', [
-            'title' => 'Forgot Password — Solqam Market Place',
+            'title' => 'Forgot Password — Solqam Marketplace',
         ]);
     }
 
@@ -317,7 +317,7 @@ class AuthController extends BaseController
         $user = $this->userModel->where('phone', $reset['phone'])->first();
 
         return view('auth/forgot_verify', [
-            'title' => 'Verify reset code — Solqam Market Place',
+            'title' => 'Verify reset code — Solqam Marketplace',
             'email' => $user['email'] ?? '',
         ]);
     }
@@ -363,7 +363,7 @@ class AuthController extends BaseController
         }
 
         return view('auth/forgot_reset', [
-            'title' => 'Set New Password — Solqam Market Place',
+            'title' => 'Set New Password — Solqam Marketplace',
         ]);
     }
 

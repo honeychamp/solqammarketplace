@@ -5,19 +5,19 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Models\OrderModel;
 use App\Models\ReturnRefundModel;
-use App\Services\Wallet\WalletService;
+use App\Services\Order\OrderService;
 
 class ReturnController extends BaseController
 {
     protected ReturnRefundModel $returnModel;
     protected OrderModel $orderModel;
-    protected WalletService $walletService;
+    protected OrderService $orderService;
 
     public function __construct()
     {
-        $this->returnModel   = new ReturnRefundModel();
-        $this->orderModel    = new OrderModel();
-        $this->walletService = new WalletService();
+        $this->returnModel  = new ReturnRefundModel();
+        $this->orderModel   = new OrderModel();
+        $this->orderService = new OrderService();
     }
 
     public function index()
@@ -41,26 +41,23 @@ class ReturnController extends BaseController
             return redirect()->to('/admin/returns')->with('error', 'This request has already been refunded.');
         }
 
-        $order = $this->orderModel->find($return['order_id']);
-        $refundAmount = (float) $return['refund_amount'];
+        try {
+            $this->orderService->settleApprovedReturn($return);
+        } catch (\Throwable $e) {
+            log_message('error', 'Return approve: ' . $e->getMessage());
 
-        // 1. Credit customer wallet ledger directly
-        $this->walletService->credit(
-            (int) $return['user_id'],
-            $refundAmount,
-            'refund',
-            (int) $id,
-            "Refund for Return Request #{$id} on Order {$order['order_number']}"
-        );
+            return redirect()->to('/admin/returns')->with('error', $e->getMessage());
+        }
 
-        // 2. Update return status
         $this->returnModel->update($id, [
             'status'       => 'refunded',
-            'admin_note'   => $this->request->getPost('admin_note') ?: 'Approved and refunded to Solqam Wallet Ledger.',
+            'admin_note'   => $this->request->getPost('admin_note') ?: 'Approved. Buyer wallet credited; seller/admin wallets debited.',
             'processed_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->redirectAfterHub('/admin/returns', 'success', "Return approved! Rs. " . number_format($refundAmount, 2) . " has been credited to the customer's wallet ledger.");
+        $refundAmount = (float) $return['refund_amount'];
+
+        return $this->redirectAfterHub('/admin/returns', 'success', "Return approved. Rs. " . number_format($refundAmount, 2) . " credited to the buyer. Matching amount cut from seller/admin wallets.");
     }
 
     public function reject($id)

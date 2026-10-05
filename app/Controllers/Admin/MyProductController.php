@@ -91,6 +91,7 @@ class MyProductController extends BaseController
             if ($productId <= 0) {
                 return redirect()->back()->withInput()->with('error', 'Product could not be saved. Check category and try again.');
             }
+            $this->persistPostedCashback($productId);
             $this->savePrimaryImage($productId);
             $this->saveGalleryImages($productId, true);
             $this->saveVariants($productId);
@@ -151,6 +152,7 @@ class MyProductController extends BaseController
             'sku'    => $this->request->getPost('sku'),
             'status' => $this->request->getPost('status'),
         ]));
+        $this->persistPostedCashback((int) $id);
 
         $this->replacePrimaryImage((int) $id);
         $this->saveGalleryImages((int) $id, true);

@@ -52,6 +52,7 @@ class CatalogController extends BaseController
             'min_price'     => $this->request->getGet('min_price'),
             'max_price'     => $this->request->getGet('max_price'),
             'sort'          => $this->request->getGet('sort') ?? 'latest',
+            'flash'         => $this->request->getGet('flash'),
             'limit'         => 24,
             'page'          => max(1, (int) ($this->request->getGet('page') ?? 1)),
         ];
@@ -104,7 +105,9 @@ class CatalogController extends BaseController
         }
 
         return view('customer/catalog', [
-            'title'      => 'Browse Products — Solqam Market Place',
+            'title'      => ! empty($filters['flash'])
+                ? 'Flash Deals — Solqam Marketplace'
+                : 'Browse Products — Solqam Marketplace',
             'products'   => $products,
             'categories' => $categories,
             'brands'     => $brands,
@@ -115,6 +118,11 @@ class CatalogController extends BaseController
             'catalogPages' => $pageCount,
             'recent'     => $this->recentProducts(),
         ]);
+    }
+
+    public function flashDeals()
+    {
+        return $this->index();
     }
 
     public function detail($id)
@@ -206,7 +214,7 @@ class CatalogController extends BaseController
         session()->set('recently_viewed', array_slice($seen, 0, 12));
 
         return view('customer/product_detail', [
-            'title'            => $product['name'] . ' — Solqam Market Place',
+            'title'            => $product['name'] . ' — Solqam Marketplace',
             'product'          => $product,
             'reviews'          => $reviews,
             'ratingStats'      => $ratingStats,

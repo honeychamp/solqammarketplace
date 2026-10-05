@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= esc($title ?? 'Seller Hub — Solqam Market Place') ?></title>
+    <title><?= esc($title ?? 'Seller Hub — Solqam Marketplace') ?></title>
+    <?= view('partials/favicon') ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -16,7 +17,7 @@
     <aside class="solqam-sidebar">
         <div class="sidebar-head">
         <a href="<?= site_url('seller/dashboard') ?>" class="d-flex align-items-center gap-2 text-decoration-none px-3 pt-2 pb-3">
-            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>?v=20260929h" alt="Solqam Market Place" style="height: 56px; width: auto;">
+            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>?v=20261005c" alt="Solqam Marketplace" style="height: 56px; width: auto;">
         </a>
         <div class="px-3 mb-2">
             <span class="badge rounded-pill px-3 py-2" style="background: linear-gradient(135deg,#0B30E6,#F59E0B); color: #fff; border: 1px solid rgba(240,20,47,.4);">Seller Hub</span>
@@ -137,7 +138,7 @@
         <header class="hub-topbar navbar navbar-expand px-4 py-3 sticky-top">
             <div class="container-fluid p-0">
                 <div>
-                    <div class="small text-muted fw-semibold text-uppercase" style="letter-spacing:.12em;">Solqam Market Place</div>
+                    <div class="small text-muted fw-semibold text-uppercase" style="letter-spacing:.12em;">Solqam Marketplace</div>
                     <h5 class="mb-0 fw-bold"><?= esc($title ?? 'Seller Hub') ?></h5>
                 </div>
                 <div class="ms-auto d-flex align-items-center gap-2">
@@ -172,7 +173,7 @@
         </div>
 
         <footer class="px-4 py-3 text-center text-muted small">
-            &copy; <?= date('Y') ?> Solqam Market Place · Seller Hub
+            &copy; <?= date('Y') ?> Solqam Marketplace · Seller Hub
         </footer>
     </main>
 </div>

@@ -21,13 +21,9 @@
             </form>
             <?php endif; ?>
             <?php if ($order['status'] === 'delivered'): ?>
-                <?php if (!$existingReturn): ?>
-                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 me-2" data-bs-toggle="modal" data-bs-target="#returnModal">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Request Return / Refund
-                    </button>
-                <?php else: ?>
+                <?php if ($existingReturn): ?>
                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill me-2 fw-semibold">
-                        Return Status: <?= ucfirst($existingReturn['status']) ?>
+                        Return: <?= ucfirst($existingReturn['status']) ?>
                     </span>
                 <?php endif; ?>
             <?php endif; ?>
@@ -159,46 +155,6 @@
                                             <button type="button" class="btn btn-outline-warning btn-sm rounded-pill px-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#reviewModal_<?= $item['id'] ?>">
                                                 <i class="bi bi-star-fill text-warning me-1"></i> Review
                                             </button>
-
-                                            <!-- Review Modal for Item -->
-                                            <div class="modal fade text-start" id="reviewModal_<?= $item['id'] ?>" tabindex="-1">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content rounded-4 border-0">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title fw-bold">Review: <?= esc($item['product_name']) ?></h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                        </div>
-                                                        <form action="<?= site_url('account/orders/' . $order['id'] . '/review') ?>" method="POST" enctype="multipart/form-data">
-                                                            <?= csrf_field() ?>
-                                                            <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
-                                                            <div class="modal-body">
-                                                                <div class="mb-3">
-                                                                    <label class="form-label small fw-bold">Your Rating</label>
-                                                                    <select name="rating" class="form-select">
-                                                                        <option value="5">5 Stars - Outstanding Quality</option>
-                                                                        <option value="4">4 Stars - Very Satisfied</option>
-                                                                        <option value="3">3 Stars - Average Quality</option>
-                                                                        <option value="2">2 Stars - Needs Improvement</option>
-                                                                        <option value="1">1 Star - Unsatisfactory</option>
-                                                                    </select>
-                                                                </div>
-                                                                <div class="mb-3">
-                                                                    <label class="form-label small fw-bold">Your Feedback</label>
-                                                                    <textarea name="comment" class="form-control" rows="3" placeholder="Share your honest experience with shoppers in Pakistan..." required></textarea>
-                                                                </div>
-                                                                <div class="mb-3">
-                                                                    <label class="form-label small fw-bold">Photo (optional)</label>
-                                                                    <input type="file" name="review_image" class="form-control" accept="image/*">
-                                                                </div>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                                                                <button type="submit" class="btn btn-sol-primary rounded-pill px-4 fw-bold">Submit Review</button>
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         </td>
                                     <?php endif; ?>
                                 </tr>
@@ -274,7 +230,7 @@
             </div>
 
             <!-- Shipping Address -->
-            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
                 <h6 class="fw-bold mb-3 border-bottom pb-2" style="color: #0F172A;"><i class="bi bi-geo-alt text-primary me-1"></i> Delivery Destination</h6>
                 <div class="small">
                     <strong class="text-dark d-block fs-6 mb-1"><?= esc($order['recipient_name']) ?></strong>
@@ -283,53 +239,89 @@
                     <div class="text-secondary mt-2"><i class="bi bi-telephone me-1 text-primary"></i> <?= esc($order['recipient_phone']) ?></div>
                 </div>
             </div>
+
+            <?php if ($order['status'] === 'delivered' && ! $existingReturn): ?>
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <h6 class="fw-bold mb-2" style="color: #0F172A;"><i class="bi bi-arrow-counterclockwise text-danger me-1"></i> Request return / refund</h6>
+                <p class="small text-secondary mb-3">Submit here. After admin approval, your wallet is credited and the seller/admin wallet is cut for the same goods.</p>
+                <form action="<?= site_url('account/orders/' . $order['id'] . '/return') ?>" method="POST" enctype="multipart/form-data">
+                    <?= csrf_field() ?>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Reason</label>
+                        <select name="reason" class="form-select" required>
+                            <option value="Defective or Damaged Item">Defective or Damaged Item</option>
+                            <option value="Wrong Item Delivered">Wrong Item Delivered</option>
+                            <option value="Item Does Not Match Description">Item Does Not Match Description</option>
+                            <option value="Quality Below Expectations">Quality Below Expectations</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Details</label>
+                        <textarea name="customer_note" class="form-control" rows="3" placeholder="What went wrong with this parcel?" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Photo (optional)</label>
+                        <input type="file" name="return_photo" class="form-control" accept="image/*">
+                    </div>
+                    <div class="alert alert-light border small mb-3">
+                        Estimated refund: Rs. <?= number_format($order['final_payable'] > 0 ? $order['final_payable'] : $order['total_amount'], 2) ?>
+                    </div>
+                    <button type="submit" class="btn btn-danger rounded-pill w-100">Submit return request</button>
+                </form>
+            </div>
+            <?php elseif ($existingReturn): ?>
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <h6 class="fw-bold mb-2">Return request</h6>
+                <p class="small mb-1">Status: <strong><?= esc(ucfirst($existingReturn['status'])) ?></strong></p>
+                <p class="small text-secondary mb-0"><?= esc($existingReturn['reason']) ?></p>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
+<?= $this->endSection() ?>
 
-<!-- Return / Refund Request Modal -->
-<?php if ($order['status'] === 'delivered' && !$existingReturn): ?>
-    <div class="modal fade" id="returnModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content rounded-4 border-0">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-arrow-counterclockwise text-danger me-1"></i> Request Return / Refund</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<?= $this->section('modals') ?>
+<?php if ($order['status'] === 'delivered'): ?>
+    <?php foreach ($order['items'] as $item): ?>
+        <div class="modal fade" id="reviewModal_<?= $item['id'] ?>" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Review: <?= esc($item['product_name']) ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="<?= site_url('account/orders/' . $order['id'] . '/review') ?>" method="POST" enctype="multipart/form-data">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="product_id" value="<?= $item['product_id'] ?>">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Your Rating</label>
+                                <select name="rating" class="form-select">
+                                    <option value="5">5 Stars - Outstanding Quality</option>
+                                    <option value="4">4 Stars - Very Satisfied</option>
+                                    <option value="3">3 Stars - Average Quality</option>
+                                    <option value="2">2 Stars - Needs Improvement</option>
+                                    <option value="1">1 Star - Unsatisfactory</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Your Feedback</label>
+                                <textarea name="comment" class="form-control" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Photo (optional)</label>
+                                <input type="file" name="review_image" class="form-control" accept="image/*">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-sol-primary rounded-pill px-4 fw-bold">Submit Review</button>
+                        </div>
+                    </form>
                 </div>
-                <form action="<?= site_url('account/orders/' . $order['id'] . '/return') ?>" method="POST" enctype="multipart/form-data">
-                    <?= csrf_field() ?>
-                    <div class="modal-body">
-                        <p class="small text-secondary mb-3">
-                            Approved returns are automatically credited directly back to your Solqam Wallet Ledger so you can use the refund immediately.
-                        </p>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Reason for Return</label>
-                            <select name="reason" class="form-select" required>
-                                <option value="Defective or Damaged Item">Defective or Damaged Item</option>
-                                <option value="Wrong Item Delivered">Wrong Item Delivered</option>
-                                <option value="Item Does Not Match Description">Item Does Not Match Description</option>
-                                <option value="Quality Below Expectations">Quality Below Expectations</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Additional Comments / Details</label>
-                            <textarea name="customer_note" class="form-control" rows="3" placeholder="Provide detailed explanation of the issue..." required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Photo (optional)</label>
-                            <input type="file" name="return_photo" class="form-control" accept="image/*">
-                        </div>
-                        <div class="alert alert-light border small mb-0">
-                            <strong>Estimated Refund Amount:</strong> Rs. <?= number_format($order['final_payable'] > 0 ? $order['final_payable'] : $order['total_amount'], 2) ?>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger rounded-pill px-4">Submit Return Request</button>
-                    </div>
-                </form>
             </div>
         </div>
-    </div>
+    <?php endforeach; ?>
 <?php endif; ?>
 <?= $this->endSection() ?>

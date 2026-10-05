@@ -11,33 +11,11 @@ class CustomerController extends BaseController
     public function index()
     {
         $sellerId = (int) session()->get('user.id');
-        $items = (new OrderItemModel())->getSellerOrderItems($sellerId);
-        $buyers = [];
-        foreach ($items as $item) {
-            $cid = (int) ($item['customer_id'] ?? 0);
-            if ($cid <= 0) {
-                continue;
-            }
-            if (!isset($buyers[$cid])) {
-                $buyers[$cid] = [
-                    'id'         => $cid,
-                    'name'       => $item['customer_name'],
-                    'phone'      => $item['customer_phone'],
-                    'orders'     => 0,
-                    'goods'      => 0.0,
-                    'commission' => 0.0,
-                    'cashback'   => 0.0,
-                ];
-            }
-            $buyers[$cid]['orders']++;
-            $buyers[$cid]['goods'] += (float) $item['subtotal'];
-            $buyers[$cid]['commission'] += (float) $item['commission_amount'];
-            $buyers[$cid]['cashback'] += item_cashback($item);
-        }
+        $buyers = (new OrderItemModel())->getSellerBuyers($sellerId);
 
         return view('seller/customers/index', [
             'title'  => 'Your buyers — Solqam Seller Hub',
-            'buyers' => array_values($buyers),
+            'buyers' => $buyers,
         ]);
     }
 

@@ -16,6 +16,7 @@ class LiveMarketplaceSeeder extends Seeder
         $db  = \Config\Database::connect();
         $now = date('Y-m-d H:i:s');
 
+        $this->clearSchemaHealMarkers();
         SchemaHeal::run();
 
         $this->seedShipping($db, $now);
@@ -25,6 +26,17 @@ class LiveMarketplaceSeeder extends Seeder
         SchemaHeal::run();
 
         echo "Live marketplace seed complete (zones, banner, Solqam Mall products).\n";
+    }
+
+    protected function clearSchemaHealMarkers(): void
+    {
+        $dir = rtrim(WRITEPATH, '\\/') . DIRECTORY_SEPARATOR . 'cache';
+        if (! is_dir($dir)) {
+            return;
+        }
+        foreach (glob($dir . DIRECTORY_SEPARATOR . 'schema_heal_v*') ?: [] as $file) {
+            @unlink($file);
+        }
     }
 
     protected function seedShipping($db, string $now): void
@@ -80,10 +92,10 @@ class LiveMarketplaceSeeder extends Seeder
         ];
         $fields = $db->getFieldNames('banners');
         if (in_array('badge_text', $fields, true)) {
-            $row['badge_text'] = 'Solqam Festival - Pakistan';
+            $row['badge_text'] = 'Solqam Marketplace';
         }
         if (in_array('button_text', $fields, true)) {
-            $row['button_text'] = 'Shop mega deals';
+            $row['button_text'] = 'Shop now';
         }
 
         $insert = [];
@@ -118,7 +130,7 @@ class LiveMarketplaceSeeder extends Seeder
             [
                 'slug'             => 'solqam-mall-wireless-earbuds',
                 'name'             => 'Solqam Mall Wireless Earbuds',
-                'description'      => 'First-party mall listing so the shop is not empty after go-live. Replace or unpublish from Admin → Products.',
+                'description'      => 'Solqam Mall wireless earbuds with a charging case. In-ear fit for calls and music. 7-day returns on Mall items.',
                 'price'            => 2499.00,
                 'stock'            => 50,
                 'brand'            => 'Solqam Mall',
@@ -129,7 +141,7 @@ class LiveMarketplaceSeeder extends Seeder
             [
                 'slug'             => 'solqam-mall-usb-c-cable',
                 'name'             => 'Solqam Mall USB-C Cable',
-                'description'      => 'First-party mall accessory. Replace with your real catalog from Admin → Products.',
+                'description'      => 'Solqam Mall USB-C charging and data cable. Nylon braid, USB-C connector. 7-day returns on Mall items.',
                 'price'            => 799.00,
                 'stock'            => 80,
                 'brand'            => 'Solqam Mall',
@@ -142,7 +154,14 @@ class LiveMarketplaceSeeder extends Seeder
         $fields = $db->getFieldNames('products');
 
         foreach ($products as $p) {
-            if ($db->table('products')->where('slug', $p['slug'])->countAllResults() > 0) {
+            $existing = $db->table('products')->where('slug', $p['slug'])->get()->getRowArray();
+            if ($existing) {
+                if (in_array('cashback_percent', $fields, true) && (float) $p['cashback_percent'] > 0) {
+                    $db->table('products')->where('id', $existing['id'])->update([
+                        'cashback_percent' => $p['cashback_percent'],
+                        'updated_at'       => $now,
+                    ]);
+                }
                 continue;
             }
             $row = [
@@ -169,6 +188,12 @@ class LiveMarketplaceSeeder extends Seeder
                 }
             }
             $db->table('products')->insert($insert);
+            $newId = (int) $db->insertID();
+            if ($newId > 0 && in_array('cashback_percent', $fields, true)) {
+                $db->table('products')->where('id', $newId)->update([
+                    'cashback_percent' => $p['cashback_percent'],
+                ]);
+            }
         }
     }
 }

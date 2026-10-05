@@ -26,7 +26,7 @@ class MailService
         self::archive($to, $subject, $html);
 
         $fromEmail = (string) env('email.fromEmail', 'info@solqam.com');
-        $fromName  = (string) env('email.fromName', 'Solqam Market Place');
+        $fromName  = (string) env('email.fromName', 'Solqam Marketplace');
         $smtpHost  = (string) env('email.SMTPHost', 'mail.solqam.com');
         $smtpUser  = (string) env('email.SMTPUser', '');
         $smtpPass  = (string) env('email.SMTPPass', '');
@@ -140,7 +140,7 @@ class MailService
         $html = self::wrap(
             'Sign-in notice',
             '<p>Hello ' . htmlspecialchars($name) . ',</p>'
-            . '<p>You signed in to Solqam Market Place as <strong>' . htmlspecialchars($role) . '</strong>.</p>'
+            . '<p>You signed in to Solqam Marketplace as <strong>' . htmlspecialchars($role) . '</strong>.</p>'
             . '<p>Username (login email): <strong>' . htmlspecialchars($username) . '</strong></p>'
             . ($phone !== '' ? '<p>Registered mobile: ' . htmlspecialchars($phone) . '</p>' : '')
             . '<p>If this was not you, change your password immediately.</p>'
@@ -172,7 +172,7 @@ class MailService
         $html  = self::wrap(
             'Store received — pending approval',
             '<p>Hello ' . htmlspecialchars($name) . ',</p>'
-            . '<p>Thank you for registering <strong>' . htmlspecialchars($store) . '</strong> on Solqam Market Place.</p>'
+            . '<p>Thank you for registering <strong>' . htmlspecialchars($store) . '</strong> on Solqam Marketplace.</p>'
             . '<p>Your seller account is <strong>pending admin approval</strong>. You can open the Seller Hub, but you cannot add products, process orders, or receive payouts until Solqam approves your store.</p>'
             . '<p>We will email you as soon as an administrator approves your account.</p>'
             . '<p><a href="' . htmlspecialchars($hub) . '" style="display:inline-block;background:#0B30E6;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700;">Open Seller Hub</a></p>'
@@ -190,7 +190,7 @@ class MailService
         $html  = self::wrap(
             'Seller account approved',
             '<p>Hello ' . htmlspecialchars($name) . ',</p>'
-            . '<p>Good news — <strong>' . htmlspecialchars($store) . '</strong> has been approved on Solqam Market Place.</p>'
+            . '<p>Good news — <strong>' . htmlspecialchars($store) . '</strong> has been approved on Solqam Marketplace.</p>'
             . '<p>You can now list products, manage orders, run campaigns, and use payouts from the Seller Hub.</p>'
             . '<p><a href="' . htmlspecialchars($hub) . '" style="display:inline-block;background:#16A34A;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700;">Go to Seller Hub</a></p>'
         );
@@ -229,7 +229,7 @@ class MailService
         return '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0F172A;">'
             . '<h2 style="color:#0B30E6;">' . htmlspecialchars($heading) . '</h2>'
             . $inner
-            . '<p style="margin-top:24px;color:#64748B;font-size:13px;">— Solqam Market Place<br>info@solqam.com</p>'
+            . '<p style="margin-top:24px;color:#64748B;font-size:13px;">— Solqam Marketplace<br>info@solqam.com</p>'
             . '</div>';
     }
 

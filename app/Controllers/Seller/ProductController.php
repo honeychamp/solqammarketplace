@@ -83,6 +83,7 @@ class ProductController extends BaseController
             if ($productId <= 0) {
                 return redirect()->back()->withInput()->with('error', 'Product could not be saved. Check category and try again.');
             }
+            $this->persistPostedCashback($productId);
             $this->savePrimaryImage($productId);
             $this->saveGalleryImages($productId, true);
             $this->saveVariants($productId);
@@ -143,6 +144,7 @@ class ProductController extends BaseController
             'sku'    => $this->request->getPost('sku'),
             'status' => $this->request->getPost('status'),
         ]));
+        $this->persistPostedCashback((int) $id);
 
         $this->replacePrimaryImage((int) $id);
         $this->saveGalleryImages((int) $id, true);
@@ -226,7 +228,7 @@ class ProductController extends BaseController
             if ($name === '' || $categoryId <= 0 || $price <= 0 || ! $this->categoryModel->exists($categoryId)) {
                 continue;
             }
-            $this->productModel->insert([
+            $id = $this->productModel->insert([
                 'seller_id'        => $sellerId,
                 'category_id'      => $categoryId,
                 'name'             => $name,
@@ -239,6 +241,9 @@ class ProductController extends BaseController
                 'cashback_percent' => max(0, min(100, (float) ($map['cashback_percent'] ?? 0))),
                 'status'           => 'active',
             ]);
+            if ($id) {
+                $this->productModel->persistCashback((int) $id, max(0, min(100, (float) ($map['cashback_percent'] ?? 0))));
+            }
             $imported++;
         }
         fclose($handle);

@@ -128,7 +128,7 @@ class Email extends BaseConfig
     {
         parent::__construct();
         $this->fromEmail   = (string) env('email.fromEmail', 'info@solqam.com');
-        $this->fromName    = (string) env('email.fromName', 'Solqam Market Place');
+        $this->fromName    = (string) env('email.fromName', 'Solqam Marketplace');
         $this->protocol    = (string) env('email.protocol', 'smtp');
         $this->SMTPHost    = (string) env('email.SMTPHost', 'mail.solqam.com');
         $this->SMTPUser    = (string) env('email.SMTPUser', $this->fromEmail);

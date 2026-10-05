@@ -85,6 +85,11 @@
                 <div class="mb-2"><strong>Email:</strong> <?= esc($seller['owner_email']) ?></div>
                 <div class="mb-3"><strong>Phone:</strong> <?= esc($seller['owner_phone']) ?></div>
                 <div><strong>User Status:</strong> <span class="badge bg-<?= ($seller['user_status'] === 'active') ? 'success' : 'secondary' ?>"><?= ucfirst($seller['user_status']) ?></span></div>
+                <div class="mt-3 p-3 rounded-3 bg-light">
+                    <div class="small text-secondary">Unique customers</div>
+                    <div class="fw-bold fs-3 mb-0"><?= count($buyers ?? []) ?></div>
+                    <div class="small text-muted">Buyers who ordered from this store</div>
+                </div>
             </div>
         </div>
 
@@ -131,5 +136,54 @@
             <?php endif; ?>
         </div>
     </div>
+</div>
+
+<?php $buyers = $buyers ?? []; ?>
+<div class="card-custom p-4 mt-4" id="seller-buyers">
+    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+        <h5 class="fw-bold mb-0">Store customers (<?= count($buyers) ?>)</h5>
+        <span class="small text-muted">People who placed at least one order with this seller</span>
+    </div>
+    <?php if ($buyers === []): ?>
+        <p class="text-secondary text-center py-4 mb-0">No customers yet for this store.</p>
+    <?php else: ?>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light small">
+                    <tr>
+                        <th>Customer</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Orders</th>
+                        <th>Goods</th>
+                        <th>Status</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($buyers as $b): ?>
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark"><?= esc($b['name']) ?></div>
+                                <small class="text-muted">ID: #<?= (int) $b['id'] ?></small>
+                            </td>
+                            <td><code><?= esc($b['phone']) ?></code></td>
+                            <td><?= esc($b['email']) ?></td>
+                            <td><?= (int) $b['orders'] ?></td>
+                            <td>Rs. <?= number_format((float) $b['goods'], 0) ?></td>
+                            <td>
+                                <span class="badge bg-<?= (($b['status'] ?? '') === 'active') ? 'success' : 'secondary' ?>">
+                                    <?= esc(ucfirst((string) ($b['status'] ?: '—'))) ?>
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a href="<?= site_url('admin/customers/' . $b['id']) ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3">360</a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
 </div>
 <?= $this->endSection() ?>

@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 128" width="560" height="128" role="img" aria-label="Solqam Market Place">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 128" width="560" height="128" role="img" aria-label="Solqam Marketplace">
   <text x="8" y="74" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="70" letter-spacing="1">
     <tspan fill="#FFFFFF">SOL</tspan><tspan fill="#FF4D61">Q</tspan><tspan fill="#FFFFFF">AM</tspan>
   </text>
-  <text x="10" y="112" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="17" letter-spacing="6.2" fill="#E2E8F0">MARKET PLACE</text>
+  <text x="10" y="112" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="16" letter-spacing="3.2" fill="#E2E8F0">MARKETPLACE</text>
 </svg>

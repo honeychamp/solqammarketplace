@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= esc($title ?? 'Solqam Market Place') ?></title>
+    <title><?= esc($title ?? 'Solqam Marketplace') ?></title>
+    <?= view('partials/favicon') ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261001r">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261005b">
 </head>
 <body class="d-flex flex-column min-vh-100">
 
@@ -39,9 +40,9 @@
         <div class="sf-header-row d-flex align-items-center gap-2 gap-lg-3">
                 <!-- Brand Logo: SOLQAM -->
                 <div class="flex-shrink-0">
-                    <a class="brand-badge-logo" href="<?= site_url('/') ?>" title="Solqam Market Place">
-                        <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20260929h" alt="Solqam Market Place" class="d-none d-sm-block">
-                        <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20260929h" alt="Solqam Market Place" class="d-sm-none">
+                    <a class="brand-badge-logo" href="<?= site_url('/') ?>" title="Solqam Marketplace">
+                        <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20261005c" alt="Solqam Marketplace" class="d-none d-sm-block">
+                        <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20261005c" alt="Solqam Marketplace" class="d-sm-none">
                     </a>
                 </div>
 
@@ -211,7 +212,7 @@
                 <div class="col-lg-4 col-md-6">
                     <div class="mb-3">
                         <a href="<?= site_url('/') ?>" class="text-decoration-none d-inline-block">
-                            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>?v=20260929h" alt="Solqam Market Place" style="height: 62px; width: auto;">
+                            <img src="<?= base_url('assets/images/solqam-logo-light.svg') ?>?v=20261005c" alt="Solqam Marketplace" style="height: 62px; width: auto;">
                         </a>
                     </div>
                     <p class="footer-blurb mb-3 pe-lg-4">
@@ -270,11 +271,13 @@
 
             <hr class="border-secondary opacity-25">
             <div class="d-flex justify-content-between align-items-center flex-column flex-sm-row footer-copy pt-2">
-                <div>&copy; <?= date('Y') ?> Solqam Market Place. All rights reserved.</div>
+                <div>&copy; <?= date('Y') ?> Solqam Marketplace. All rights reserved.</div>
                 <div class="mt-2 mt-sm-0">Multi-vendor marketplace for Pakistan.</div>
             </div>
         </div>
     </footer>
+
+    <?= $this->renderSection('modals') ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>

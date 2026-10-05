@@ -1,4 +1,4 @@
-# Solqam Market Place
+# Solqam Marketplace
 
 **A Pakistan B2C Multi-Vendor Marketplace MVP** built with CodeIgniter 4, MySQL, and Bootstrap 5.
 

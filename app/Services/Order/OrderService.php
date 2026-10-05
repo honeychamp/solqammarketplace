@@ -1133,9 +1133,14 @@ class OrderService
             return;
         }
 
-        $cashbackAmount = isset($order['cashback_amount']) && $order['cashback_amount'] !== null && $order['cashback_amount'] !== ''
-            ? round((float) $order['cashback_amount'], 2)
-            : cashback_amount((float) ($order['total_amount'] ?? 0));
+        $cashbackAmount = round((float) ($order['cashback_amount'] ?? 0), 2);
+        if ($cashbackAmount <= 0) {
+            $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
+            foreach ($items as $item) {
+                $cashbackAmount += item_cashback($item);
+            }
+            $cashbackAmount = round($cashbackAmount, 2);
+        }
         if ($cashbackAmount <= 0) {
             return;
         }
@@ -1156,6 +1161,130 @@ class OrderService
     protected function hasCashback(int $orderId): bool
     {
         return ! empty($this->cashbackRow($orderId));
+    }
+
+    /**
+     * Refund: credit buyer, reverse cashback, claw back seller/admin settlement, restock.
+     */
+    public function settleApprovedReturn(array $returnRow): void
+    {
+        $orderId = (int) ($returnRow['order_id'] ?? 0);
+        $order   = $orderId > 0 ? $this->orderModel->find($orderId) : null;
+        if (! $order) {
+            throw new RuntimeException('Order not found for this return.');
+        }
+        if (($order['status'] ?? '') === 'returned') {
+            return;
+        }
+
+        $refundAmount = round((float) ($returnRow['refund_amount'] ?? 0), 2);
+        if ($refundAmount <= 0) {
+            $refundAmount = round((float) (($order['final_payable'] ?? 0) > 0 ? $order['final_payable'] : ($order['total_amount'] ?? 0)), 2);
+        }
+
+        $returnId    = (int) ($returnRow['id'] ?? $orderId);
+        $orderNumber = (string) ($order['order_number'] ?? ('#' . $orderId));
+        $buyerId     = (int) $order['user_id'];
+        $adminId     = $this->platformAdminId();
+        $items       = $this->orderItemModel->where('order_id', $orderId)->findAll();
+
+        $this->db->transStart();
+
+        $cb = $this->cashbackRow($orderId);
+        if ($cb && (float) $cb['amount'] > 0 && ! $this->hasLedger($orderId, 'refund', 'Reverse cashback')) {
+            $this->walletService->debit(
+                $buyerId,
+                (float) $cb['amount'],
+                'refund',
+                $orderId,
+                "Reverse cashback for returned Order {$orderNumber}",
+                true
+            );
+        }
+
+        $bySeller = [];
+        foreach ($items as $item) {
+            $sid = (int) $item['seller_id'];
+            if (! isset($bySeller[$sid])) {
+                $bySeller[$sid] = ['goods' => 0.0, 'commission' => 0.0, 'cashback' => 0.0];
+            }
+            $bySeller[$sid]['goods'] += (float) $item['subtotal'];
+            $bySeller[$sid]['commission'] += (float) $item['commission_amount'];
+            $bySeller[$sid]['cashback'] += item_cashback($item);
+        }
+
+        foreach ($bySeller as $sellerId => $totals) {
+            $goods      = round($totals['goods'], 2);
+            $commission = round($totals['commission'], 2);
+            $cashback   = round($totals['cashback'], 2);
+            $goodsNet   = round(max(0.0, $goods - $commission - $cashback), 2);
+            $shipAmt    = 0.0;
+            try {
+                $shipment = (new ShipmentModel())->where('order_id', $orderId)->where('seller_id', $sellerId)->first();
+                $shipAmt  = round((float) ($shipment['shipping_amount'] ?? 0), 2);
+            } catch (\Throwable $e) {
+                $shipAmt = 0.0;
+            }
+
+            if ($this->isAdminSeller((int) $sellerId)) {
+                $adminCut = round($goods + $shipAmt, 2);
+                if ($adminId > 0 && $adminCut > 0 && ! $this->hasLedger($orderId, 'refund_clawback', 'admin mall')) {
+                    $this->walletService->debit(
+                        $adminId,
+                        $adminCut,
+                        'refund_clawback',
+                        $orderId,
+                        "Return clawback (Mall goods + delivery) Order {$orderNumber}",
+                        true
+                    );
+                }
+                continue;
+            }
+
+            $sellerCut = round($goodsNet + $shipAmt, 2);
+            if ($sellerCut > 0 && ! $this->hasLedger($orderId, 'refund_clawback', 'seller ' . $sellerId)) {
+                $this->walletService->debit(
+                    (int) $sellerId,
+                    $sellerCut,
+                    'refund_clawback',
+                    $orderId,
+                    "Return clawback goods/delivery Order {$orderNumber} seller {$sellerId}",
+                    true
+                );
+            }
+            if ($commission > 0 && $adminId > 0 && ! $this->hasLedger($orderId, 'refund_clawback', 'commission seller ' . $sellerId)) {
+                $this->walletService->debit(
+                    $adminId,
+                    $commission,
+                    'refund_clawback',
+                    $orderId,
+                    "Return reverse commission Order {$orderNumber} seller {$sellerId}",
+                    true
+                );
+            }
+            $this->upsertPayout($orderId, (int) $sellerId, 0.0);
+        }
+
+        if ($refundAmount > 0 && ! $this->hasLedger($orderId, 'refund', 'Return Request')) {
+            $this->walletService->credit(
+                $buyerId,
+                $refundAmount,
+                'refund',
+                $orderId,
+                "Refund for Return Request #{$returnId} on Order {$orderNumber}"
+            );
+        }
+
+        $this->restockItems($items);
+        $this->orderModel->update($orderId, ['status' => 'returned']);
+        foreach ($items as $item) {
+            $this->orderItemModel->update((int) $item['id'], ['fulfillment_status' => 'returned']);
+        }
+
+        $this->db->transComplete();
+        if (! $this->db->transStatus()) {
+            throw new RuntimeException('Return refund could not be settled.');
+        }
     }
 
     protected function cashbackRow(int $orderId): ?array

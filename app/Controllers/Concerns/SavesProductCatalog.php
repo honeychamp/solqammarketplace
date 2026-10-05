@@ -16,7 +16,6 @@ trait SavesProductCatalog
         $sizeGuide  = trim((string) $this->request->getPost('size_guide'));
         $compare    = $this->request->getPost('compare_at_price');
         $returnDays = $this->request->getPost('return_days');
-        $cashback   = $this->request->getPost('cashback_percent');
 
         $categoryId = (int) $this->request->getPost('category_id');
         if ($categoryId <= 0 || ! (new \App\Models\CategoryModel())->exists($categoryId)) {
@@ -35,8 +34,27 @@ trait SavesProductCatalog
             'compare_at_price' => ($compare !== '' && $compare !== null) ? (float) $compare : null,
             'stock'            => (int) $this->request->getPost('stock'),
             'brand'            => $brand !== '' ? $brand : null,
-            'cashback_percent' => max(0.0, min(100.0, (float) ($cashback === '' || $cashback === null ? 0 : $cashback))),
+            'cashback_percent' => $this->postedCashbackPercent(),
         ];
+    }
+
+    protected function postedCashbackPercent(): float
+    {
+        $cashback = $this->request->getPost('cashback_percent');
+        if ($cashback === '' || $cashback === null) {
+            return 0.0;
+        }
+
+        return max(0.0, min(100.0, (float) $cashback));
+    }
+
+    protected function persistPostedCashback(int $productId): void
+    {
+        if ($productId <= 0) {
+            return;
+        }
+        $model = $this->productModel ?? new \App\Models\ProductModel();
+        $model->persistCashback($productId, $this->postedCashbackPercent());
     }
 
     protected function imageHasSort(): bool

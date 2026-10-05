@@ -55,15 +55,38 @@ class ProductModel extends Model
     protected function productsHas(string $field): bool
     {
         static $fields;
-        if ($fields === null) {
+        if ($fields === null || ($field !== '' && ! isset($fields[$field]))) {
             try {
                 $fields = array_flip($this->db->getFieldNames($this->table) ?: []);
             } catch (\Throwable $e) {
-                $fields = [];
+                $fields = $fields ?? [];
             }
         }
 
         return isset($fields[$field]);
+    }
+
+    public function persistCashback(int $productId, float $percent): void
+    {
+        if ($productId <= 0) {
+            return;
+        }
+        $percent = max(0.0, min(100.0, round($percent, 2)));
+        try {
+            if (! $this->productsHas('cashback_percent')) {
+                \App\Services\Platform\SchemaHeal::run();
+                $this->productsHas('cashback_percent');
+            }
+            if (! $this->productsHas('cashback_percent')) {
+                return;
+            }
+            $this->db->table($this->table)->where('id', $productId)->update([
+                'cashback_percent' => $percent,
+                'updated_at'       => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'persistCashback: ' . $e->getMessage());
+        }
     }
 
     protected function catalogImageSelect(): string

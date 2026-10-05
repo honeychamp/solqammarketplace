@@ -35,16 +35,14 @@ class AuthController extends BaseController
      */
     public function login()
     {
-        // If already logged in as Admin, redirect directly to dashboard
-        if ($this->authService->isLoggedIn()) {
-            if (session()->get('user.role') === 'admin') {
-                return redirect()->to('/admin/dashboard');
-            }
-            // If logged in as customer/seller, logout to allow admin sign in
-            $this->authService->logout();
+        if ($this->authService->isLoggedIn() && session()->get('user.role') === 'admin') {
+            return redirect()->to('/admin/dashboard');
         }
 
         if ($this->request->is('post')) {
+            if ($this->authService->isLoggedIn()) {
+                $this->authService->logout();
+            }
             if (! \App\Services\Auth\RateLimitService::hit('admin_login', 8)) {
                 return redirect()->back()->withInput()->with('error', 'Too many admin login attempts.');
             }

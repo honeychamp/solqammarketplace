@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Invoice <?= esc($order['order_number']) ?></title>
+<?= view('partials/favicon') ?>
 <style>body{font-family:sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;} td,th{border:1px solid #ddd;padding:8px;text-align:left;} @media print{.no-print{display:none}}</style>
 </head><body>
 <button class="no-print" onclick="window.print()">Print / PDF</button>

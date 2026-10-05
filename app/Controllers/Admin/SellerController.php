@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
+use App\Models\OrderItemModel;
 use App\Models\SellerProfileModel;
 use App\Models\UserModel;
 
@@ -30,6 +31,12 @@ class SellerController extends BaseController
         }
 
         $sellers = $builder->paginate(50);
+        $sellerUserIds = array_map(static fn (array $s): int => (int) ($s['user_id'] ?? 0), $sellers);
+        $customerCounts = (new OrderItemModel())->countCustomersBySellerIds($sellerUserIds);
+        foreach ($sellers as &$s) {
+            $s['customer_count'] = $customerCounts[(int) ($s['user_id'] ?? 0)] ?? 0;
+        }
+        unset($s);
 
         return view('admin/sellers/index', [
             'title'   => 'Seller Management — Solqam Admin Console',
@@ -51,9 +58,12 @@ class SellerController extends BaseController
             return redirect()->to('/admin/sellers')->with('error', 'Seller profile not found.');
         }
 
+        $buyers = (new OrderItemModel())->getSellerBuyers((int) $seller['user_id']);
+
         return view('admin/sellers/show', [
             'title'  => "Seller Application: {$seller['store_name']} — Solqam Admin",
             'seller' => $seller,
+            'buyers' => $buyers,
         ]);
     }
 

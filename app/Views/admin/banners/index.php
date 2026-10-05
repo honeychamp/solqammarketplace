@@ -15,11 +15,11 @@
         </div>
         <div class="col-md-4">
             <label class="form-label small fw-semibold">Badge</label>
-            <input name="badge_text" class="form-control" placeholder="Solqam Festival · Pakistan">
+            <input name="badge_text" class="form-control" placeholder="Solqam Marketplace">
         </div>
         <div class="col-md-4">
             <label class="form-label small fw-semibold">Button text</label>
-            <input name="button_text" class="form-control" placeholder="Shop mega deals">
+            <input name="button_text" class="form-control" placeholder="Shop now">
         </div>
         <div class="col-md-4">
             <label class="form-label small fw-semibold">Button link</label>
@@ -59,7 +59,12 @@
         <tbody>
         <?php foreach ($banners as $b): ?>
             <tr>
-                <td><?= esc($b['title']) ?></td>
+            <td>
+                <?php if (!empty($b['image_path'])): ?>
+                    <img src="<?= esc(preg_match('#^https?://#i', $b['image_path']) ? $b['image_path'] : base_url(ltrim($b['image_path'], '/'))) ?>" alt="" style="height:36px;width:64px;object-fit:cover;border-radius:6px;" class="me-2">
+                <?php endif; ?>
+                <?= esc($b['title']) ?>
+            </td>
                 <td><?= esc($b['placement']) ?></td>
                 <td class="small text-muted"><?= esc($b['starts_at'] ?? '—') ?> → <?= esc($b['ends_at'] ?? 'open') ?></td>
                 <td class="text-end"><a class="btn btn-sm btn-outline-danger" href="<?= site_url('admin/banners/delete/' . $b['id']) ?>">Delete</a></td>

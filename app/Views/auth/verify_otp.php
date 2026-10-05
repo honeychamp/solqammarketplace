@@ -6,7 +6,7 @@
         <div class="col-md-5">
             <div class="sf-panel p-4 p-md-5 text-center">
                 <div class="mb-4">
-                    <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20260929h" alt="Solqam Market Place" height="68" class="mb-3">
+                    <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20261005c" alt="Solqam Marketplace" height="68" class="mb-3">
                     <div class="d-inline-flex p-3 rounded-circle mb-3" style="background: rgba(11, 48, 230, 0.1); color: var(--sol-primary);">
                         <i class="bi bi-envelope-check-fill fs-2"></i>
                     </div>

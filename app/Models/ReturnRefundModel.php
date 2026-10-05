@@ -16,6 +16,7 @@ class ReturnRefundModel extends Model
         'order_item_id',
         'user_id',
         'reason',
+        'customer_note',
         'photo_path',
         'admin_note',
         'refund_amount',

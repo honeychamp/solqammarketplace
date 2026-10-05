@@ -31,11 +31,24 @@ class WishlistModel extends Model
 
     public function getUserWishlist(int $userId): array
     {
-        return $this->select('wishlists.*, products.name, products.price, products.slug, products.stock, products.status, products.cashback_percent, seller_profiles.store_name, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
-            ->join('products', 'products.id = wishlists.product_id')
-            ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
-            ->where('wishlists.user_id', $userId)
-            ->orderBy('wishlists.id', 'DESC')
-            ->findAll();
+        $cashback = $this->db->fieldExists('cashback_percent', 'products')
+            ? 'products.cashback_percent'
+            : '0 as cashback_percent';
+        $imageSql = $this->db->tableExists('product_images')
+            ? '(SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image'
+            : 'NULL as primary_image';
+
+        try {
+            return $this->select("wishlists.*, products.name, products.price, products.slug, products.stock, products.status, {$cashback}, seller_profiles.store_name, {$imageSql}")
+                ->join('products', 'products.id = wishlists.product_id')
+                ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
+                ->where('wishlists.user_id', $userId)
+                ->orderBy('wishlists.id', 'DESC')
+                ->findAll();
+        } catch (\Throwable $e) {
+            log_message('error', 'Wishlist: ' . $e->getMessage());
+
+            return [];
+        }
     }
 }

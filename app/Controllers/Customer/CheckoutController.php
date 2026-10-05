@@ -74,7 +74,7 @@ class CheckoutController extends BaseController
         }
 
         return view('customer/checkout', [
-            'title'          => 'Checkout — Solqam Market Place',
+            'title'          => 'Checkout — Solqam Marketplace',
             'items'          => $items,
             'subtotal'       => $subtotal,
             'addresses'      => $addresses,
