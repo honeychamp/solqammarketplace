@@ -68,15 +68,23 @@ class CategoryController extends BaseController
 
         $rate = $this->parseCommissionPercent($parentId !== null);
 
+        try {
+            $image = $this->storeCategoryImage();
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
+
         $payload = [
             'name'        => $name,
             'slug'        => $this->categoryModel->uniqueSlug($name),
             'description' => $this->request->getPost('description'),
             'parent_id'   => $parentId,
             'icon'        => $this->request->getPost('icon'),
-            'image'       => $this->storeCategoryImage(),
             'is_active'   => 1,
         ];
+        if ($image) {
+            $payload['image'] = $image;
+        }
 
         if ($this->categoryModel->db->fieldExists('commission_percent', 'categories')) {
             $payload['commission_percent'] = $rate;
@@ -117,14 +125,28 @@ class CategoryController extends BaseController
             $payload['description'] = $this->request->getPost('description');
         }
 
-        $image = $this->storeCategoryImage();
+        try {
+            $image = $this->storeCategoryImage();
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
         if ($image) {
             $payload['image'] = $image;
         }
 
+        if ($payload === []) {
+            return redirect()->to('/admin/categories')->with('error', 'Nothing to update.');
+        }
+
+        if (isset($payload['image']) && ! $this->categoryModel->db->fieldExists('image', 'categories')) {
+            return redirect()->back()->with('error', 'Category image column is missing. Refresh the page once, then try again.');
+        }
+
         $this->categoryModel->update($id, $payload);
 
-        return $this->redirectAfterHub('/admin/categories', 'success', 'Category updated.');
+        $msg = isset($payload['image']) ? 'Category image saved.' : 'Category updated.';
+
+        return $this->redirectAfterHub('/admin/categories', 'success', $msg);
     }
 
     public function delete($id)
@@ -163,27 +185,39 @@ class CategoryController extends BaseController
     protected function storeCategoryImage(): ?string
     {
         $img = $this->request->getFile('image');
-        if (! $img || ! $img->isValid() || $img->hasMoved()) {
+        if (! $img || $img->getError() === UPLOAD_ERR_NO_FILE) {
             return null;
         }
 
-        $mime = (string) $img->getMimeType();
-        if (! in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true)) {
-            return null;
+        if (! $img->isValid() || $img->hasMoved()) {
+            throw new \RuntimeException($img->getErrorString() ?: 'Category image could not be uploaded.');
         }
 
-        if ($img->getSize() > 2 * 1024 * 1024) {
-            return null;
+        if ($img->getSize() > 4 * 1024 * 1024) {
+            throw new \RuntimeException('Category image must be 4 MB or smaller.');
         }
 
-        $uploadDir = FCPATH . 'uploads/categories';
-        if (! is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        $mime = strtolower((string) ($img->getMimeType() ?: $img->getClientMimeType()));
+        $ext  = strtolower((string) ($img->getClientExtension() ?: $img->guessExtension()));
+        $okMime = in_array($mime, ['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp', 'image/gif'], true);
+        $okExt  = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+        if (! $okMime && ! $okExt) {
+            throw new \RuntimeException('Use a JPG, PNG, WEBP, or GIF image.');
         }
 
+        $uploadDir = rtrim(FCPATH, '\\/') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'categories';
+        if (! is_dir($uploadDir) && ! @mkdir($uploadDir, 0755, true) && ! is_dir($uploadDir)) {
+            throw new \RuntimeException('Could not create uploads/categories. Check folder permissions.');
+        }
+
+        $safeExt = $okExt ? $ext : 'jpg';
         $newName = $img->getRandomName();
+        if ($newName === '' || ! str_contains($newName, '.')) {
+            $newName = bin2hex(random_bytes(8)) . '.' . $safeExt;
+        }
+
         $img->move($uploadDir, $newName);
 
-        return base_url('uploads/categories/' . $newName);
+        return 'uploads/categories/' . $newName;
     }
 }

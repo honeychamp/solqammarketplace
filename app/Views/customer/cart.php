@@ -105,10 +105,10 @@
                     </div>
 
                     <div class="d-flex justify-content-between mb-2 small">
-                        <span class="text-secondary">Delivery (city-wise)</span>
-                        <span class="fw-bold text-dark"><?= esc(delivery_hint()['label']) ?></span>
+                        <span class="text-secondary">Delivery</span>
+                        <span class="fw-bold text-dark">At checkout</span>
                     </div>
-                    <p class="small text-muted mb-2">Exact charge applies at checkout from Admin city rates (Lahore, Rawalpindi, …). Free only if that city has a “free above” amount and your cart reaches it.</p>
+                    <p class="small text-muted mb-2">Delivery charges and delivery days are applied at checkout after you select your city (admin city rates).</p>
 
                     <div class="d-flex justify-content-between mb-3 small">
                         <span class="text-secondary">Wallet cashback (as listed)</span>

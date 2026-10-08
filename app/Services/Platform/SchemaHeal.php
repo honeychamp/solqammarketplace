@@ -8,7 +8,7 @@ namespace App\Services\Platform;
  */
 class SchemaHeal
 {
-    public const VERSION = 7;
+    public const VERSION = 8;
 
     public static function run(): void
     {
@@ -104,6 +104,11 @@ class SchemaHeal
                 'constraint' => '5,2',
                 'null'       => true,
             ]);
+            self::addColumn($db, $forge, 'categories', 'image', [
+                'type'       => 'VARCHAR',
+                'constraint' => 255,
+                'null'       => true,
+            ]);
             if ($db->tableExists('product_images')) {
                 self::addColumn($db, $forge, 'product_images', 'sort_order', [
                     'type'       => 'INT',
@@ -115,6 +120,7 @@ class SchemaHeal
 
             self::ensureAdminMallStores($db);
             self::healBannersTable($db, $forge);
+            self::ensureSpeedIndexes($db);
 
             if (! is_dir(WRITEPATH . 'cache')) {
                 @mkdir(WRITEPATH . 'cache', 0755, true);

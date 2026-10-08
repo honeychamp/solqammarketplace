@@ -158,6 +158,8 @@ class CartController extends BaseController
             }
         }
 
+        nav_forget(['cart']);
+
         return redirect()->to('/cart')->with('success', 'Cart updated.');
     }
 
@@ -168,6 +170,8 @@ class CartController extends BaseController
             ->where('id', (int) $itemId)
             ->where('cart_id', $cart['id'])
             ->delete();
+
+        nav_forget(['cart']);
 
         return redirect()->to('/cart')->with('success', 'Item removed.');
     }

@@ -1,24 +1,33 @@
 <?php $megaTree = category_tree(); ?>
 <nav class="solqam-category-bar d-none d-md-block">
     <div class="container mega-bar-inner">
-        <div class="d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-1 overflow-x-auto mega-strip">
-                <a href="<?= site_url('shop?sort=best_selling') ?>" class="category-nav-link text-solqam-accent fw-bold">
-                    <i class="bi bi-lightning-charge-fill"></i> Flash Deals
+        <div class="d-flex align-items-center mega-bar-row">
+            <a href="<?= site_url('shop?sort=best_selling') ?>" class="category-nav-link text-solqam-accent fw-bold mega-pin">
+                <i class="bi bi-lightning-charge-fill"></i> Flash Deals
+            </a>
+            <div class="mega-wrap">
+                <a href="<?= site_url('shop') ?>" class="category-nav-link mega-all-btn mega-pin">
+                    <i class="bi bi-grid-3x3-gap-fill"></i> Categories
+                    <i class="bi bi-chevron-down small"></i>
                 </a>
-                <div class="mega-wrap">
-                    <a href="<?= site_url('shop') ?>" class="category-nav-link mega-all-btn">
-                        <i class="bi bi-grid-3x3-gap-fill"></i> Categories
-                        <i class="bi bi-chevron-down small"></i>
-                    </a>
-                    <?php foreach ($megaTree as $navCat): ?>
-                        <a href="<?= site_url('shop?category=' . esc($navCat['slug'])) ?>"
-                           class="category-nav-link mega-strip-l1"
-                           data-mega="<?= esc($navCat['slug'], 'attr') ?>">
-                            <?= esc($navCat['name']) ?>
-                        </a>
-                    <?php endforeach; ?>
-                    <div class="mega-panel" role="menu">
+                <div class="mega-strip-scroller">
+                    <button type="button" class="mega-strip-arrow is-prev" aria-label="Previous categories">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <div class="mega-strip-track">
+                        <?php foreach ($megaTree as $navCat): ?>
+                            <a href="<?= site_url('shop?category=' . esc($navCat['slug'])) ?>"
+                               class="category-nav-link mega-strip-l1"
+                               data-mega="<?= esc($navCat['slug'], 'attr') ?>">
+                                <?= esc($navCat['name']) ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <button type="button" class="mega-strip-arrow is-next" aria-label="Next categories">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="mega-panel" role="menu">
                         <?php if (empty($megaTree)): ?>
                             <div class="p-4 text-muted small">Add categories in Admin → Categories (up to 4 levels).</div>
                         <?php else: ?>
@@ -59,10 +68,9 @@
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
-                    </div>
                 </div>
             </div>
-            <a href="<?= site_url('shop') ?>" class="text-solqam text-decoration-none small fw-bold d-none d-xl-inline">
+            <a href="<?= site_url('shop') ?>" class="text-solqam text-decoration-none small fw-bold d-none d-xl-inline mega-pin ms-2">
                 All Categories <i class="bi bi-chevron-right"></i>
             </a>
         </div>

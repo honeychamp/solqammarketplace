@@ -114,19 +114,7 @@ class CategoryModel extends Model
 
     public function depthOf(?int $categoryId): int
     {
-        $id    = (int) $categoryId;
-        $depth = 0;
-        $guard = 0;
-        while ($id > 0 && $guard++ < 8) {
-            $row = $this->db->table($this->table)->select('id, parent_id')->where('id', $id)->get()->getRowArray();
-            if (! $row) {
-                break;
-            }
-            $depth++;
-            $id = (int) ($row['parent_id'] ?? 0);
-        }
-
-        return $depth;
+        return count($this->breadcrumb((int) $categoryId));
     }
 
     public function catalogIds(?string $slug = null, $id = null): array
@@ -199,10 +187,10 @@ class CategoryModel extends Model
 
     public function getSelfAndDescendantIds(int $categoryId): array
     {
-        $ids      = [$categoryId];
-        $children = $this->db->table($this->table)->select('id')->where('parent_id', $categoryId)->get()->getResultArray();
-        foreach ($children as $child) {
-            $ids = array_merge($ids, $this->getSelfAndDescendantIds((int) $child['id']));
+
+    public function exists(int $id): bool
+    {
+        if ($id <= 0) {
         }
 
         return array_values(array_unique($ids));

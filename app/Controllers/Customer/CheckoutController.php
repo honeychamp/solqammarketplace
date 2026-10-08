@@ -55,9 +55,29 @@ class CheckoutController extends BaseController
         $walletBalance = $this->walletService->getBalance($userId);
         $walletDebt    = $this->walletService->getOutstandingDebt($userId);
         $defaultAddr   = $addresses[0] ?? null;
+        $draft         = session()->get('checkout_draft') ?? [];
+        $draftAddrId   = (string) ($draft['address_id'] ?? '');
+        $quoteCity     = null;
+        $quoteProv     = null;
+        if ($draftAddrId !== '' && $draftAddrId !== 'new') {
+            foreach ($addresses as $saved) {
+                if ((string) $saved['id'] === $draftAddrId) {
+                    $quoteCity = $saved['city'] ?? null;
+                    $quoteProv = $saved['province'] ?? null;
+                    break;
+                }
+            }
+        } elseif ($draftAddrId === 'new' || $defaultAddr === null) {
+            $draftCity = (string) ($draft['city'] ?? '');
+            $quoteCity = $draftCity === '__other' ? ($draft['city_other'] ?? '') : $draftCity;
+            $quoteProv = $draft['province'] ?? null;
+        } elseif ($defaultAddr) {
+            $quoteCity = $defaultAddr['city'] ?? null;
+            $quoteProv = $defaultAddr['province'] ?? null;
+        }
         $shippingQuote = $this->shippingService->quote(
-            $defaultAddr['city'] ?? null,
-            $defaultAddr['province'] ?? null,
+            $quoteCity !== '' ? $quoteCity : null,
+            $quoteProv,
             $subtotal
         );
 
@@ -127,50 +147,42 @@ class CheckoutController extends BaseController
             $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
         }
 
+        $this->rememberCheckoutDraft();
         try {
             $this->couponService->apply($code, $userId, $subtotal);
             session()->set('checkout_coupon_code', strtoupper(trim($code)));
-            return redirect()->to('/checkout')->with('success', 'Voucher applied.');
+            return redirect()->to('/checkout')->withInput()->with('success', 'Voucher applied.');
         } catch (Exception $e) {
             session()->remove('checkout_coupon_code');
-            return redirect()->to('/checkout')->with('error', $e->getMessage());
+            return redirect()->to('/checkout')->withInput()->with('error', $e->getMessage());
         }
     }
 
     public function process()
     {
         $userId = (int) session()->get('user.id');
+        $this->rememberCheckoutDraft();
 
         $addressId = $this->request->getPost('address_id');
+        $fail      = $this->failCheckoutAddress($addressId);
+        if ($fail !== null) {
+            return $fail;
+        }
 
         if ($addressId === 'new') {
-            $rules = [
-                'recipient_name' => 'required',
-                'phone'          => 'required',
-                'street_address' => 'required',
-                'city'           => 'required',
-                'province'       => 'required',
-            ];
-            if (!$this->validate($rules)) {
-                return redirect()->back()->withInput()->with('error', 'Please complete all address fields.');
-            }
-
             $cityPost = (string) $this->request->getPost('city');
             if ($cityPost === '__other') {
                 $cityPost = trim((string) $this->request->getPost('city_other'));
             }
-            if ($cityPost === '') {
-                return redirect()->back()->withInput()->with('error', 'Please enter a city so delivery charges can be applied.');
-            }
 
             $addressId = $this->addressModel->insert([
                 'user_id'        => $userId,
-                'recipient_name' => $this->request->getPost('recipient_name'),
-                'phone'          => $this->request->getPost('phone'),
-                'street_address' => $this->request->getPost('street_address'),
+                'recipient_name' => trim((string) $this->request->getPost('recipient_name')),
+                'phone'          => trim((string) $this->request->getPost('phone')),
+                'street_address' => trim((string) $this->request->getPost('street_address')),
                 'city'           => $cityPost,
-                'province'       => $this->request->getPost('province'),
-                'postal_code'    => $this->request->getPost('postal_code'),
+                'province'       => trim((string) $this->request->getPost('province')),
+                'postal_code'    => trim((string) $this->request->getPost('postal_code')),
                 'is_default'     => 1,
             ]);
         }
@@ -181,21 +193,21 @@ class CheckoutController extends BaseController
         $notes         = $this->request->getPost('notes');
         $couponCode    = session()->get('checkout_coupon_code');
 
-        if (!$addressId) {
-            return redirect()->back()->with('error', 'Please select or enter a shipping address.');
+        if (! $addressId) {
+            return $this->checkoutReject(['address_id' => 'Please select or enter a shipping address.']);
         }
 
         try {
             $payLater = [];
             if ($paymentMethod === 'pay_later') {
                 if (!$useWallet) {
-                    return redirect()->back()->withInput()->with('error', 'Pay later tab milta hai jab wallet use ho aur wallet mein paise kam hon.');
+                    return $this->checkoutReject([], 'Pay later tab milta hai jab wallet use ho aur wallet mein paise kam hon.');
                 }
                 $cnicFront = $this->storePayLaterFile($this->request->getFile('cnic_front'), 'cnic');
                 $cnicBack  = $this->storePayLaterFile($this->request->getFile('cnic_back'), 'cnic');
                 $billCopy  = $this->storePayLaterFile($this->request->getFile('utility_bill'), 'bill');
                 if (!$cnicFront || !$billCopy) {
-                    return redirect()->back()->withInput()->with('error', 'Upload CNIC copies and a utility bill for Pay later.');
+                    return $this->checkoutReject(['cnic_front' => 'Upload CNIC copies and a utility bill for Pay later.']);
                 }
                 $payLater = [
                     'full_name'         => trim((string) $this->request->getPost('pay_later_name')),
@@ -219,6 +231,7 @@ class CheckoutController extends BaseController
             );
 
             session()->remove('checkout_coupon_code');
+            session()->remove('checkout_draft');
 
             if (! empty($result['redirect']['fields']) && ($result['payment_status'] ?? '') === 'pending') {
                 return view('customer/pay_redirect', [
@@ -235,8 +248,67 @@ class CheckoutController extends BaseController
 
             return redirect()->to('/account/orders/' . $result['order_id'])->with('success', $msg);
         } catch (Exception $e) {
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
+            return $this->checkoutReject([], $e->getMessage());
         }
+    }
+
+    protected function rememberCheckoutDraft(): void
+    {
+        $post = $this->request->getPost() ?? [];
+        unset($post['csrf_test_name'], $post[csrf_token()]);
+        session()->set('checkout_draft', $post);
+    }
+
+    protected function checkoutReject(array $errors = [], string $error = '')
+    {
+        $redirect = redirect()->to('/checkout')->withInput();
+        if ($errors !== []) {
+            $redirect = $redirect->with('errors', $errors);
+        }
+        if ($error !== '') {
+            $redirect = $redirect->with('error', $error);
+        }
+
+        return $redirect;
+    }
+
+    protected function failCheckoutAddress($addressId)
+    {
+        if ($addressId !== 'new' && (int) $addressId > 0) {
+            return null;
+        }
+
+        $errors   = [];
+        $name     = trim((string) $this->request->getPost('recipient_name'));
+        $phone    = trim((string) $this->request->getPost('phone'));
+        $street   = trim((string) $this->request->getPost('street_address'));
+        $city     = trim((string) $this->request->getPost('city'));
+        $cityOther= trim((string) $this->request->getPost('city_other'));
+        $province = trim((string) $this->request->getPost('province'));
+        $postal   = trim((string) $this->request->getPost('postal_code'));
+
+        if ($name === '' || strlen($name) < 2) {
+            $errors['recipient_name'] = 'Recipient full name is required.';
+        }
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($digits === '' || strlen($digits) < 10 || strlen($digits) > 12) {
+            $errors['phone'] = 'Enter a valid mobile number (e.g. 03XXXXXXXXX).';
+        }
+        if ($street === '' || strlen($street) < 8) {
+            $errors['street_address'] = 'Street / house address is required.';
+        }
+        $resolvedCity = $city === '__other' ? $cityOther : $city;
+        if ($resolvedCity === '') {
+            $errors['city'] = 'City is required so delivery charges can be applied.';
+        }
+        if ($province === '') {
+            $errors['province'] = 'Province is required.';
+        }
+        if ($postal === '' || ! preg_match('/^[0-9]{4,6}$/', $postal)) {
+            $errors['postal_code'] = 'Postal code is required (4–6 digits).';
+        }
+
+        return $errors === [] ? null : $this->checkoutReject($errors);
     }
 
     protected function storePayLaterFile($file, string $prefix): ?string

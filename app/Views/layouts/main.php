@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261005b">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261006c">
 </head>
 <body class="d-flex flex-column min-vh-100">
 
@@ -296,6 +296,37 @@
         wrap.querySelectorAll('.mega-l1-item, .mega-strip-l1').forEach((item) => {
             item.addEventListener('mouseenter', () => activate(item.dataset.mega));
         });
+
+        const track = wrap.querySelector('.mega-strip-track');
+        const prev = wrap.querySelector('.mega-strip-arrow.is-prev');
+        const next = wrap.querySelector('.mega-strip-arrow.is-next');
+        if (!track || !prev || !next) return;
+
+        const step = () => {
+            const item = track.querySelector('.mega-strip-l1');
+            return item ? item.getBoundingClientRect().width + 4 : 140;
+        };
+        const syncArrows = () => {
+            const max = Math.max(0, track.scrollWidth - track.clientWidth - 1);
+            prev.disabled = track.scrollLeft <= 1;
+            next.disabled = track.scrollLeft >= max;
+            prev.hidden = next.hidden = max <= 0;
+        };
+        prev.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            track.scrollBy({ left: -step(), behavior: 'smooth' });
+            prev.blur();
+        });
+        next.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            track.scrollBy({ left: step(), behavior: 'smooth' });
+            next.blur();
+        });
+        track.addEventListener('scroll', syncArrows, { passive: true });
+        window.addEventListener('resize', syncArrows);
+        syncArrows();
     })();
     </script>
     <?= $this->renderSection('scripts') ?>

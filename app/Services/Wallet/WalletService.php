@@ -75,6 +75,9 @@ class WalletService
         ]);
 
         $this->db->transComplete();
+        if (function_exists('nav_forget')) {
+            nav_forget(['wallet']);
+        }
 
         return $this->db->transStatus();
     }
@@ -125,6 +128,9 @@ class WalletService
         ]);
 
         $this->db->transComplete();
+        if (function_exists('nav_forget')) {
+            nav_forget(['wallet']);
+        }
 
         return $this->db->transStatus();
     }

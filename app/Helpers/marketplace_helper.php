@@ -210,6 +210,88 @@ if (!function_exists('seller_is_approved')) {
     }
 }
 
+if (!function_exists('register_keep')) {
+    function register_keep(string $key): string
+    {
+        $draft = session()->get('register_draft') ?? [];
+        $old   = old($key, '');
+        $value = is_string($old) && trim(html_entity_decode($old, ENT_QUOTES)) !== ''
+            ? html_entity_decode($old, ENT_QUOTES)
+            : (string) ($draft[$key] ?? '');
+        if ($key === 'phone') {
+            $digits = preg_replace('/\D+/', '', $value) ?? '';
+            if (strlen($digits) === 11 && str_starts_with($digits, '0')) {
+                $digits = substr($digits, 1);
+            }
+            $value = substr($digits, 0, 10);
+        }
+
+        return esc($value);
+    }
+}
+
+if (!function_exists('form_keep_raw')) {
+    function form_keep_raw(string $bag, string $key): string
+    {
+        $draft = session()->get($bag) ?? [];
+        $old   = old($key, '');
+        if (is_string($old) && trim(html_entity_decode($old, ENT_QUOTES)) !== '') {
+            return html_entity_decode($old, ENT_QUOTES);
+        }
+
+        return (string) ($draft[$key] ?? '');
+    }
+}
+
+if (!function_exists('shipping_eta_label')) {
+    function shipping_eta_label(?string $eta): string
+    {
+        $eta = trim((string) $eta);
+        if ($eta === '') {
+            return '';
+        }
+        if (stripos($eta, 'day') !== false) {
+            return '(' . $eta . ')';
+        }
+
+        return '(' . $eta . ' days)';
+    }
+}
+
+if (!function_exists('checkout_keep')) {
+    function checkout_keep(string $key): string
+    {
+        return esc(form_keep_raw('checkout_draft', $key));
+    }
+}
+
+if (!function_exists('media_url')) {
+    function media_url(?string $path): string
+    {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return '';
+        }
+        if (str_starts_with($path, '//')) {
+            $path = 'https:' . $path;
+        }
+        if (preg_match('#^https?://#i', $path)) {
+            $rel = ltrim((string) (parse_url($path, PHP_URL_PATH) ?? ''), '/');
+            if (preg_match('#(?:^|/)(uploads/.+)$#', $rel, $m)) {
+                return base_url($m[1]);
+            }
+
+            return $path;
+        }
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+        if (str_starts_with($path, 'public/')) {
+            $path = substr($path, 7);
+        }
+
+        return base_url($path);
+    }
+}
+
 if (!function_exists('dash_delta')) {
     function dash_delta(float $now, float $prev): array
     {

@@ -1,6 +1,13 @@
 <?= $this->extend('layouts/main') ?>
 
 <?= $this->section('content') ?>
+<?php
+$fieldErrors = session()->getFlashdata('errors') ?? [];
+$formError   = session()->getFlashdata('error');
+$invalid = static function (string $key) use ($fieldErrors): string {
+    return isset($fieldErrors[$key]) ? ' is-invalid' : '';
+};
+?>
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-7">
@@ -26,19 +33,17 @@
                 </ul>
 
                 <!-- Prominent Validation Alert Box at the Top -->
-                <div id="validationAlert" class="alert alert-danger border-0 shadow-sm rounded-3 mb-4 <?= (!session()->getFlashdata('errors') && !session()->getFlashdata('error')) ? 'd-none' : '' ?>">
+                <div id="validationAlert" class="alert alert-danger border-0 shadow-sm rounded-3 mb-4 <?= ($fieldErrors === [] && ! $formError) ? 'd-none' : '' ?>">
                     <div class="fw-bold mb-2 d-flex align-items-center gap-2">
                         <i class="bi bi-exclamation-triangle-fill text-danger fs-5 flex-shrink-0"></i>
                         <span>Please fix the following issues to continue:</span>
                     </div>
                     <ul class="mb-0 ps-3 small" id="validationAlertList">
-                        <?php if (session()->getFlashdata('errors')): ?>
-                            <?php foreach (session()->getFlashdata('errors') as $error): ?>
-                                <li><?= esc($error) ?></li>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        <?php if (session()->getFlashdata('error')): ?>
-                            <li><?= esc(session()->getFlashdata('error')) ?></li>
+                        <?php foreach ($fieldErrors as $error): ?>
+                            <li><?= esc($error) ?></li>
+                        <?php endforeach; ?>
+                        <?php if ($formError): ?>
+                            <li><?= esc($formError) ?></li>
                         <?php endif; ?>
                     </ul>
                 </div>
@@ -52,20 +57,20 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold small text-muted">Full Name <span class="text-danger">*</span></label>
-                                <input type="text" name="name" id="customer_name" class="form-control" placeholder="Full name" value="<?= old('name') ?>" required>
+                                <input type="text" name="name" id="customer_name" class="form-control<?= $invalid('name') ?>" placeholder="Full name" value="<?= register_keep('name') ?>" required>
                             </div>
 
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">Email Address <span class="text-danger">*</span></label>
-                                    <input type="email" name="email" id="customer_email" class="form-control" placeholder="name@domain.com" value="<?= old('email') ?>" required>
+                                    <input type="email" name="email" id="customer_email" class="form-control<?= $invalid('email') ?>" placeholder="name@domain.com" value="<?= register_keep('email') ?>" required>
                                     <div class="form-text text-muted" style="font-size: 0.75rem;">Must be unique &amp; not already registered.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">Mobile Number (10 Digits) <span class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-light fw-bold text-dark border-end-0" style="font-size: 0.92rem;">+92</span>
-                                        <input type="tel" name="phone" id="customer_phone" class="form-control border-start-0 ps-1 font-monospace" placeholder="3001234567" maxlength="10" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);" value="<?= old('phone') ?>" required>
+                                        <input type="tel" name="phone" id="customer_phone" class="form-control border-start-0 ps-1 font-monospace<?= $invalid('phone') ?>" placeholder="3001234567" maxlength="10" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);" value="<?= register_keep('phone') ?>" required>
                                     </div>
                                     <div class="form-text text-muted" style="font-size: 0.75rem;">Enter 10 digits only without leading 0 (e.g. 3001234567).</div>
                                 </div>
@@ -74,7 +79,7 @@
                             <div class="mb-4">
                                 <label class="form-label fw-semibold small text-muted">Password (Min 6 characters) <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <input type="password" name="password" id="customer_password" class="form-control border-end-0" placeholder="••••••••" minlength="6" required>
+                                    <input type="password" name="password" id="customer_password" class="form-control border-end-0<?= $invalid('password') ?>" placeholder="••••••••" minlength="6" value="<?= register_keep('password') ?>" required>
                                     <button class="btn btn-outline-secondary border-start-0 bg-transparent text-muted" type="button" onclick="togglePasswordVisibility('customer_password', 'customerPasswordEye')">
                                         <i class="bi bi-eye" id="customerPasswordEye"></i>
                                     </button>
@@ -97,25 +102,25 @@
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">Owner Full Name <span class="text-danger">*</span></label>
-                                    <input type="text" name="name" id="seller_name" class="form-control" placeholder="Owner full name" value="<?= old('name') ?>" required>
+                                    <input type="text" name="name" id="seller_name" class="form-control<?= $invalid('name') ?>" placeholder="Owner full name" value="<?= register_keep('name') ?>" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">Store / Brand Name <span class="text-danger">*</span></label>
-                                    <input type="text" name="store_name" id="seller_store_name" class="form-control" placeholder="Store name" value="<?= old('store_name') ?>" required>
+                                    <input type="text" name="store_name" id="seller_store_name" class="form-control<?= $invalid('store_name') ?>" placeholder="Store name" value="<?= register_keep('store_name') ?>" required>
                                 </div>
                             </div>
 
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">Business Email Address <span class="text-danger">*</span></label>
-                                    <input type="email" name="email" id="seller_email" class="form-control" placeholder="store@domain.com" value="<?= old('email') ?>" required>
+                                    <input type="email" name="email" id="seller_email" class="form-control<?= $invalid('email') ?>" placeholder="store@domain.com" value="<?= register_keep('email') ?>" required>
                                     <div class="form-text text-muted" style="font-size: 0.75rem;">Must be unique &amp; not already registered.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">Mobile / WhatsApp Number (10 Digits) <span class="text-danger">*</span></label>
                                     <div class="input-group">
                                         <span class="input-group-text bg-light fw-bold text-dark border-end-0" style="font-size: 0.92rem;">+92</span>
-                                        <input type="tel" name="phone" id="seller_phone" class="form-control border-start-0 ps-1 font-monospace" placeholder="3001234567" maxlength="10" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);" value="<?= old('phone') ?>" required>
+                                        <input type="tel" name="phone" id="seller_phone" class="form-control border-start-0 ps-1 font-monospace<?= $invalid('phone') ?>" placeholder="3001234567" maxlength="10" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);" value="<?= register_keep('phone') ?>" required>
                                     </div>
                                     <div class="form-text text-muted" style="font-size: 0.75rem;">Enter 10 digits only without leading 0 (e.g. 3001234567).</div>
                                 </div>
@@ -124,35 +129,35 @@
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold small text-muted">City <span class="text-danger">*</span></label>
-                                    <input type="text" name="city" id="seller_city" class="form-control" placeholder="e.g. Lahore, Karachi, Islamabad" value="<?= old('city') ?>" required>
+                                    <input type="text" name="city" id="seller_city" class="form-control<?= $invalid('city') ?>" placeholder="e.g. Lahore, Karachi, Islamabad" value="<?= register_keep('city') ?>" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold small text-muted">CNIC (National ID Card)</label>
-                                    <input type="text" name="cnic_or_ntn" id="seller_cnic" class="form-control font-monospace" placeholder="35201-1234567-1" maxlength="15" inputmode="numeric" oninput="formatCnic(this);" value="<?= old('cnic_or_ntn') ?>">
+                                    <label class="form-label fw-semibold small text-muted">CNIC (National ID Card) <span class="text-danger">*</span></label>
+                                    <input type="text" name="cnic_or_ntn" id="seller_cnic" class="form-control font-monospace<?= $invalid('cnic_or_ntn') ?>" placeholder="35201-1234567-1" maxlength="15" inputmode="numeric" oninput="formatCnic(this);" value="<?= register_keep('cnic_or_ntn') ?>" required>
                                     <div class="form-text text-muted" style="font-size: 0.75rem;">Format: 5 digits - 7 digits - 1 digit (auto-formatted).</div>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-semibold small text-muted">Business / Warehouse Address</label>
-                                <textarea name="business_address" class="form-control" rows="2" placeholder="Complete shop, plaza, or warehouse address"><?= old('business_address') ?></textarea>
+                                <label class="form-label fw-semibold small text-muted">Business / Warehouse Address <span class="text-danger">*</span></label>
+                                <textarea name="business_address" id="seller_address" class="form-control<?= $invalid('business_address') ?>" rows="2" placeholder="Complete shop, plaza, or warehouse address" required><?= register_keep('business_address') ?></textarea>
                             </div>
 
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold small text-muted">Settlement Bank Name</label>
-                                    <input type="text" name="bank_name" class="form-control" placeholder="e.g. Meezan Bank, HBL, Alfalah" value="<?= old('bank_name') ?>">
+                                    <label class="form-label fw-semibold small text-muted">Settlement Bank Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="bank_name" id="seller_bank" class="form-control<?= $invalid('bank_name') ?>" placeholder="e.g. Meezan Bank, HBL, Alfalah" value="<?= register_keep('bank_name') ?>" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold small text-muted">IBAN or Account Number</label>
-                                    <input type="text" name="account_number_or_iban" class="form-control" placeholder="PKXXMEZN..." value="<?= old('account_number_or_iban') ?>">
+                                    <label class="form-label fw-semibold small text-muted">IBAN or Account Number <span class="text-danger">*</span></label>
+                                    <input type="text" name="account_number_or_iban" id="seller_iban" class="form-control<?= $invalid('account_number_or_iban') ?>" placeholder="PKXXMEZN..." value="<?= register_keep('account_number_or_iban') ?>" required>
                                 </div>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label fw-semibold small text-muted">Account Password (Min 6 characters) <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <input type="password" name="password" id="seller_password" class="form-control border-end-0" placeholder="••••••••" minlength="6" required>
+                                    <input type="password" name="password" id="seller_password" class="form-control border-end-0<?= $invalid('password') ?>" placeholder="••••••••" minlength="6" value="<?= register_keep('password') ?>" required>
                                     <button class="btn btn-outline-secondary border-start-0 bg-transparent text-muted" type="button" onclick="togglePasswordVisibility('seller_password', 'sellerPasswordEye')">
                                         <i class="bi bi-eye" id="sellerPasswordEye"></i>
                                     </button>
@@ -266,10 +271,14 @@ function validateSellerForm(e) {
     const phoneEl = document.getElementById('seller_phone');
     const cityEl = document.getElementById('seller_city');
     const passEl = document.getElementById('seller_password');
+    const addressEl = document.getElementById('seller_address');
+    const bankEl = document.getElementById('seller_bank');
+    const ibanEl = document.getElementById('seller_iban');
+    const cnicEl = document.getElementById('seller_cnic');
 
     let errors = [];
 
-    [nameEl, storeEl, emailEl, phoneEl, cityEl, passEl].forEach(el => el && el.classList.remove('is-invalid'));
+    [nameEl, storeEl, emailEl, phoneEl, cityEl, passEl, addressEl, bankEl, ibanEl, cnicEl].forEach(el => el && el.classList.remove('is-invalid'));
 
     if (!nameEl.value.trim() || nameEl.value.trim().length < 2) {
         errors.push("Owner Full Name is required and must be at least 2 characters.");
@@ -299,19 +308,30 @@ function validateSellerForm(e) {
         cityEl.classList.add('is-invalid');
     }
 
+    const cnicVal = (cnicEl?.value || '').trim();
+    if (!cnicVal || !/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/.test(cnicVal)) {
+        errors.push("CNIC is required (e.g. 35201-1234567-1).");
+        if (cnicEl) cnicEl.classList.add('is-invalid');
+    }
+
+    if (!addressEl.value.trim() || addressEl.value.trim().length < 8) {
+        errors.push("Business / warehouse address is required.");
+        addressEl.classList.add('is-invalid');
+    }
+
+    if (!bankEl.value.trim()) {
+        errors.push("Settlement bank name is required.");
+        bankEl.classList.add('is-invalid');
+    }
+
+    if (!ibanEl.value.trim() || ibanEl.value.trim().length < 8) {
+        errors.push("IBAN or account number is required.");
+        ibanEl.classList.add('is-invalid');
+    }
+
     if (!passEl.value || passEl.value.length < 6) {
         errors.push("Account Password must be at least 6 characters long (letters, numbers, and symbols are supported).");
         passEl.classList.add('is-invalid');
-    }
-
-    const cnicEl = document.getElementById('seller_cnic');
-    if (cnicEl) {
-        cnicEl.classList.remove('is-invalid');
-        const cnicVal = cnicEl.value.trim();
-        if (cnicVal && !/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/.test(cnicVal)) {
-            errors.push("CNIC must be a complete 13-digit number (e.g. 35201-1234567-1).");
-            cnicEl.classList.add('is-invalid');
-        }
     }
 
     if (errors.length > 0) {

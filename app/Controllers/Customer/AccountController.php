@@ -77,6 +77,7 @@ class AccountController extends BaseController
         }
         $productId = (int) $this->request->getPost('product_id');
         $saved = (new WishlistModel())->toggle($userId, $productId);
+        nav_forget(['wishlist']);
         return redirect()->back()->with('success', $saved ? 'Saved to wishlist.' : 'Removed from wishlist.');
     }
 

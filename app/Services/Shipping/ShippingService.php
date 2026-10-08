@@ -23,6 +23,21 @@ class ShippingService
 
     public function quote(?string $city, ?string $province, float $subtotal): array
     {
+        if ($this->normalizeCity($city) === '') {
+            return [
+                'amount'     => 0.0,
+                'rate'       => 0.0,
+                'free_above' => 0.0,
+                'eta_days'   => '',
+                'is_free'    => false,
+                'city'       => '',
+                'matched'    => null,
+                'is_default' => false,
+                'unlisted'   => false,
+                'needs_city' => true,
+            ];
+        }
+
         $zone = $this->matchZone($city, $province);
         $fromFallback = false;
 
@@ -52,6 +67,7 @@ class ShippingService
             'matched'    => $matched,
             'is_default' => $zone ? $this->isDefaultLabel((string) $zone['city']) : false,
             'unlisted'   => $fromFallback,
+            'needs_city' => false,
         ];
     }
 

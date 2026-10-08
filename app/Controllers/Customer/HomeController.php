@@ -19,7 +19,13 @@ class HomeController extends BaseController
 
         $categories = [];
         try {
-            $categories = $categoryModel->where('is_active', 1)->where('parent_id', null)->orderBy('sort_order', 'ASC')->findAll();
+            $categories = $categoryModel->where('is_active', 1)
+                ->groupStart()
+                    ->where('parent_id', null)
+                    ->orWhere('parent_id', 0)
+                ->groupEnd()
+                ->orderBy('sort_order', 'ASC')
+                ->findAll();
         } catch (\Throwable $e) {
             $categories = [];
         }

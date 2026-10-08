@@ -18,7 +18,8 @@
                         <label class="form-label fw-semibold small text-muted">Email or Mobile Number</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
-                            <input type="text" name="login" class="form-control border-start-0 ps-0" placeholder="Enter your email or phone number" value="<?= old('login') ?>" required autofocus>
+                            <?php $prefillLogin = old('login') ?: ($prefillLogin ?? ''); ?>
+                            <input type="text" name="login" class="form-control border-start-0 ps-0" placeholder="Enter your email or phone number" value="<?= esc($prefillLogin) ?>" required <?= $prefillLogin === '' ? 'autofocus' : '' ?>>
                         </div>
                     </div>
 
@@ -29,7 +30,7 @@
                         </div>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
-                            <input type="password" name="password" id="login_password" class="form-control border-start-0 border-end-0 ps-0" placeholder="••••••••" required>
+                            <input type="password" name="password" id="login_password" class="form-control border-start-0 border-end-0 ps-0" placeholder="••••••••" required <?= !empty($prefillLogin) ? 'autofocus' : '' ?>>
                             <button class="btn btn-outline-secondary border-start-0 bg-light text-muted" type="button" onclick="togglePasswordVisibility('login_password', 'loginPasswordEye')">
                                 <i class="bi bi-eye" id="loginPasswordEye"></i>
                             </button>

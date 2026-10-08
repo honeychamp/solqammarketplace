@@ -51,7 +51,6 @@ if ($dealProducts === []): ?>
                         <div>
                             <div class="price-current"><span class="currency">Rs.</span><?= number_format((float) $salePrice, 0) ?></div>
                             <div class="price-original">Rs. <?= number_format((float) $origPrice, 0) ?></div>
-                            <?= delivery_tag_html() ?>
                             <div class="small text-success fw-semibold mt-1"><?= esc(cashback_percent_label($product)) ?> cashback</div>
                         </div>
                         <form action="<?= site_url('cart/add') ?>" method="POST" class="m-0">

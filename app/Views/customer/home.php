@@ -198,7 +198,7 @@
                     <a href="<?= site_url('shop?category=' . esc($cat['slug'])) ?>" class="category-bubble-card h-100">
                         <div class="category-bubble-icon<?= !empty($cat['image']) ? ' has-photo' : '' ?>">
                             <?php if (!empty($cat['image'])): ?>
-                                <img src="<?= esc($cat['image']) ?>" alt="<?= esc($cat['name']) ?>">
+                                <img src="<?= esc(media_url($cat['image'])) ?>" alt="<?= esc($cat['name']) ?>">
                             <?php else: ?>
                                 <i class="bi <?= $icon ?>"></i>
                             <?php endif; ?>

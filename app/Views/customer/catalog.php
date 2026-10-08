@@ -188,7 +188,6 @@
                                                 Rs. <?= number_format($origPrice, 0) ?>
                                             </div>
                                             <?php endif; ?>
-                                            <?= delivery_tag_html() ?>
                                             <div class="small text-success fw-semibold mt-1"><?= esc(cashback_percent_label($product)) ?> cashback</div>
                                         </div>
                                         <div class="d-flex gap-1">

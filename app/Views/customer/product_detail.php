@@ -47,7 +47,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     <div class="row g-3 align-items-start">
         <div class="col-lg-5">
             <div class="sf-panel p-3 p-lg-4 pdp-gallery">
-                <div class="pdp-main-stage" role="button" data-bs-toggle="modal" data-bs-target="#pdpZoomModal">
+                <div class="pdp-main-stage" id="pdpMainStage" role="button" tabindex="0" aria-label="Click to enlarge photo">
                     <img id="mainProductImg" src="<?= esc($product['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" alt="<?= esc($product['name']) ?>">
                     <?php if (!empty($product['is_mall'])): ?>
                     <span class="solqam-mall-badge position-absolute top-0 start-0 m-3">Solqam Mall</span>
@@ -57,7 +57,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                 <?php if ($gallery): ?>
                 <div class="pdp-thumbs mt-3">
                     <?php foreach ($gallery as $i => $img): ?>
-                        <button type="button" class="pdp-thumb <?= $i === 0 ? 'is-active' : '' ?>" data-src="<?= esc($img['image_path']) ?>">
+                        <button type="button" class="pdp-thumb <?= $i === 0 ? 'is-active' : '' ?>" data-index="<?= $i ?>" data-src="<?= esc($img['image_path']) ?>" title="View photo <?= $i + 1 ?>">
                             <img src="<?= esc($img['image_path']) ?>" alt="Photo <?= $i + 1 ?>">
                         </button>
                     <?php endforeach; ?>
@@ -369,7 +369,9 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                             </div>
                             <p class="mb-1"><?= esc($rev['comment']) ?></p>
                             <?php if (!empty($rev['image_path'])): ?>
-                                <img src="<?= esc($rev['image_path']) ?>" alt="Review photo" class="rounded-3 mb-2" style="max-width:160px;max-height:160px;object-fit:cover;">
+                                <button type="button" class="pdp-review-photo" data-src="<?= esc($rev['image_path']) ?>" title="Click to enlarge">
+                                    <img src="<?= esc($rev['image_path']) ?>" alt="Review photo">
+                                </button>
                             <?php endif; ?>
                             <small class="text-muted"><?= date('d M Y', strtotime($rev['created_at'])) ?></small>
                         </div>
@@ -434,15 +436,25 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     <?php endif; ?>
 </div>
 
-<div class="modal fade" id="pdpZoomModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content bg-dark border-0">
-            <div class="modal-header border-0">
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<div class="modal fade pdp-lightbox" id="pdpZoomModal" tabindex="-1" aria-label="Enlarged photos">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content pdp-lightbox-content">
+            <button type="button" class="btn-close btn-close-white pdp-lightbox-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="pdp-lightbox-nav is-prev" id="pdpZoomPrev" aria-label="Previous photo"><i class="bi bi-chevron-left"></i></button>
+            <div class="pdp-lightbox-stage" id="pdpZoomStage">
+                <img id="pdpZoomImg" src="<?= esc($product['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" alt="<?= esc($product['name']) ?>">
             </div>
-            <div class="modal-body text-center">
-                <img id="pdpZoomImg" src="<?= esc($product['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" class="img-fluid" alt="<?= esc($product['name']) ?>">
+            <button type="button" class="pdp-lightbox-nav is-next" id="pdpZoomNext" aria-label="Next photo"><i class="bi bi-chevron-right"></i></button>
+            <?php if ($gallery): ?>
+            <div class="pdp-lightbox-thumbs" id="pdpZoomThumbs">
+                <?php foreach ($gallery as $i => $img): ?>
+                    <button type="button" class="pdp-lightbox-thumb <?= $i === 0 ? 'is-active' : '' ?>" data-index="<?= $i ?>" data-src="<?= esc($img['image_path']) ?>">
+                        <img src="<?= esc($img['image_path']) ?>" alt="Photo <?= $i + 1 ?>">
+                    </button>
+                <?php endforeach; ?>
             </div>
+            <?php endif; ?>
+            <div class="pdp-lightbox-hint">Click photo to zoom · Esc to close</div>
         </div>
     </div>
 </div>
@@ -493,17 +505,19 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
         if (v) {
             if (variantInput) variantInput.value = v.id;
             const p = parseFloat(v.price || 0);
-            priceEl.textContent = Math.round(p > 0 ? p : basePrice).toLocaleString();
+            if (priceEl) priceEl.textContent = Math.round(p > 0 ? p : basePrice).toLocaleString();
             const st = parseInt(v.stock, 10) || 0;
-            qty.max = st || 1;
-            if (parseInt(qty.value, 10) > st) qty.value = st > 0 ? st : 1;
-            stockHint.textContent = st > 0 ? (st + ' in stock') : 'Out of stock for this option';
+            if (qty) {
+                qty.max = st || 1;
+                if (parseInt(qty.value, 10) > st) qty.value = st > 0 ? st : 1;
+            }
+            if (stockHint) stockHint.textContent = st > 0 ? (st + ' in stock') : 'Out of stock for this option';
         } else if (!variants.length) {
-            qty.max = baseStock;
-            stockHint.textContent = '';
+            if (qty) qty.max = baseStock;
+            if (stockHint) stockHint.textContent = '';
         } else {
             if (variantInput) variantInput.value = '';
-            stockHint.textContent = 'This color / size combination is not available';
+            if (stockHint) stockHint.textContent = 'This color / size combination is not available';
         }
         const sizeLabel = document.getElementById('selectedSizeLabel');
         if (sizeLabel && size) sizeLabel.textContent = size;
@@ -529,12 +543,97 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
 
     const main = document.getElementById('mainProductImg');
     const zoom = document.getElementById('pdpZoomImg');
-    document.querySelectorAll('.pdp-thumb').forEach(function (btn) {
+    const zoomModalEl = document.getElementById('pdpZoomModal');
+    const galleryBtns = Array.from(document.querySelectorAll('.pdp-thumb'));
+    const lightboxThumbs = Array.from(document.querySelectorAll('.pdp-lightbox-thumb'));
+    const gallerySrcs = galleryBtns.map(function (btn) { return btn.dataset.src; });
+    if (gallerySrcs.length === 0 && main) {
+        gallerySrcs.push(main.src);
+    }
+    let galleryIndex = 0;
+    let lightboxSolo = false;
+    const lightbox = zoomModalEl ? bootstrap.Modal.getOrCreateInstance(zoomModalEl) : null;
+
+    function markThumbs(index) {
+        galleryBtns.forEach(function (b, i) { b.classList.toggle('is-active', i === index); });
+        lightboxThumbs.forEach(function (b, i) { b.classList.toggle('is-active', i === index); });
+    }
+
+    function setGalleryImage(index) {
+        if (!gallerySrcs.length) return;
+        galleryIndex = (index + gallerySrcs.length) % gallerySrcs.length;
+        const src = gallerySrcs[galleryIndex];
+        if (main) main.src = src;
+        if (zoom) {
+            zoom.src = src;
+            zoom.classList.remove('is-zoomed');
+        }
+        markThumbs(galleryIndex);
+    }
+
+    function openLightbox(index, soloSrc) {
+        lightboxSolo = !!soloSrc;
+        zoomModalEl?.classList.toggle('is-solo', lightboxSolo || gallerySrcs.length < 2);
+        if (soloSrc) {
+            if (zoom) {
+                zoom.src = soloSrc;
+                zoom.classList.remove('is-zoomed');
+            }
+        } else {
+            setGalleryImage(index);
+        }
+        lightbox?.show();
+    }
+
+    document.getElementById('pdpMainStage')?.addEventListener('click', function () {
+        openLightbox(galleryIndex);
+    });
+    document.getElementById('pdpMainStage')?.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openLightbox(galleryIndex);
+        }
+    });
+
+    galleryBtns.forEach(function (btn) {
         btn.addEventListener('click', function () {
-            document.querySelectorAll('.pdp-thumb').forEach(function (b) { b.classList.remove('is-active'); });
-            btn.classList.add('is-active');
-            main.src = btn.dataset.src;
-            zoom.src = btn.dataset.src;
+            const index = parseInt(btn.dataset.index, 10) || 0;
+            setGalleryImage(index);
+            openLightbox(index);
+        });
+    });
+
+    lightboxThumbs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            lightboxSolo = false;
+            zoomModalEl?.classList.remove('is-solo');
+            setGalleryImage(parseInt(btn.dataset.index, 10) || 0);
+        });
+    });
+
+    document.getElementById('pdpZoomPrev')?.addEventListener('click', function () {
+        setGalleryImage(galleryIndex - 1);
+    });
+    document.getElementById('pdpZoomNext')?.addEventListener('click', function () {
+        setGalleryImage(galleryIndex + 1);
+    });
+    zoom?.addEventListener('click', function () {
+        zoom.classList.toggle('is-zoomed');
+    });
+    zoomModalEl?.addEventListener('hidden.bs.modal', function () {
+        zoom?.classList.remove('is-zoomed');
+        lightboxSolo = false;
+        zoomModalEl.classList.remove('is-solo');
+    });
+    document.addEventListener('keydown', function (e) {
+        if (!zoomModalEl?.classList.contains('show') || lightboxSolo) return;
+        if (e.key === 'ArrowLeft') setGalleryImage(galleryIndex - 1);
+        if (e.key === 'ArrowRight') setGalleryImage(galleryIndex + 1);
+    });
+
+    document.querySelectorAll('.pdp-review-photo').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            openLightbox(0, btn.dataset.src);
         });
     });
 

@@ -53,6 +53,7 @@ class AuthController extends BaseController
                 }
 
                 if ($user['role'] === 'seller') {
+                    session()->remove('pending_login_email');
                     $approved = seller_is_approved((int) $user['id']);
                     $msg = $approved
                         ? 'Welcome to your Seller Dashboard!'
@@ -63,6 +64,7 @@ class AuthController extends BaseController
 
                 $redirectUrl = session()->get('redirect_url') ?? '/';
                 session()->remove('redirect_url');
+                session()->remove('pending_login_email');
                 return redirect()->to($redirectUrl)->with('success', 'Signed in successfully. Welcome to Solqam!');
 
             } catch (Exception $e) {
@@ -71,7 +73,8 @@ class AuthController extends BaseController
         }
 
         return view('auth/login', [
-            'title' => 'Sign In — Solqam Marketplace',
+            'title'        => 'Sign In — Solqam Marketplace',
+            'prefillLogin' => (string) (session()->get('pending_login_email') ?? ''),
         ]);
     }
 
@@ -81,11 +84,12 @@ class AuthController extends BaseController
             return redirect()->to('/');
         }
 
-        $defaultRole = $this->request->getGet('role') === 'seller' ? 'seller' : 'customer';
+        $defaultRole = $this->resolveRegisterRole();
 
         if ($this->request->is('post')) {
+            $this->rememberRegisterDraft();
             if (! \App\Services\Auth\RateLimitService::hit('register', 5)) {
-                return redirect()->back()->withInput()->with('error', 'Too many registrations from this network. Wait 15 minutes.');
+                return redirect()->to('/register')->withInput()->with('error', 'Too many registrations from this network. Wait 15 minutes.');
             }
             $role = $this->request->getPost('role') ?? 'customer';
 
@@ -130,15 +134,43 @@ class AuthController extends BaseController
                     ],
                 ];
                 $rules['city'] = [
-                    'rules'  => 'required',
+                    'rules'  => 'required|min_length[2]|max_length[80]',
                     'errors' => [
-                        'required' => 'Please enter your operating city.',
+                        'required'   => 'Please enter your operating city.',
+                        'min_length' => 'City is required.',
+                    ],
+                ];
+                $rules['cnic_or_ntn'] = [
+                    'rules'  => 'required|regex_match[/^[0-9]{5}-[0-9]{7}-[0-9]$/]',
+                    'errors' => [
+                        'required'    => 'Please enter your CNIC.',
+                        'regex_match' => 'CNIC must be 13 digits (e.g. 35201-1234567-1).',
+                    ],
+                ];
+                $rules['business_address'] = [
+                    'rules'  => 'required|min_length[8]|max_length[500]',
+                    'errors' => [
+                        'required'   => 'Please enter your business / warehouse address.',
+                        'min_length' => 'Business address is too short.',
+                    ],
+                ];
+                $rules['bank_name'] = [
+                    'rules'  => 'required|min_length[2]|max_length[120]',
+                    'errors' => [
+                        'required' => 'Please enter your settlement bank name.',
+                    ],
+                ];
+                $rules['account_number_or_iban'] = [
+                    'rules'  => 'required|min_length[8]|max_length[34]',
+                    'errors' => [
+                        'required'   => 'Please enter your IBAN or account number.',
+                        'min_length' => 'IBAN or account number is too short.',
                     ],
                 ];
             }
 
             if (!$this->validate($rules)) {
-                return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+                return redirect()->to('/register')->withInput()->with('errors', $this->validator->getErrors());
             }
 
             $post = $this->request->getPost();
@@ -155,7 +187,7 @@ class AuthController extends BaseController
                 ->first();
 
             if ($existingUserWithPhone) {
-                return redirect()->back()->withInput()->with('errors', [
+                return redirect()->to('/register')->withInput()->with('errors', [
                     'phone' => 'This mobile number is already registered. Please use another mobile number or sign in.'
                 ]);
             }
@@ -178,7 +210,9 @@ class AuthController extends BaseController
                     $result = $this->authService->registerCustomer($post);
                 }
 
+                session()->remove('register_draft');
                 session()->set('pending_verify_phone', $result['phone']);
+                session()->set('pending_login_email', trim((string) ($post['email'] ?? '')));
 
                 $mailOk = \App\Services\Mail\MailService::$lastOk;
                 $flash = $mailOk
@@ -188,13 +222,13 @@ class AuthController extends BaseController
                 return redirect()->to('/verify-otp')->with($mailOk ? 'success' : 'error', $flash);
 
             } catch (Exception $e) {
-                return redirect()->back()->withInput()->with('error', $e->getMessage());
+                return redirect()->to('/register')->withInput()->with('error', $e->getMessage());
             }
         }
 
         return view('auth/register', [
             'title'       => 'Create an Account — Solqam Marketplace',
-            'defaultRole' => $defaultRole,
+            'defaultRole' => $this->resolveRegisterRole(),
         ]);
     }
 
@@ -217,16 +251,16 @@ class AuthController extends BaseController
             if ($this->authService->verifySignupOtp($phone, $otp)) {
                 $user = $this->userModel->where('phone', $phone)->first();
                 session()->remove('pending_verify_phone');
-                $this->authService->setSession($user);
-
-                if ($user['role'] === 'seller') {
-                    return redirect()->to('/seller/dashboard')->with(
-                        'success',
-                        'Email verified. Your store is pending admin approval. You can view the Seller Hub, but listing products stays locked until you are approved.'
-                    );
+                $email = trim((string) ($user['email'] ?? ''));
+                if ($email !== '') {
+                    session()->set('pending_login_email', $email);
                 }
 
-                return redirect()->to('/')->with('success', 'Email verified. Welcome to Solqam Marketplace.');
+                $msg = ($user['role'] ?? '') === 'seller'
+                    ? 'Email verified. Sign in with your email and password. Your store stays pending until Solqam approves it.'
+                    : 'Email verified. Sign in with your email and the password you created.';
+
+                return redirect()->to('/login')->with('success', $msg);
             }
 
             return redirect()->to('/verify-otp')->with('error', 'Invalid or expired verification code. Please try again.');
@@ -392,5 +426,26 @@ class AuthController extends BaseController
     {
         $this->authService->logout();
         return redirect()->to('/')->with('info', 'You have been logged out.');
+    }
+
+    protected function rememberRegisterDraft(): void
+    {
+        $post = $this->request->getPost() ?? [];
+        unset($post['csrf_test_name'], $post[csrf_token()]);
+        session()->set('register_draft', $post);
+    }
+
+    protected function resolveRegisterRole(): string
+    {
+        $role = (string) old('role', '');
+        if ($role === '') {
+            $draft = session()->get('register_draft') ?? [];
+            $role  = (string) ($draft['role'] ?? '');
+        }
+        if ($role === '') {
+            $role = (string) $this->request->getGet('role');
+        }
+
+        return $role === 'seller' ? 'seller' : 'customer';
     }
 }

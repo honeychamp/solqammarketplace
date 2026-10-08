@@ -29,7 +29,7 @@
                     <tr>
                         <td>
                             <?php if (!empty($cat['image'])): ?>
-                                <img src="<?= esc($cat['image']) ?>" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:10px;">
+                                <img src="<?= esc(media_url($cat['image'])) ?>" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:10px;">
                             <?php else: ?>
                                 <div class="bg-light text-muted d-flex align-items-center justify-content-center" style="width:48px;height:48px;border-radius:10px;"><i class="bi bi-image"></i></div>
                             <?php endif; ?>
