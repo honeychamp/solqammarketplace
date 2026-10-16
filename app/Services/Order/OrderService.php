@@ -368,6 +368,7 @@ class OrderService
             } catch (\Throwable $e) {
             }
             \App\Services\Platform\AuditService::log('order_placed', 'order', (int) $orderId, ['number' => $orderNumber]);
+            \App\Services\Marketing\MarketingService::trackOrder((int) $orderId, 'Purchase');
 
             return [
                 'success'       => true,
@@ -660,6 +661,11 @@ class OrderService
         if ($ok) {
             $fresh = $this->orderModel->find($orderId) ?: $order;
             $this->smsBuyerStatus($fresh, $newStatus, $extra);
+            if (in_array($newStatus, ['cancelled', 'returned', 'undelivered'], true)) {
+                \App\Services\Marketing\MarketingService::trackOrder($orderId, 'Refund');
+            } elseif ($newStatus === 'delivered') {
+                \App\Services\Marketing\MarketingService::trackOrder($orderId, 'OrderDelivered');
+            }
         }
 
         return $ok;

@@ -25,6 +25,11 @@
                 </tr>
             </thead>
             <tbody>
+                <?php if (empty($categories)): ?>
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-4">No categories yet. Click Add Category to create the first one.</td>
+                    </tr>
+                <?php endif; ?>
                 <?php foreach ($categories as $cat): ?>
                     <tr>
                         <td>
@@ -70,19 +75,25 @@
     </div>
 </div>
 
-<div class="modal fade" id="newCatModal" tabindex="-1">
+<?= $this->endSection() ?>
+
+<?= $this->section('modals') ?>
+<div class="modal fade" id="newCatModal" tabindex="-1" aria-labelledby="newCatModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content rounded-4 border-0">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold">Create New Category</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="<?= site_url('admin/categories/store') ?>" method="POST" enctype="multipart/form-data">
+            <form id="newCatForm" action="" method="POST">
                 <?= csrf_field() ?>
                 <div class="modal-body">
+                    <?php if (session()->getFlashdata('error')): ?>
+                        <div class="alert alert-danger py-2 small"><?= session()->getFlashdata('error') ?></div>
+                    <?php endif; ?>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Category Name</label>
-                        <input type="text" name="name" class="form-control" placeholder="e.g. Smartphones" required>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Smartphones" value="<?= esc((string) old('name')) ?>" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Parent (leave empty for L1)</label>
@@ -119,4 +130,28 @@
         </div>
     </div>
 </div>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+(function () {
+    var form = document.getElementById('newCatForm');
+    if (form) {
+        form.addEventListener('submit', function () {
+            var file = form.querySelector('input[name="image"]');
+            if (file && file.files && file.files.length) {
+                form.setAttribute('enctype', 'multipart/form-data');
+            } else {
+                form.removeAttribute('enctype');
+            }
+        });
+    }
+    <?php if (old('name')): ?>
+    var modalEl = document.getElementById('newCatModal');
+    if (modalEl && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+    <?php endif; ?>
+})();
+</script>
 <?= $this->endSection() ?>

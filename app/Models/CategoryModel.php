@@ -187,10 +187,25 @@ class CategoryModel extends Model
 
     public function getSelfAndDescendantIds(int $categoryId): array
     {
+        if ($categoryId <= 0) {
+            return [];
+        }
 
-    public function exists(int $id): bool
-    {
-        if ($id <= 0) {
+        $byId     = $this->rowIndex();
+        $children = [];
+        foreach ($byId as $id => $row) {
+            $children[(int) ($row['parent_id'] ?? 0)][] = (int) $id;
+        }
+
+        $ids   = [$categoryId];
+        $queue = [$categoryId];
+        $guard = 0;
+        while ($queue !== [] && $guard++ < 5000) {
+            $current = array_pop($queue);
+            foreach ($children[$current] ?? [] as $childId) {
+                $ids[]   = $childId;
+                $queue[] = $childId;
+            }
         }
 
         return array_values(array_unique($ids));
@@ -205,16 +220,112 @@ class CategoryModel extends Model
 
         $slug = $base;
         $n    = 2;
-        while (true) {
-            $builder = $this->db->table($this->table)->select('id')->where('slug', $slug);
-            if ($ignoreId !== null) {
-                $builder->where('id !=', $ignoreId);
-            }
-            if ($builder->get()->getFirstRow() === null) {
-                return $slug;
+        while ($n < 500) {
+            try {
+                $sql    = 'SELECT id FROM `' . $this->table . '` WHERE `slug` = ?';
+                $binds  = [$slug];
+                if ($ignoreId !== null) {
+                    $sql    .= ' AND `id` != ?';
+                    $binds[] = $ignoreId;
+                }
+                $sql .= ' LIMIT 1';
+                if ($this->db->query($sql, $binds)->getFirstRow() === null) {
+                    return $slug;
+                }
+            } catch (\Throwable $e) {
+                return $base . '-' . bin2hex(random_bytes(3));
             }
             $slug = $base . '-' . $n;
             $n++;
         }
+
+        return $base . '-' . bin2hex(random_bytes(3));
+    }
+
+    public function insertCategory(array $data): int
+    {
+        $row = $this->onlyExistingColumns($data);
+        if (($row['name'] ?? '') === '') {
+            throw new \RuntimeException('Category name is required.');
+        }
+        if (empty($row['slug'])) {
+            $row['slug'] = $this->uniqueSlug((string) $row['name']);
+        }
+        if (! isset($row['is_active']) && $this->hasColumn('is_active')) {
+            $row['is_active'] = 1;
+        }
+        if (! isset($row['sort_order']) && $this->hasColumn('sort_order')) {
+            $max = $this->db->table($this->table)->selectMax('sort_order')->get()->getRowArray();
+            $row['sort_order'] = (int) ($max['sort_order'] ?? 0) + 1;
+        }
+        $now = date('Y-m-d H:i:s');
+        if ($this->hasColumn('created_at')) {
+            $row['created_at'] = $now;
+        }
+        if ($this->hasColumn('updated_at')) {
+            $row['updated_at'] = $now;
+        }
+
+        $ok = $this->db->table($this->table)->insert($row);
+        $id = (int) $this->db->insertID();
+        if (! $ok || $id < 1) {
+            $err = $this->db->error();
+            throw new \RuntimeException($err['message'] ?: 'Could not save the category.');
+        }
+
+        $this->rowIndex = [];
+
+        return $id;
+    }
+
+    public function updateCategory(int $id, array $data): void
+    {
+        $row = $this->onlyExistingColumns($data);
+        if ($row === []) {
+            throw new \RuntimeException('Nothing to update.');
+        }
+        if ($this->hasColumn('updated_at')) {
+            $row['updated_at'] = date('Y-m-d H:i:s');
+        }
+
+        $this->db->table($this->table)->where('id', $id)->update($row);
+        $err = $this->db->error();
+        if (! empty($err['code']) && (int) $err['code'] !== 0) {
+            throw new \RuntimeException($err['message'] ?: 'Could not update the category.');
+        }
+
+        $this->rowIndex = [];
+    }
+
+    protected function onlyExistingColumns(array $data): array
+    {
+        $out = [];
+        $nullable = ['parent_id', 'commission_percent', 'icon', 'image', 'description'];
+        foreach ($data as $key => $value) {
+            if (! $this->hasColumn($key)) {
+                continue;
+            }
+            if ($value === '' && in_array($key, $nullable, true)) {
+                $out[$key] = null;
+                continue;
+            }
+            $out[$key] = $value;
+        }
+
+        return $out;
+    }
+
+    protected function hasColumn(string $column): bool
+    {
+        static $fields = null;
+        if ($fields === null) {
+            try {
+                $fields = $this->db->getFieldNames($this->table);
+            } catch (\Throwable $e) {
+                $fields = $this->allowedFields;
+            }
+        }
+
+        return in_array($column, $fields, true);
     }
 }

@@ -51,6 +51,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                 <div class="tab-content" id="registerTabContent">
                     <!-- Customer Form -->
                     <div class="tab-pane fade <?= $defaultRole === 'customer' ? 'show active' : '' ?>" id="customer-pane" role="tabpanel">
+                        <?= view('partials/social_login', ['intent' => 'customer']) ?>
                         <form id="customerForm" action="<?= site_url('register') ?>" method="POST" onsubmit="return validateCustomerForm(event)" novalidate>
                             <?= csrf_field() ?>
                             <input type="hidden" name="role" value="customer">
@@ -95,6 +96,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
 
                     <!-- Seller Form -->
                     <div class="tab-pane fade <?= $defaultRole === 'seller' ? 'show active' : '' ?>" id="seller-pane" role="tabpanel">
+                        <?= view('partials/social_login', ['intent' => 'seller']) ?>
                         <form id="sellerForm" action="<?= site_url('register') ?>" method="POST" onsubmit="return validateSellerForm(event)" novalidate>
                             <?= csrf_field() ?>
                             <input type="hidden" name="role" value="seller">

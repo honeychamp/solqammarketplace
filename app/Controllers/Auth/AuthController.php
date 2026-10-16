@@ -78,6 +78,56 @@ class AuthController extends BaseController
         ]);
     }
 
+    public function socialStart($provider)
+    {
+        $provider = strtolower((string) $provider);
+        $intent   = (string) $this->request->getGet('intent') === 'seller' ? 'seller' : 'customer';
+        try {
+            if (! \App\Services\Auth\RateLimitService::hit('social_login', 12)) {
+                return redirect()->to('/login')->with('error', 'Too many sign-in attempts. Try again in 15 minutes.');
+            }
+            $url = (new \App\Services\Auth\SocialAuthService())->startUrl($provider, $intent);
+
+            return redirect()->to($url);
+        } catch (\Throwable $e) {
+            return redirect()->to($intent === 'seller' ? '/register?role=seller' : '/login')->with('error', $e->getMessage());
+        }
+    }
+
+    public function socialCallback($provider)
+    {
+        $provider = strtolower((string) $provider);
+        try {
+            $user = (new \App\Services\Auth\SocialAuthService())->complete(
+                $provider,
+                $this->request->getGet('code'),
+                $this->request->getGet('state')
+            );
+
+            if (($user['role'] ?? '') === 'admin') {
+                $this->authService->logout();
+
+                return redirect()->to('/login')->with('error', 'Administrator accounts cannot log in here.');
+            }
+
+            if (($user['role'] ?? '') === 'seller') {
+                $approved = seller_is_approved((int) $user['id']);
+                $msg      = $approved
+                    ? 'Signed in with ' . ucfirst($provider) . '. Welcome to your Seller Hub.'
+                    : 'Signed in with ' . ucfirst($provider) . '. Your store is pending admin approval.';
+
+                return redirect()->to('/seller/dashboard')->with('success', $msg);
+            }
+
+            $redirectUrl = session()->get('redirect_url') ?? '/';
+            session()->remove('redirect_url');
+
+            return redirect()->to($redirectUrl)->with('success', 'Signed in with ' . ucfirst($provider) . '. Welcome to Solqam!');
+        } catch (\Throwable $e) {
+            return redirect()->to('/login')->with('error', $e->getMessage());
+        }
+    }
+
     public function register()
     {
         if ($this->authService->isLoggedIn()) {
@@ -255,6 +305,13 @@ class AuthController extends BaseController
                 if ($email !== '') {
                     session()->set('pending_login_email', $email);
                 }
+
+                \App\Services\Marketing\MarketingService::track('CompleteRegistration', [
+                    'email'       => (string) ($user['email'] ?? ''),
+                    'phone'       => (string) ($user['phone'] ?? ''),
+                    'external_id' => (string) ($user['id'] ?? ''),
+                    'content_name'=> (string) ($user['role'] ?? 'customer'),
+                ]);
 
                 $msg = ($user['role'] ?? '') === 'seller'
                     ? 'Email verified. Sign in with your email and password. Your store stays pending until Solqam approves it.'

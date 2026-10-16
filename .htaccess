@@ -6,6 +6,11 @@
 	RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
 	RewriteRule ^(.*)$ https://%1/$1 [L,R=301]
 
+	# Serve real files from public/ (product photos, CSS) so LiteSpeed does not 404 via index.php
+	RewriteCond %{REQUEST_URI} !^/public/
+	RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+	RewriteRule ^ public%{REQUEST_URI} [L]
+
 	RewriteCond %{REQUEST_URI} !^/public/
 	RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

@@ -104,6 +104,12 @@ class CatalogController extends BaseController
             $brands = [];
         }
 
+        if (! empty($filters['search'])) {
+            \App\Services\Marketing\MarketingService::track('Search', [
+                'search_string' => (string) $filters['search'],
+            ]);
+        }
+
         return view('customer/catalog', [
             'title'      => ! empty($filters['flash'])
                 ? 'Flash Deals — Solqam Marketplace'
@@ -184,16 +190,30 @@ class CatalogController extends BaseController
         $shippingZones = (new ShippingZoneModel())->orderBy('city', 'ASC')->findAll();
 
         $colorFamily = [];
+        $colorImages = [];
         $sizeOptions = [];
         foreach ($product['variants'] ?? [] as $variant) {
             $color = trim((string) ($variant['color'] ?? ''));
             $size  = trim((string) ($variant['size'] ?? ''));
             if ($color !== '') {
                 $colorFamily[$color] = $color;
+                $img = trim((string) ($variant['image'] ?? ''));
+                if ($img !== '' && empty($colorImages[$color])) {
+                    $colorImages[$color] = $img;
+                }
             }
             if ($size !== '') {
                 $sizeOptions[$size] = $size;
             }
+        }
+        $galleryForColors = $product['images'] ?? [];
+        $gi = 0;
+        foreach ($colorFamily as $colorName) {
+            if (empty($colorImages[$colorName]) && isset($galleryForColors[$gi]['image_path'])) {
+                $path = (string) $galleryForColors[$gi]['image_path'];
+                $colorImages[$colorName] = function_exists('media_url') ? media_url($path) : $path;
+            }
+            $gi++;
         }
 
         $specs = $this->parseSpecifications($product['specifications'] ?? '');
@@ -207,6 +227,8 @@ class CatalogController extends BaseController
         }
 
         $highlights = array_values(array_filter(array_map('trim', preg_split('/\r\n|\n/', (string) ($product['highlights'] ?? '')) ?: [])));
+
+        \App\Services\Marketing\MarketingService::trackProduct('ViewContent', $product);
 
         $seen = session()->get('recently_viewed') ?? [];
         array_unshift($seen, (int) $id);
@@ -230,6 +252,7 @@ class CatalogController extends BaseController
             'followerCount'    => $followerCount,
             'shippingZones'    => $shippingZones,
             'colorFamily'      => array_values($colorFamily),
+            'colorImages'      => $colorImages,
             'sizeOptions'      => array_values($sizeOptions),
             'specs'            => $specs,
             'highlights'       => $highlights,

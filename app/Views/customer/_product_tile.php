@@ -7,7 +7,9 @@ $origPrice = !empty($product['compare_at_price']) ? (float) $product['compare_at
 if (!empty($product['flash_price']) && $origPrice < (float) $product['price']) {
     $origPrice = (float) $product['price'];
 }
-$img = trim((string) ($product['primary_image'] ?? ''));
+$img = function_exists('media_url')
+    ? media_url($product['primary_image'] ?? '')
+    : trim((string) ($product['primary_image'] ?? ''));
 if ($img !== '' && ! preg_match('#^https?://#i', $img) && strpos($img, '//') !== 0) {
     $img = base_url(ltrim($img, '/'));
 }

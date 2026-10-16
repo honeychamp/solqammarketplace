@@ -93,6 +93,11 @@ class CheckoutController extends BaseController
             }
         }
 
+        \App\Services\Marketing\MarketingService::trackCartItems('InitiateCheckout', $items, [
+            'value'  => max(0, $subtotal - $couponDiscount),
+            'coupon' => (string) $couponCode,
+        ]);
+
         return view('customer/checkout', [
             'title'          => 'Checkout — Solqam Marketplace',
             'items'          => $items,
@@ -151,6 +156,10 @@ class CheckoutController extends BaseController
         try {
             $this->couponService->apply($code, $userId, $subtotal);
             session()->set('checkout_coupon_code', strtoupper(trim($code)));
+            \App\Services\Marketing\MarketingService::track('CouponApplied', [
+                'coupon' => strtoupper(trim($code)),
+                'value'  => $subtotal,
+            ]);
             return redirect()->to('/checkout')->withInput()->with('success', 'Voucher applied.');
         } catch (Exception $e) {
             session()->remove('checkout_coupon_code');
@@ -219,6 +228,12 @@ class CheckoutController extends BaseController
                     'utility_bill_path' => $billCopy,
                 ];
             }
+
+            $cartSnap = $this->cartModel->where('user_id', $userId)->first();
+            $snapItems = $cartSnap ? $this->cartItemModel->getItemsWithProducts((int) $cartSnap['id']) : [];
+            \App\Services\Marketing\MarketingService::trackCartItems('AddPaymentInfo', $snapItems, [
+                'payment_type' => (string) $paymentMethod,
+            ]);
 
             $result = $this->orderService->checkout(
                 $userId,

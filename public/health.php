@@ -62,5 +62,84 @@ if (is_file($envFile)) {
     }
 }
 
+$root = dirname(__DIR__);
+
+echo PHP_EOL . 'PHP syntax (all app/*.php):' . PHP_EOL;
+$parseHits = 0;
+$checked   = 0;
+$appDir    = $root . DIRECTORY_SEPARATOR . 'app';
+if (is_dir($appDir)) {
+    $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($appDir, FilesystemIterator::SKIP_DOTS));
+    foreach ($rii as $file) {
+        if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+            continue;
+        }
+        $checked++;
+        $path = $file->getPathname();
+        $rel  = str_replace('\\', '/', substr($path, strlen($root) + 1));
+        $src  = @file_get_contents($path);
+        if (! is_string($src) || trim($src) === '') {
+            echo 'EMPTY  ' . $rel . PHP_EOL;
+            $ok = false;
+            $parseHits++;
+            continue;
+        }
+        try {
+            token_get_all($src, TOKEN_PARSE);
+        } catch (\ParseError $e) {
+            $ok = false;
+            $parseHits++;
+            echo 'BROKEN ' . $rel . ' line ' . $e->getLine() . ': ' . $e->getMessage() . PHP_EOL;
+        }
+    }
+}
+echo 'Checked ' . $checked . ' PHP files. Broken: ' . $parseHits . PHP_EOL;
+
+$cacheDir = $writable . DIRECTORY_SEPARATOR . 'cache';
+$cleared  = 0;
+if (is_dir($cacheDir)) {
+    foreach ((glob($cacheDir . DIRECTORY_SEPARATOR . '*') ?: []) as $cf) {
+        if (! is_file($cf)) {
+            continue;
+        }
+        $bn = basename($cf);
+        if (str_starts_with($bn, 'schema_heal') || $bn === 'index.html' || $bn === '.htaccess') {
+            continue;
+        }
+        if (@unlink($cf)) {
+            $cleared++;
+        }
+    }
+}
+echo 'Cleared writable/cache files: ' . $cleared . PHP_EOL;
+
+$logDir = $writable . DIRECTORY_SEPARATOR . 'logs';
+$logs   = is_dir($logDir) ? glob($logDir . DIRECTORY_SEPARATOR . 'log-*.log') : [];
+if ($logs) {
+    rsort($logs);
+    $latest = $logs[0];
+    echo PHP_EOL . 'Latest log: ' . basename($latest) . PHP_EOL;
+    $lines = @file($latest) ?: [];
+    $lastCrit = -1;
+    foreach ($lines as $i => $line) {
+        if (stripos($line, 'ParseError') !== false || stripos($line, 'CRITICAL') !== false) {
+            $lastCrit = $i;
+        }
+    }
+    if ($lastCrit >= 0) {
+        $slice = array_slice($lines, $lastCrit, 12);
+        foreach ($slice as $line) {
+            $line = preg_replace('/password[^\s]*/i', 'password=***', trim($line)) ?? trim($line);
+            if ($line !== '') {
+                echo $line . PHP_EOL;
+            }
+        }
+    } else {
+        echo 'No CRITICAL/ParseError in latest log.' . PHP_EOL;
+    }
+} else {
+    echo PHP_EOL . 'No writable/logs/*.log yet.' . PHP_EOL;
+}
+
 echo PHP_EOL . ($ok ? 'READY' : 'FIX THE MISS/FAIL LINES') . PHP_EOL;
 echo 'PHP Selector: pick 8.2 or 8.3, enable the extensions above, save, then wait 1–2 minutes.' . PHP_EOL;

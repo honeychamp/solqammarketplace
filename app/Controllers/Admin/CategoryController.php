@@ -19,7 +19,11 @@ class CategoryController extends BaseController
 
     public function index()
     {
-        $categories = $this->categoryModel->orderBy('parent_id', 'ASC')->orderBy('name', 'ASC')->findAll();
+        try {
+            $categories = $this->categoryModel->orderBy('id', 'DESC')->findAll();
+        } catch (\Throwable $e) {
+            $categories = $this->categoryModel->findAll();
+        }
         $byId       = [];
         foreach ($categories as $row) {
             $byId[(int) $row['id']] = $row;
@@ -41,10 +45,17 @@ class CategoryController extends BaseController
         }
         unset($cat);
 
+        $parentOptions = [];
+        try {
+            $parentOptions = $this->categoryModel->optionsForParent();
+        } catch (\Throwable $e) {
+            $parentOptions = [];
+        }
+
         return view('admin/categories/index', [
             'title'          => 'Manage Categories — Solqam Admin Console',
             'categories'     => $categories,
-            'parentOptions'  => $this->categoryModel->optionsForParent(),
+            'parentOptions'  => $parentOptions,
         ]);
     }
 
@@ -75,24 +86,26 @@ class CategoryController extends BaseController
         }
 
         $payload = [
-            'name'        => $name,
-            'slug'        => $this->categoryModel->uniqueSlug($name),
-            'description' => $this->request->getPost('description'),
-            'parent_id'   => $parentId,
-            'icon'        => $this->request->getPost('icon'),
-            'is_active'   => 1,
+            'name'                => $name,
+            'slug'                => $this->categoryModel->uniqueSlug($name),
+            'description'         => $this->request->getPost('description'),
+            'parent_id'           => $parentId,
+            'is_active'           => 1,
+            'commission_percent'  => $rate,
         ];
         if ($image) {
             $payload['image'] = $image;
         }
 
-        if ($this->categoryModel->db->fieldExists('commission_percent', 'categories')) {
-            $payload['commission_percent'] = $rate;
+        try {
+            $this->categoryModel->insertCategory($payload);
+        } catch (\Throwable $e) {
+            log_message('error', 'Category create failed: ' . $e->getMessage());
+
+            return redirect()->back()->withInput()->with('error', 'Category could not be saved: ' . $e->getMessage());
         }
 
-        $this->categoryModel->insert($payload);
-
-        return $this->redirectAfterHub('/admin/categories', 'success', 'Category created.');
+        return redirect()->to(site_url('admin/categories'))->with('success', 'Category created.');
     }
 
     public function update($id)
@@ -138,11 +151,13 @@ class CategoryController extends BaseController
             return redirect()->to('/admin/categories')->with('error', 'Nothing to update.');
         }
 
-        if (isset($payload['image']) && ! $this->categoryModel->db->fieldExists('image', 'categories')) {
-            return redirect()->back()->with('error', 'Category image column is missing. Refresh the page once, then try again.');
-        }
+        try {
+            $this->categoryModel->updateCategory($id, $payload);
+        } catch (\Throwable $e) {
+            log_message('error', 'Category update failed: ' . $e->getMessage());
 
-        $this->categoryModel->update($id, $payload);
+            return redirect()->back()->withInput()->with('error', 'Category could not be updated: ' . $e->getMessage());
+        }
 
         $msg = isset($payload['image']) ? 'Category image saved.' : 'Category updated.';
 

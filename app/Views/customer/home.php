@@ -173,41 +173,46 @@
             </a>
         </div>
 
-        <div class="row g-3">
-            <?php
-            $categoryIcons = [
-                'consumer-electronics' => 'bi-phone',
-                'fashion-apparel' => 'bi-handbag',
-                'groceries-essentials' => 'bi-basket2',
-                'home-living' => 'bi-lamp',
-                'beauty-personal-care' => 'bi-heart-pulse',
-                'sports-outdoor' => 'bi-bicycle',
-            ];
-            ?>
-            <?php foreach ($categories as $cat): ?>
-                <?php
-                $icon = 'bi-grid-fill';
-                foreach ($categoryIcons as $key => $ico) {
-                    if (strpos($cat['slug'], $key) !== false) {
-                        $icon = $ico;
-                        break;
-                    }
-                }
-                ?>
-                <div class="col-4 col-md-3 col-lg-2">
-                    <a href="<?= site_url('shop?category=' . esc($cat['slug'])) ?>" class="category-bubble-card h-100">
-                        <div class="category-bubble-icon<?= !empty($cat['image']) ? ' has-photo' : '' ?>">
-                            <?php if (!empty($cat['image'])): ?>
-                                <img src="<?= esc(media_url($cat['image'])) ?>" alt="<?= esc($cat['name']) ?>">
-                            <?php else: ?>
-                                <i class="bi <?= $icon ?>"></i>
-                            <?php endif; ?>
+        <?php
+        $categoryIcons = [
+            'consumer-electronics' => 'bi-phone',
+            'fashion-apparel' => 'bi-handbag',
+            'groceries-essentials' => 'bi-basket2',
+            'home-living' => 'bi-lamp',
+            'beauty-personal-care' => 'bi-heart-pulse',
+            'sports-outdoor' => 'bi-bicycle',
+        ];
+        ?>
+        <div class="cat-carousel" data-cat-carousel>
+            <div class="cat-carousel-viewport">
+                <div class="cat-carousel-track">
+                    <?php foreach ($categories as $cat): ?>
+                        <?php
+                        $icon = 'bi-grid-fill';
+                        foreach ($categoryIcons as $key => $ico) {
+                            if (strpos((string) $cat['slug'], $key) !== false) {
+                                $icon = $ico;
+                                break;
+                            }
+                        }
+                        ?>
+                        <div class="cat-carousel-slide">
+                            <a href="<?= site_url('shop?category=' . esc($cat['slug'])) ?>" class="category-bubble-card h-100">
+                                <div class="category-bubble-icon<?= !empty($cat['image']) ? ' has-photo' : '' ?>">
+                                    <?php if (!empty($cat['image'])): ?>
+                                        <img src="<?= esc(function_exists('media_url') ? media_url($cat['image']) : base_url(ltrim((string) $cat['image'], '/'))) ?>" alt="<?= esc($cat['name']) ?>">
+                                    <?php else: ?>
+                                        <i class="bi <?= $icon ?>"></i>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="category-bubble-title text-truncate w-100" title="<?= esc($cat['name']) ?>"><?= esc($cat['name']) ?></div>
+                                <span class="category-bubble-count">Explore</span>
+                            </a>
                         </div>
-                        <div class="category-bubble-title text-truncate w-100" title="<?= esc($cat['name']) ?>"><?= esc($cat['name']) ?></div>
-                        <span class="category-bubble-count">Explore</span>
-                    </a>
+                    <?php endforeach; ?>
                 </div>
-            <?php endforeach; ?>
+            </div>
+            <div class="cat-carousel-dots" role="tablist" aria-label="Category slides"></div>
         </div>
     </div>
 </section>
@@ -383,6 +388,89 @@
             tick();
             setInterval(tick, 1000);
         });
+
+        const root = document.querySelector('[data-cat-carousel]');
+        if (root) {
+            const viewport = root.querySelector('.cat-carousel-viewport');
+            const track = root.querySelector('.cat-carousel-track');
+            const dotsWrap = root.querySelector('.cat-carousel-dots');
+            const slides = track ? Array.from(track.children) : [];
+            if (viewport && track && dotsWrap && slides.length) {
+                let page = 0;
+                let timer = null;
+                const perView = function () {
+                    const w = window.innerWidth;
+                    if (w >= 992) return 6;
+                    if (w >= 768) return 4;
+                    return 3;
+                };
+                const pageCount = function () {
+                    return Math.max(1, Math.ceil(slides.length / perView()));
+                };
+                const go = function (i) {
+                    const n = pageCount();
+                    page = ((i % n) + n) % n;
+                    track.style.transform = 'translateX(-' + (page * viewport.clientWidth) + 'px)';
+                    dotsWrap.querySelectorAll('.cat-carousel-dot').forEach(function (dot, idx) {
+                        dot.classList.toggle('is-active', idx === page);
+                        dot.setAttribute('aria-selected', idx === page ? 'true' : 'false');
+                    });
+                };
+                const layout = function () {
+                    const pv = perView();
+                    const w = viewport.clientWidth / pv;
+                    slides.forEach(function (slide) {
+                        slide.style.flex = '0 0 ' + w + 'px';
+                        slide.style.width = w + 'px';
+                    });
+                    const n = pageCount();
+                    dotsWrap.innerHTML = '';
+                    if (n > 1) {
+                        for (let i = 0; i < n; i++) {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'cat-carousel-dot' + (i === page ? ' is-active' : '');
+                            btn.setAttribute('aria-label', 'Category page ' + (i + 1));
+                            btn.addEventListener('click', function () {
+                                go(i);
+                                restart();
+                            });
+                            dotsWrap.appendChild(btn);
+                        }
+                    }
+                    if (page >= n) {
+                        page = 0;
+                    }
+                    go(page);
+                };
+                const stop = function () {
+                    if (timer) {
+                        clearInterval(timer);
+                        timer = null;
+                    }
+                };
+                const start = function () {
+                    stop();
+                    if (pageCount() < 2) {
+                        return;
+                    }
+                    timer = setInterval(function () {
+                        go(page + 1);
+                    }, 4000);
+                };
+                const restart = function () {
+                    start();
+                };
+                layout();
+                start();
+                root.addEventListener('mouseenter', stop);
+                root.addEventListener('mouseleave', start);
+                window.addEventListener('resize', function () {
+                    layout();
+                    start();
+                });
+            }
+        }
     })();
 </script>
 <?= $this->endSection() ?>

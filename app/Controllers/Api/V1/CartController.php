@@ -88,6 +88,11 @@ class CartController extends BaseApiController
             ]);
         }
 
+        \App\Services\Marketing\MarketingService::trackProduct('AddToCart', $product, [
+            'quantity' => $quantity,
+            'price'    => (float) $product['price'],
+        ]);
+
         return $this->index();
     }
 

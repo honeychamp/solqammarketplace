@@ -8,7 +8,7 @@ namespace App\Services\Platform;
  */
 class SchemaHeal
 {
-    public const VERSION = 8;
+    public const VERSION = 13;
 
     public static function run(): void
     {
@@ -99,6 +99,23 @@ class SchemaHeal
                 'default'    => 0,
                 'null'       => false,
             ]);
+            self::addColumn($db, $forge, 'categories', 'parent_id', [
+                'type'       => 'INT',
+                'constraint' => 11,
+                'unsigned'   => true,
+                'null'       => true,
+            ]);
+            self::addColumn($db, $forge, 'categories', 'sort_order', [
+                'type'       => 'INT',
+                'constraint' => 11,
+                'default'    => 0,
+                'null'       => false,
+            ]);
+            self::addColumn($db, $forge, 'categories', 'icon', [
+                'type'       => 'VARCHAR',
+                'constraint' => 80,
+                'null'       => true,
+            ]);
             self::addColumn($db, $forge, 'categories', 'commission_percent', [
                 'type'       => 'DECIMAL',
                 'constraint' => '5,2',
@@ -109,6 +126,20 @@ class SchemaHeal
                 'constraint' => 255,
                 'null'       => true,
             ]);
+            self::addColumn($db, $forge, 'categories', 'is_active', [
+                'type'       => 'TINYINT',
+                'constraint' => 1,
+                'default'    => 1,
+                'null'       => false,
+            ]);
+            self::addColumn($db, $forge, 'categories', 'created_at', [
+                'type' => 'DATETIME',
+                'null' => true,
+            ]);
+            self::addColumn($db, $forge, 'categories', 'updated_at', [
+                'type' => 'DATETIME',
+                'null' => true,
+            ]);
             if ($db->tableExists('product_images')) {
                 self::addColumn($db, $forge, 'product_images', 'sort_order', [
                     'type'       => 'INT',
@@ -117,10 +148,45 @@ class SchemaHeal
                     'null'       => false,
                 ]);
             }
+            if ($db->tableExists('product_variants')) {
+                self::addColumn($db, $forge, 'product_variants', 'image', [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 255,
+                    'null'       => true,
+                ]);
+            }
+            if ($db->tableExists('users')) {
+                self::addColumn($db, $forge, 'users', 'google_id', [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 80,
+                    'null'       => true,
+                ]);
+                self::addColumn($db, $forge, 'users', 'facebook_id', [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 80,
+                    'null'       => true,
+                ]);
+                self::addColumn($db, $forge, 'users', 'oauth_provider', [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 20,
+                    'null'       => true,
+                ]);
+                self::addColumn($db, $forge, 'users', 'avatar_url', [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 255,
+                    'null'       => true,
+                ]);
+                try {
+                    $db->query('ALTER TABLE `users` MODIFY `phone` VARCHAR(30) NULL');
+                } catch (\Throwable $e) {
+                    // already nullable
+                }
+            }
 
             self::ensureAdminMallStores($db);
             self::healBannersTable($db, $forge);
             self::ensureSpeedIndexes($db);
+            self::ensureMarketingTables($db, $forge);
 
             if (! is_dir(WRITEPATH . 'cache')) {
                 @mkdir(WRITEPATH . 'cache', 0755, true);
@@ -129,6 +195,59 @@ class SchemaHeal
         } catch (\Throwable $e) {
             log_message('error', 'SchemaHeal: ' . $e->getMessage());
         }
+    }
+
+    protected static function ensureMarketingTables($db, $forge): void
+    {
+        if (! $db->tableExists('marketing_settings')) {
+            $forge->addField([
+                'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'enabled' => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 0],
+                'test_mode' => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 0],
+                'consent_required' => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 0],
+                'server_pageview' => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 1],
+                'currency' => ['type' => 'VARCHAR', 'constraint' => 8, 'default' => 'PKR'],
+                'meta_pixel_id' => ['type' => 'VARCHAR', 'constraint' => 40, 'null' => true],
+                'meta_capi_token' => ['type' => 'TEXT', 'null' => true],
+                'meta_test_event_code' => ['type' => 'VARCHAR', 'constraint' => 80, 'null' => true],
+                'tiktok_pixel_id' => ['type' => 'VARCHAR', 'constraint' => 80, 'null' => true],
+                'tiktok_api_token' => ['type' => 'TEXT', 'null' => true],
+                'tiktok_app_id' => ['type' => 'VARCHAR', 'constraint' => 80, 'null' => true],
+                'gtm_id' => ['type' => 'VARCHAR', 'constraint' => 40, 'null' => true],
+                'ga4_id' => ['type' => 'VARCHAR', 'constraint' => 40, 'null' => true],
+                'google_ads_id' => ['type' => 'VARCHAR', 'constraint' => 40, 'null' => true],
+                'google_ads_label' => ['type' => 'VARCHAR', 'constraint' => 80, 'null' => true],
+                'created_at' => ['type' => 'DATETIME', 'null' => true],
+                'updated_at' => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->createTable('marketing_settings', true);
+        }
+
+        if (! $db->tableExists('marketing_event_logs')) {
+            $forge->addField([
+                'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'event_id' => ['type' => 'VARCHAR', 'constraint' => 80, 'null' => true],
+                'platform' => ['type' => 'VARCHAR', 'constraint' => 30],
+                'event_name' => ['type' => 'VARCHAR', 'constraint' => 80],
+                'payload' => ['type' => 'LONGTEXT', 'null' => true],
+                'response' => ['type' => 'LONGTEXT', 'null' => true],
+                'http_code' => ['type' => 'INT', 'constraint' => 11, 'null' => true],
+                'status' => ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'sent'],
+                'created_at' => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addKey('event_id');
+            $forge->addKey('platform');
+            $forge->addKey('status');
+            $forge->createTable('marketing_event_logs', true);
+        }
+
+        self::addColumn($db, $forge, 'orders', 'marketing_event_id', [
+            'type'       => 'VARCHAR',
+            'constraint' => 80,
+            'null'       => true,
+        ]);
     }
 
     protected static function addColumn($db, $forge, string $table, string $column, array $def): void
@@ -219,6 +338,42 @@ class SchemaHeal
             }
         } catch (\Throwable $e) {
             log_message('error', 'SchemaHeal mall store: ' . $e->getMessage());
+        }
+    }
+
+    protected static function ensureSpeedIndexes($db): void
+    {
+        $deleted = false;
+        try {
+            $deleted = $db->fieldExists('deleted_at', 'products');
+        } catch (\Throwable $e) {
+            $deleted = false;
+        }
+
+        self::addIndex($db, 'products', 'idx_products_status_id', $deleted ? '`status`, `deleted_at`, `id`' : '`status`, `id`');
+        self::addIndex($db, 'products', 'idx_products_category_status', '`category_id`, `status`');
+        self::addIndex($db, 'products', 'idx_products_seller', '`seller_id`');
+        self::addIndex($db, 'product_images', 'idx_product_images_lookup', '`product_id`, `is_primary`, `id`');
+        self::addIndex($db, 'seller_profiles', 'idx_seller_profiles_approval', '`approval_status`');
+        self::addIndex($db, 'categories', 'idx_categories_nav', '`is_active`, `parent_id`, `sort_order`');
+        self::addIndex($db, 'cart_items', 'idx_cart_items_cart', '`cart_id`');
+        self::addIndex($db, 'wallet_transactions', 'idx_wallet_tx_wallet', '`wallet_id`');
+        self::addIndex($db, 'orders', 'idx_orders_user_status', '`user_id`, `status`');
+    }
+
+    protected static function addIndex($db, string $table, string $name, string $columnsSql): void
+    {
+        try {
+            if (! $db->tableExists($table)) {
+                return;
+            }
+            $exists = $db->query('SHOW INDEX FROM `' . $table . '` WHERE Key_name = ' . $db->escape($name))->getResult();
+            if ($exists !== []) {
+                return;
+            }
+            $db->query('ALTER TABLE `' . $table . '` ADD INDEX `' . $name . '` (' . $columnsSql . ')');
+        } catch (\Throwable $e) {
+            // duplicate / missing column
         }
     }
 }

@@ -38,6 +38,10 @@ class HelpController extends BaseController
             'status'  => 'open',
         ]);
 
+        \App\Services\Marketing\MarketingService::track('Lead', [
+            'content_name' => $subject,
+        ]);
+
         return redirect()->to('/help')->with('success', 'Ticket opened. Support will reply here.');
     }
 

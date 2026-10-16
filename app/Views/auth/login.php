@@ -11,6 +11,8 @@
                     <p class="text-secondary small">Sign in to your Customer or Seller account</p>
                 </div>
 
+                <?= view('partials/social_login', ['intent' => 'customer']) ?>
+
                 <form action="<?= site_url('login') ?>" method="POST">
                     <?= csrf_field() ?>
 

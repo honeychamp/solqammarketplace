@@ -50,6 +50,8 @@ class CartController extends BaseController
             $estimatedCashback = 0.0;
         }
 
+        \App\Services\Marketing\MarketingService::trackCartItems('ViewCart', $items, ['value' => $subtotal]);
+
         return view('customer/cart', [
             'title'           => 'Shopping Cart — Solqam Marketplace',
             'cart'            => $cart,
@@ -75,14 +77,16 @@ class CartController extends BaseController
 
         $variant = null;
         $variants = $this->variantModel->forProduct($productId);
-        if ($variantId) {
-            $variant = $this->variantModel->where('id', $variantId)->where('product_id', $productId)->first();
-            if (!$variant) {
-                return redirect()->back()->with('error', 'Please select a valid size or color.');
+        if (! empty($variants)) {
+            if (! $variantId) {
+                return redirect()->back()->with('error', 'Please choose a color and size.');
             }
-        } elseif (!empty($variants)) {
-            $variant = $variants[0];
-            $variantId = (int) $variant['id'];
+            $variant = $this->variantModel->where('id', $variantId)->where('product_id', $productId)->first();
+            if (! $variant) {
+                return redirect()->back()->with('error', 'Please select a valid color / size.');
+            }
+        } elseif ($variantId) {
+            return redirect()->back()->with('error', 'Please select a valid color / size.');
         }
 
         $stock = $variant ? (int) $variant['stock'] : (int) $product['stock'];
@@ -123,6 +127,14 @@ class CartController extends BaseController
             ]);
         }
 
+        if (function_exists('nav_forget')) {
+            nav_forget(['cart']);
+        }
+        \App\Services\Marketing\MarketingService::trackProduct('AddToCart', $product, [
+            'quantity' => $quantity,
+            'price'    => $unitPrice,
+        ]);
+
         $buyNow = (string) $this->request->getPost('buy_now') === '1';
         if ($buyNow) {
             return redirect()->to('/checkout')->with('success', 'Proceed to checkout.');
@@ -144,6 +156,13 @@ class CartController extends BaseController
 
         if ($item) {
             if ($quantity <= 0) {
+                $p = $this->productModel->find((int) $item['product_id']);
+                if ($p) {
+                    \App\Services\Marketing\MarketingService::trackProduct('RemoveFromCart', $p, [
+                        'quantity' => (int) $item['quantity'],
+                        'price'    => (float) $item['unit_price'],
+                    ]);
+                }
                 $this->cartItemModel->delete($itemId);
             } else {
                 $stock = (int) $this->productModel->find($item['product_id'])['stock'];
@@ -158,7 +177,9 @@ class CartController extends BaseController
             }
         }
 
-        nav_forget(['cart']);
+        if (function_exists('nav_forget')) {
+            nav_forget(['cart']);
+        }
 
         return redirect()->to('/cart')->with('success', 'Cart updated.');
     }
@@ -166,12 +187,24 @@ class CartController extends BaseController
     public function remove($itemId)
     {
         $cart = $this->getOrCreateUserCart();
+        $item = $this->cartItemModel->where('id', (int) $itemId)->where('cart_id', $cart['id'])->first();
+        if ($item) {
+            $p = $this->productModel->find((int) $item['product_id']);
+            if ($p) {
+                \App\Services\Marketing\MarketingService::trackProduct('RemoveFromCart', $p, [
+                    'quantity' => (int) $item['quantity'],
+                    'price'    => (float) $item['unit_price'],
+                ]);
+            }
+        }
         $this->cartItemModel
             ->where('id', (int) $itemId)
             ->where('cart_id', $cart['id'])
             ->delete();
 
-        nav_forget(['cart']);
+        if (function_exists('nav_forget')) {
+            nav_forget(['cart']);
+        }
 
         return redirect()->to('/cart')->with('success', 'Item removed.');
     }

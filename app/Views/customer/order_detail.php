@@ -143,6 +143,9 @@
                                                         <?= esc($item['product_name']) ?>
                                                     </a>
                                                 </h6>
+                                                <?php if (! empty($item['variant_label'])): ?>
+                                                    <div class="small text-solqam"><?= esc($item['variant_label']) ?></div>
+                                                <?php endif; ?>
                                                 <small class="text-muted"><i class="bi bi-shop me-1 text-primary"></i> <?= esc($item['store_name'] ?? 'Verified Vendor') ?></small>
                                             </div>
                                         </div>

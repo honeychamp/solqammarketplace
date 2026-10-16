@@ -193,9 +193,18 @@ trait SavesProductCatalog
         $sizes  = (array) $this->request->getPost('variant_size');
         $stocks = (array) $this->request->getPost('variant_stock');
         $prices = (array) $this->request->getPost('variant_price');
+        $keeps  = (array) $this->request->getPost('variant_image_keep');
+        $files  = $this->request->getFileMultiple('variant_image') ?: [];
         $variantModel = new ProductVariantModel();
+        $hasImageCol  = false;
+        try {
+            $hasImageCol = $variantModel->db->fieldExists('image', 'product_variants');
+        } catch (\Throwable $e) {
+            $hasImageCol = false;
+        }
 
-        $count = max(count($colors), count($sizes), count($stocks), count($prices));
+        $count = max(count($colors), count($sizes), count($stocks), count($prices), count($keeps), count($files));
+        $colorImage = [];
         for ($i = 0; $i < $count; $i++) {
             $color = trim((string) ($colors[$i] ?? ''));
             $size  = trim((string) ($sizes[$i] ?? ''));
@@ -204,14 +213,26 @@ trait SavesProductCatalog
             if ($color === '' && $size === '') {
                 continue;
             }
-            $variantModel->insert([
+            $uploaded = $this->storeUploadedFile($files[$i] ?? null);
+            $keep     = trim((string) ($keeps[$i] ?? ''));
+            $image    = $uploaded ?: $keep;
+            if ($color !== '' && $image !== '') {
+                $colorImage[$color] = $image;
+            } elseif ($color !== '' && $image === '' && isset($colorImage[$color])) {
+                $image = $colorImage[$color];
+            }
+            $row = [
                 'product_id' => $productId,
                 'color'      => $color !== '' ? $color : null,
                 'size'       => $size !== '' ? $size : null,
                 'stock'      => $stock,
                 'price'      => $price,
                 'sku'        => 'VAR-' . strtoupper(substr(md5($productId . $color . $size . $i), 0, 6)),
-            ]);
+            ];
+            if ($hasImageCol && $image !== '') {
+                $row['image'] = $image;
+            }
+            $variantModel->skipValidation(true)->insert($row);
         }
     }
 

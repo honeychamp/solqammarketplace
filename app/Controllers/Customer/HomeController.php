@@ -81,20 +81,44 @@ class HomeController extends BaseController
 
         $hasFlashDeal = ! empty($flashSale) && ! empty($flashProducts);
 
-        return view('customer/home', [
+        $data = [
             'title'            => 'Solqam Marketplace — Pakistan Multi-Vendor Marketplace',
-            'categories'       => $categories,
-            'homeProducts'     => $homeProducts,
+            'categories'       => is_array($categories) ? $categories : [],
+            'homeProducts'     => is_array($homeProducts) ? $homeProducts : [],
             'homeTotal'        => $homeTotal,
             'homePages'        => $homePages,
             'homePage'         => $page,
             'hasFlashDeal'     => $hasFlashDeal,
             'flashSale'        => $flashSale,
-            'flashProducts'    => $flashProducts,
+            'flashProducts'    => is_array($flashProducts) ? $flashProducts : [],
             'megaSale'         => $megaSale,
-            'megaProducts'     => $megaProducts,
-            'heroBanners'      => $heroBanners,
-            'sideBanners'      => $sideBanners,
-        ]);
+            'megaProducts'     => is_array($megaProducts) ? $megaProducts : [],
+            'heroBanners'      => is_array($heroBanners) ? $heroBanners : [],
+            'sideBanners'      => is_array($sideBanners) ? $sideBanners : [],
+        ];
+
+        try {
+            return view('customer/home', $data);
+        } catch (\Throwable $e) {
+            log_message('error', 'Homepage view: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            $data['homeProducts']  = [];
+            $data['hasFlashDeal']  = false;
+            $data['flashProducts'] = [];
+            $data['megaProducts']  = [];
+            $data['heroBanners']   = [];
+            $data['sideBanners']   = [];
+            try {
+                return view('customer/home', $data);
+            } catch (\Throwable $e2) {
+                log_message('error', 'Homepage fallback: ' . $e2->getMessage());
+
+                return $this->response->setStatusCode(200)->setBody(
+                    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Solqam</title></head><body>'
+                    . '<p>Solqam is up. Catalog view failed. Check writable/logs.</p>'
+                    . '<p><a href="' . site_url('login') . '">Login</a> · <a href="' . site_url('shop') . '">Shop</a></p>'
+                    . '</body></html>'
+                );
+            }
+        }
     }
 }

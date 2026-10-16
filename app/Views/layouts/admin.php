@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20260929h">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261013a">
 </head>
 <body class="hub-app admin-hub">
 <div class="d-flex flex-column flex-lg-row">
@@ -127,6 +127,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="<?= site_url('admin/marketing') ?>" class="nav-link <?= strpos(uri_string(), 'admin/marketing') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-megaphone"></i></span><span class="label">Ads tracking</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="<?= site_url('admin/banners') ?>" class="nav-link <?= strpos(uri_string(), 'admin/banners') !== false ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-image"></i></span><span class="label">Banners</span>
                 </a>
@@ -209,6 +214,7 @@
         </footer>
     </main>
 </div>
+<?= $this->renderSection('modals') ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <?= $this->renderSection('scripts') ?>
 </body>

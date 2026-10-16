@@ -21,6 +21,10 @@ class UserModel extends Model
         'status',
         'is_verified',
         'api_token',
+        'google_id',
+        'facebook_id',
+        'oauth_provider',
+        'avatar_url',
     ];
 
     protected bool $allowEmptyInserts = false;

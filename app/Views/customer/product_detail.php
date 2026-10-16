@@ -19,6 +19,7 @@ $returnDays = (int) ($product['return_days'] ?? 7);
 $warranty = trim((string) ($product['warranty_info'] ?? ''));
 $sizeGuide = trim((string) ($product['size_guide'] ?? ''));
 $colorFamily = $colorFamily ?? [];
+$colorImages = $colorImages ?? [];
 $sizeOptions = $sizeOptions ?? [];
 $sizeOrder = ['XXS' => 1, 'XS' => 2, 'S' => 3, 'M' => 4, 'L' => 5, 'XL' => 6, 'XXL' => 7, 'XXXL' => 8];
 usort($sizeOptions, static function ($a, $b) use ($sizeOrder) {
@@ -128,16 +129,23 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                     <?= csrf_field() ?>
                     <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
                     <?php if ($variants): ?>
-                    <input type="hidden" name="variant_id" id="variantIdInput" value="<?= $firstVariant['id'] ?? '' ?>">
+                    <input type="hidden" name="variant_id" id="variantIdInput" value="">
                     <?php endif; ?>
 
                     <?php if ($colorFamily): ?>
                     <div class="pdp-meta-row align-items-start">
                         <span class="pdp-meta-label">Color Family</span>
                         <div class="flex-grow-1">
+                            <div class="small text-muted mb-2" id="selectedColorLabel"><?= esc($colorFamily[0] ?? '') ?></div>
                             <div class="d-flex flex-wrap gap-2" id="colorFamily">
                                 <?php foreach ($colorFamily as $ci => $color): ?>
-                                    <button type="button" class="pdp-opt <?= $ci === 0 ? 'is-active' : '' ?>" data-color="<?= esc($color) ?>"><?= esc($color) ?></button>
+                                    <?php $swatch = $colorImages[$color] ?? ''; ?>
+                                    <button type="button" class="pdp-opt pdp-opt-color <?= $ci === 0 ? 'is-active' : '' ?>" data-color="<?= esc($color) ?>" data-image="<?= esc($swatch) ?>">
+                                        <?php if ($swatch !== ''): ?>
+                                            <img src="<?= esc($swatch) ?>" alt="<?= esc($color) ?>">
+                                        <?php endif; ?>
+                                        <span><?= esc($color) ?></span>
+                                    </button>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -170,6 +178,10 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                     </div>
                     <?php endif; ?>
 
+                    <?php if ($variants && ! ($sizeOptions || $sizeGuide !== '')): ?>
+                    <div class="small text-muted mb-2" id="variantStockHint"></div>
+                    <?php endif; ?>
+
                     <div class="pdp-meta-row align-items-center">
                         <span class="pdp-meta-label">Quantity</span>
                         <div class="input-group" style="max-width: 160px;">
@@ -181,8 +193,8 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
 
                     <?php if ((int) $product['stock'] > 0): ?>
                     <div class="d-flex gap-2 mt-3 pdp-buybar">
-                        <button type="submit" name="buy_now" value="1" class="btn btn-solqam-accent flex-grow-1 py-2 fw-bold">Buy Now</button>
-                        <button type="submit" class="btn btn-solqam flex-grow-1 py-2 fw-bold">Add to Cart</button>
+                        <button type="submit" name="buy_now" value="1" id="pdpBuyNow" class="btn btn-solqam-accent flex-grow-1 py-2 fw-bold">Buy Now</button>
+                        <button type="submit" id="pdpAddCart" class="btn btn-solqam flex-grow-1 py-2 fw-bold">Add to Cart</button>
                         <button type="submit" formaction="<?= site_url('wishlist/toggle') ?>" formmethod="post" class="btn btn-outline-danger">
                             <i class="bi bi-heart<?= !empty($inWishlist) ? '-fill' : '' ?>"></i>
                         </button>
@@ -484,43 +496,118 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     const priceEl = document.getElementById('displayPrice');
     const qty = document.getElementById('qtyInput');
     const stockHint = document.getElementById('variantStockHint');
+    const buyNowBtn = document.getElementById('pdpBuyNow');
+    const addCartBtn = document.getElementById('pdpAddCart');
     const basePrice = <?= json_encode($displayPrice) ?>;
     const baseStock = <?= (int) $product['stock'] ?>;
+    const hasColors = !!document.getElementById('colorFamily');
+    const hasSizes = !!document.getElementById('sizeFamily');
     let color = document.querySelector('#colorFamily .pdp-opt.is-active')?.dataset.color || '';
     let size = document.querySelector('#sizeFamily .pdp-opt.is-active')?.dataset.size || '';
+
+    function norm(v) { return String(v || '').trim().toLowerCase(); }
 
     function findVariant() {
         if (!variants.length) return null;
         return variants.find(function (v) {
             const c = (v.color || '').trim();
             const s = (v.size || '').trim();
-            const colorOk = !color || !c || c === color;
-            const sizeOk = !size || !s || s === size;
-            return colorOk && sizeOk;
+            if (hasColors && color && c && norm(c) !== norm(color)) return false;
+            if (hasSizes && size && s && norm(s) !== norm(size)) return false;
+            if (hasColors && color && !c) return false;
+            if (hasSizes && size && !s) return false;
+            if (hasColors && !color) return false;
+            if (hasSizes && !size) return false;
+            return true;
         }) || null;
     }
 
+    function sizesForColor(selectedColor) {
+        const set = {};
+        variants.forEach(function (v) {
+            if (!selectedColor || !v.color || norm(v.color) === norm(selectedColor)) {
+                if (v.size) set[v.size] = (set[v.size] || 0) + (parseInt(v.stock, 10) || 0);
+            }
+        });
+        return set;
+    }
+
+    function imageForColor(selectedColor) {
+        const btn = document.querySelector('#colorFamily .pdp-opt[data-color="' + selectedColor + '"]');
+        if (btn && btn.dataset.image) return btn.dataset.image;
+        const row = variants.find(function (v) {
+            return v.color && norm(v.color) === norm(selectedColor) && v.image;
+        });
+        return row ? row.image : '';
+    }
+
+    function setMainImage(src) {
+        if (!src) return;
+        const main = document.getElementById('mainProductImg');
+        const zoom = document.getElementById('pdpZoomImg');
+        if (main) main.src = src;
+        if (zoom) zoom.src = src;
+        document.querySelectorAll('.pdp-thumb').forEach(function (b) {
+            b.classList.toggle('is-active', b.dataset.src === src);
+        });
+    }
+
     function applyVariant() {
+        const sizeMap = sizesForColor(color);
+        document.querySelectorAll('#sizeFamily .pdp-opt').forEach(function (btn) {
+            const key = btn.dataset.size;
+            const ok = Object.keys(sizeMap).some(function (s) { return norm(s) === norm(key); });
+            const inStock = (sizeMap[key] || sizeMap[Object.keys(sizeMap).find(function (s) { return norm(s) === norm(key); }) || ''] || 0) > 0;
+            btn.classList.toggle('is-disabled', !ok);
+            btn.disabled = !ok;
+            if (ok && !inStock) btn.classList.add('is-oos');
+            else btn.classList.remove('is-oos');
+        });
+        if (hasSizes && size) {
+            const sizeBtn = document.querySelector('#sizeFamily .pdp-opt.is-active');
+            if (sizeBtn && sizeBtn.disabled) {
+                const firstOk = document.querySelector('#sizeFamily .pdp-opt:not(:disabled)');
+                document.querySelectorAll('#sizeFamily .pdp-opt').forEach(function (b) { b.classList.remove('is-active'); });
+                if (firstOk) {
+                    firstOk.classList.add('is-active');
+                    size = firstOk.dataset.size;
+                } else {
+                    size = '';
+                }
+            }
+        }
+
+        const colorImg = imageForColor(color);
+        if (colorImg) setMainImage(colorImg);
+
         const v = findVariant();
+        const colorLabel = document.getElementById('selectedColorLabel');
+        if (colorLabel && color) colorLabel.textContent = color;
+        const sizeLabel = document.getElementById('selectedSizeLabel');
+        if (sizeLabel && size) sizeLabel.textContent = size;
+
         if (v) {
             if (variantInput) variantInput.value = v.id;
             const p = parseFloat(v.price || 0);
             if (priceEl) priceEl.textContent = Math.round(p > 0 ? p : basePrice).toLocaleString();
             const st = parseInt(v.stock, 10) || 0;
             if (qty) {
-                qty.max = st || 1;
+                qty.max = Math.max(1, st);
                 if (parseInt(qty.value, 10) > st) qty.value = st > 0 ? st : 1;
             }
-            if (stockHint) stockHint.textContent = st > 0 ? (st + ' in stock') : 'Out of stock for this option';
+            if (stockHint) stockHint.textContent = st > 0 ? (st + ' in stock for this option') : 'Out of stock for this color / size';
+            if (buyNowBtn) buyNowBtn.disabled = st < 1;
+            if (addCartBtn) addCartBtn.disabled = st < 1;
+            if (v.image) setMainImage(v.image);
         } else if (!variants.length) {
             if (qty) qty.max = baseStock;
             if (stockHint) stockHint.textContent = '';
         } else {
             if (variantInput) variantInput.value = '';
-            if (stockHint) stockHint.textContent = 'This color / size combination is not available';
+            if (stockHint) stockHint.textContent = 'Please choose an available color and size';
+            if (buyNowBtn) buyNowBtn.disabled = true;
+            if (addCartBtn) addCartBtn.disabled = true;
         }
-        const sizeLabel = document.getElementById('selectedSizeLabel');
-        if (sizeLabel && size) sizeLabel.textContent = size;
     }
 
     document.querySelectorAll('#colorFamily .pdp-opt').forEach(function (btn) {
@@ -533,11 +620,22 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     });
     document.querySelectorAll('#sizeFamily .pdp-opt').forEach(function (btn) {
         btn.addEventListener('click', function () {
+            if (btn.disabled) return;
             document.querySelectorAll('#sizeFamily .pdp-opt').forEach(function (b) { b.classList.remove('is-active'); });
             btn.classList.add('is-active');
             size = btn.dataset.size;
             applyVariant();
         });
+    });
+    document.getElementById('pdpBuyForm')?.addEventListener('submit', function (e) {
+        const submitter = e.submitter;
+        if (submitter && (submitter.getAttribute('formaction') || '').indexOf('wishlist') !== -1) {
+            return;
+        }
+        if (variants.length && variantInput && !variantInput.value) {
+            e.preventDefault();
+            if (stockHint) stockHint.textContent = 'Please choose color and size first.';
+        }
     });
     applyVariant();
 

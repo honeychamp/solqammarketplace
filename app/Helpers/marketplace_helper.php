@@ -306,3 +306,18 @@ if (!function_exists('dash_delta')) {
         return [($pct > 0 ? '+' : '') . $pct . '%', $pct > 0 ? 'up' : ($pct < 0 ? 'down' : 'flat')];
     }
 }
+
+if (!function_exists('nav_forget')) {
+    function nav_forget($keys = null): void
+    {
+        try {
+            $session = session();
+            $keys    = $keys === null ? ['cart', 'wishlist', 'wallet'] : (array) $keys;
+            foreach ($keys as $k) {
+                $session->remove('nav_' . $k);
+            }
+        } catch (\Throwable $e) {
+            // session may be unavailable in CLI
+        }
+    }
+}

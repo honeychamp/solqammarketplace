@@ -241,6 +241,9 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                             <div class="d-flex justify-content-between align-items-center mb-2.5 small">
                                 <div class="text-truncate me-2" style="max-width: 220px;">
                                     <strong><?= $item['quantity'] ?>x</strong> <span class="text-dark"><?= esc($item['product_name']) ?></span>
+                                    <?php if (! empty($item['variant_label'])): ?>
+                                        <div class="text-solqam" style="font-size: 0.72rem;"><?= esc($item['variant_label']) ?></div>
+                                    <?php endif; ?>
                                     <div class="text-muted" style="font-size: 0.72rem;"><i class="bi bi-shop me-1 text-primary"></i> <?= esc($item['store_name'] ?? 'Vendor') ?></div>
                                     <div class="text-success" style="font-size: 0.72rem;"><?= esc(cashback_percent_label($item)) ?> cashback</div>
                                 </div>

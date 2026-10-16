@@ -74,29 +74,30 @@ $p = static fn (string $key, $default = '') => old($key, $product[$key] ?? $defa
 
 <div class="mb-3 p-3 bg-light rounded-3" id="variantBox">
     <div class="d-flex justify-content-between align-items-center mb-2">
-        <label class="form-label fw-bold small mb-0">Color family &amp; size (optional)</label>
+        <label class="form-label fw-bold small mb-0">Color, size &amp; price (Daraz-style SKUs)</label>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addVariantRow">+ Row</button>
     </div>
-    <p class="small text-muted mb-2">Empty rows are ignored. Color/size only appear on product page if you fill them.</p>
+    <p class="small text-muted mb-2">Har row ek SKU hai: e.g. Red + M + Rs. 1999. Same color ki image pehli row se baqi sizes par lag jati hai. Customer color click karega to wohi photo dikhegi, size ke hisaab se price/stock change hoga.</p>
     <?php
     $rows = $variants;
     if ($rows === []) {
         $rows = [[], []];
     }
     foreach ($rows as $v): ?>
-        <div class="row g-2 mb-2 variant-row">
-            <div class="col-3"><input type="text" name="variant_color[]" class="form-control form-control-sm" placeholder="Color" value="<?= esc($v['color'] ?? '') ?>"></div>
-            <div class="col-3"><input type="text" name="variant_size[]" class="form-control form-control-sm" placeholder="Size" value="<?= esc($v['size'] ?? '') ?>"></div>
-            <div class="col-3"><input type="number" name="variant_stock[]" class="form-control form-control-sm" placeholder="Stock" value="<?= esc($v['stock'] ?? '') ?>"></div>
-            <div class="col-3"><input type="number" step="0.01" name="variant_price[]" class="form-control form-control-sm" placeholder="Price" value="<?= esc($v['price'] ?? '') ?>"></div>
+        <div class="row g-2 mb-2 variant-row align-items-center">
+            <div class="col-md-2"><input type="text" name="variant_color[]" class="form-control form-control-sm" placeholder="Color" value="<?= esc($v['color'] ?? '') ?>"></div>
+            <div class="col-md-2"><input type="text" name="variant_size[]" class="form-control form-control-sm" placeholder="Size" value="<?= esc($v['size'] ?? '') ?>"></div>
+            <div class="col-md-2"><input type="number" name="variant_stock[]" class="form-control form-control-sm" placeholder="Stock" value="<?= esc($v['stock'] ?? '') ?>"></div>
+            <div class="col-md-2"><input type="number" step="0.01" name="variant_price[]" class="form-control form-control-sm" placeholder="Price" value="<?= esc($v['price'] ?? '') ?>"></div>
+            <div class="col-md-4">
+                <input type="hidden" name="variant_image_keep[]" value="<?= esc($v['image'] ?? '') ?>">
+                <input type="file" name="variant_image[]" class="form-control form-control-sm" accept="image/jpeg,image/png,image/webp,image/gif">
+                <?php if (! empty($v['image'])): ?>
+                    <div class="small text-muted mt-1">Current: <img src="<?= esc(function_exists('media_url') ? media_url($v['image']) : $v['image']) ?>" alt="" style="height:28px;width:28px;object-fit:cover;border-radius:6px;"></div>
+                <?php endif; ?>
+            </div>
         </div>
     <?php endforeach; ?>
-    <div class="row g-2 mb-2 variant-row">
-        <div class="col-3"><input type="text" name="variant_color[]" class="form-control form-control-sm" placeholder="Color"></div>
-        <div class="col-3"><input type="text" name="variant_size[]" class="form-control form-control-sm" placeholder="Size"></div>
-        <div class="col-3"><input type="number" name="variant_stock[]" class="form-control form-control-sm" placeholder="Stock"></div>
-        <div class="col-3"><input type="number" step="0.01" name="variant_price[]" class="form-control form-control-sm" placeholder="Price"></div>
-    </div>
 </div>
 
 <div class="mb-4" id="productMediaBox">

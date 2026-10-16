@@ -65,7 +65,12 @@ $adminPkgStatus = $adminShipment['status'] ?? 'placed';
                     <tbody>
                         <?php foreach ($order['items'] as $item): ?>
                             <tr>
-                                <td class="fw-semibold"><?= esc($item['product_name']) ?></td>
+                                <td class="fw-semibold">
+                                    <?= esc($item['product_name']) ?>
+                                    <?php if (! empty($item['variant_label'])): ?>
+                                        <div class="small text-solqam fw-normal"><?= esc($item['variant_label']) ?></div>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <?php if (!empty($item['is_admin_item'])): ?>
                                         <span class="badge bg-danger-subtle text-danger">Admin store</span>

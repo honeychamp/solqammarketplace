@@ -51,5 +51,16 @@ Events::on('pre_system', static function (): void {
 });
 
 Events::on('post_controller_constructor', static function (): void {
-    \App\Services\Platform\SchemaHeal::run();
+    try {
+        \App\Services\Platform\SchemaHeal::run();
+    } catch (\Throwable $e) {
+        log_message('error', 'SchemaHeal: ' . $e->getMessage());
+    }
+    try {
+        if (class_exists(\App\Services\Marketing\MarketingService::class)) {
+            \App\Services\Marketing\MarketingService::pageViewIfStorefront();
+        }
+    } catch (\Throwable $e) {
+        log_message('error', 'Marketing pageview: ' . $e->getMessage());
+    }
 });

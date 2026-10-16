@@ -29,7 +29,7 @@ class App extends BaseConfig
      *
      * @var list<string>
      */
-    public array $allowedHostnames = ['www.solqam.com'];
+    public array $allowedHostnames = ['www.solqam.com', 'solqam.com'];
 
     /**
      * --------------------------------------------------------------------------
@@ -199,4 +199,36 @@ class App extends BaseConfig
      * @see http://www.w3.org/TR/CSP/
      */
     public bool $CSPEnabled = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        if (is_cli()) {
+            return;
+        }
+
+        $host = strtolower(trim((string) ($_SERVER['HTTP_HOST'] ?? '')));
+        if ($host === '' || str_contains($host, '/')) {
+            return;
+        }
+
+        $https = (! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (string) ($_SERVER['SERVER_PORT'] ?? '') === '443'
+            || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+
+        $browserPath = strtolower((string) (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'));
+        $scriptDir   = rtrim(str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/index.php'))), '/');
+        if ($scriptDir === '.' || $scriptDir === '\\') {
+            $scriptDir = '';
+        }
+        if ($scriptDir !== '' && str_ends_with($scriptDir, '/public') && ! str_contains($browserPath, '/public')) {
+            $scriptDir = substr($scriptDir, 0, -7);
+        }
+        if ($scriptDir === '/') {
+            $scriptDir = '';
+        }
+
+        $this->baseURL = ($https ? 'https' : 'http') . '://' . $host . $scriptDir . '/';
+    }
 }

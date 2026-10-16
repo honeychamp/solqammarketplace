@@ -9,6 +9,7 @@ use CodeIgniter\Router\RouteCollection;
 // --------------------------------------------------------------------
 // Public Customer Web Routes
 // --------------------------------------------------------------------
+$routes->get('uploads/(:any)', 'MediaController::uploads/$1');
 $routes->get('sitemap.xml', 'SeoController::sitemap');
 $routes->get('compare', 'Customer\CatalogController::compare');
 $routes->get('compare/toggle/(:num)', 'Customer\CatalogController::compareToggle/$1');
@@ -46,6 +47,8 @@ $routes->match(['GET', 'POST'], 'forgot-password/verify', 'Auth\AuthController::
 $routes->post('forgot-password/verify/resend', 'Auth\AuthController::resendResetOtp');
 $routes->match(['GET', 'POST'], 'forgot-password/reset', 'Auth\AuthController::forgotReset');
 $routes->get('logout', 'Auth\AuthController::logout');
+$routes->get('auth/(:segment)/callback', 'Auth\AuthController::socialCallback/$1');
+$routes->get('auth/(:segment)', 'Auth\AuthController::socialStart/$1');
 
 // --------------------------------------------------------------------
 // Customer Account & Checkout Routes (Auth & Role Guarded)
@@ -143,6 +146,7 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
 
     // Categories Management
     $routes->get('categories', 'Admin\CategoryController::index');
+    $routes->post('categories', 'Admin\CategoryController::store');
     $routes->post('categories/store', 'Admin\CategoryController::store');
     $routes->post('categories/update/(:num)', 'Admin\CategoryController::update/$1');
     $routes->get('categories/delete/(:num)', 'Admin\CategoryController::delete/$1');
@@ -194,6 +198,9 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->post('flash-sales/item', 'Admin\FlashSaleController::addItem');
     $routes->post('flash-sales/item/(:num)/approve', 'Admin\FlashSaleController::approve/$1');
     $routes->post('flash-sales/item/(:num)/reject', 'Admin\FlashSaleController::reject/$1');
+    $routes->match(['GET', 'POST'], 'marketing', 'Admin\MarketingController::settings');
+    $routes->get('marketing/logs', 'Admin\MarketingController::logs');
+    $routes->post('marketing/test', 'Admin\MarketingController::testEvent');
     $routes->get('shipping', 'Admin\ShippingController::index');
     $routes->post('shipping/store', 'Admin\ShippingController::store');
     $routes->get('shipping/delete/(:num)', 'Admin\ShippingController::delete/$1');
