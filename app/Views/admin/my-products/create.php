@@ -11,17 +11,6 @@
     </a>
 </div>
 
-<?php if (session()->getFlashdata('errors')): ?>
-    <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
-        <ul class="mb-0 small">
-            <?php foreach (session()->getFlashdata('errors') as $err): ?>
-                <li><?= esc($err) ?></li>
-            <?php endforeach; ?>
-        </ul>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-<?php endif; ?>
-
 <div class="card-custom p-4" style="max-width: 860px;">
     <form action="<?= site_url('admin/my-products/store') ?>" method="POST" enctype="multipart/form-data">
         <?= csrf_field() ?>

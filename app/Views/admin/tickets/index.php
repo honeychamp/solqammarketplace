@@ -11,7 +11,10 @@
                 <td><?= esc($t['customer_name'] ?? '') ?><div class="small text-muted"><?= esc($t['customer_email'] ?? '') ?></div></td>
                 <td><?= esc($t['subject']) ?></td>
                 <td><span class="badge bg-secondary"><?= esc($t['status']) ?></span></td>
-                <td><a href="<?= site_url('admin/tickets/' . $t['id']) ?>" class="btn btn-sm btn-outline-primary">Open</a></td>
+                <td class="text-end">
+                    <a href="<?= site_url('admin/tickets/' . $t['id']) ?>" class="btn btn-sm btn-outline-primary">Edit / reply</a>
+                    <a href="<?= site_url('admin/tickets/' . $t['id'] . '/delete') ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this ticket?');">Delete</a>
+                </td>
             </tr>
         <?php endforeach; ?>
         <?php if (empty($tickets)): ?>
@@ -19,5 +22,6 @@
         <?php endif; ?>
         </tbody>
     </table>
+    <?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
 </div>
 <?= $this->endSection() ?>

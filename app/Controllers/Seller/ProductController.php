@@ -127,28 +127,41 @@ class ProductController extends BaseController
             return redirect()->to('/seller/products')->with('error', 'Product not found.');
         }
 
+        if ($this->postedEmptyForm()) {
+            return redirect()->back()->with('error', 'Save failed. The form arrived empty — usually a video/image is larger than the PHP upload limit (raise upload_max_filesize / post_max_size).');
+        }
+
         $rules = [
             'name'        => 'required|min_length[3]|max_length[255]',
             'category_id' => 'required|numeric',
             'price'       => 'required|numeric',
             'stock'       => 'required|integer',
-            'status'      => 'required|in_list[active,inactive,archived]',
+            'status'      => 'permit_empty|in_list[active,inactive,archived]',
         ];
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $this->productModel->updateCatalog((int) $id, array_merge($this->catalogProductPayload(), [
-            'name'   => $this->request->getPost('name'),
-            'sku'    => $this->request->getPost('sku'),
-            'status' => $this->request->getPost('status'),
-        ]));
-        $this->persistPostedCashback((int) $id);
+        try {
+            $payload = array_merge($this->catalogProductPayload(), [
+                'name'   => $this->request->getPost('name'),
+                'sku'    => $this->request->getPost('sku'),
+                'status' => $this->request->getPost('status') ?: ($product['status'] ?? 'active'),
+            ]);
+            if ((int) ($payload['category_id'] ?? 0) <= 0) {
+                return redirect()->back()->withInput()->with('error', 'Select a valid category.');
+            }
+            $this->productModel->updateCatalog((int) $id, $payload);
+            $this->persistPostedCashback((int) $id);
+            $this->replacePrimaryImage((int) $id);
+            $this->saveGalleryImages((int) $id, true);
+            $this->replaceVariants((int) $id);
+        } catch (\Throwable $e) {
+            log_message('error', 'Seller edit product: ' . $e->getMessage());
 
-        $this->replacePrimaryImage((int) $id);
-        $this->saveGalleryImages((int) $id, true);
-        $this->replaceVariants((int) $id);
+            return redirect()->back()->withInput()->with('error', 'Product could not be updated: ' . $e->getMessage());
+        }
 
         return redirect()->to('/seller/products')->with('success', 'Product updated successfully.');
     }

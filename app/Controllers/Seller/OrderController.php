@@ -24,10 +24,12 @@ class OrderController extends BaseController
     {
         $sellerId = (int) session()->get('user.id');
         $items = $this->orderItemModel->getSellerOrderItems($sellerId);
+        [$items, $pager] = hub_paginate_array($items, 25);
 
         return view('seller/orders/index', [
             'title' => 'Incoming Orders — Solqam Seller Hub',
             'items' => $items,
+            'pager' => $pager,
         ]);
     }
 

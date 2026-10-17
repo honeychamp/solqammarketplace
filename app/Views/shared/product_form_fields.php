@@ -131,18 +131,23 @@ $p = static fn (string $key, $default = '') => old($key, $product[$key] ?? $defa
         <input type="url" name="image_url" id="mainPhotoUrl" class="form-control form-control-sm mt-2" placeholder="Or paste image URL" value="<?= esc(old('image_url')) ?>">
     </div>
 
-    <label class="form-label fw-bold small">More gallery photos</label>
-    <p class="small text-muted mb-2">Select photos to preview. Drag, or use arrows, to change order (1 → 2, 2 → 5…).</p>
+    <label class="form-label fw-bold small">More gallery photos &amp; videos</label>
+    <p class="small text-muted mb-2">Add photos and MP4/WebM videos. Drag or use arrows to change order. Customers see them together on the product page.</p>
     <button type="button" class="btn btn-sm btn-outline-primary rounded-pill mb-2" id="galleryPick">
-        <i class="bi bi-plus-lg me-1"></i> Add gallery photos
+        <i class="bi bi-plus-lg me-1"></i> Add photos or videos
     </button>
-    <input type="file" id="galleryPickInput" class="d-none" accept="image/*" multiple>
-    <input type="file" name="gallery_files[]" id="galleryFilesSync" class="d-none" accept="image/*" multiple>
+    <input type="file" id="galleryPickInput" class="d-none" accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.mov,.ogg" multiple>
+    <input type="file" name="gallery_files[]" id="galleryFilesSync" class="d-none" accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.mov,.ogg" multiple>
     <div id="galleryOrderFields"></div>
     <div id="galleryBoard" class="solqam-gallery-board d-flex flex-wrap gap-2">
         <?php foreach ($galleryImgs as $g): ?>
+            <?php $isVid = function_exists('is_product_video') && is_product_video($g['image_path'] ?? '', $g['media_type'] ?? ''); ?>
             <div class="solqam-gallery-tile" draggable="true" data-kind="existing" data-id="<?= (int) $g['id'] ?>" data-src="<?= esc($g['image_path'], 'attr') ?>">
-                <img src="<?= esc($g['image_path']) ?>" alt="">
+                <?php if ($isVid): ?>
+                    <video src="<?= esc($g['image_path']) ?>" muted playsinline></video>
+                <?php else: ?>
+                    <img src="<?= esc($g['image_path']) ?>" alt="">
+                <?php endif; ?>
                 <div class="solqam-gallery-pos"></div>
                 <div class="solqam-gallery-actions">
                     <button type="button" class="btn btn-sm btn-light py-0 px-1" data-move="-1" title="Move left">&larr;</button>
@@ -159,7 +164,7 @@ $p = static fn (string $key, $default = '') => old($key, $product[$key] ?? $defa
 .solqam-photo-preview img { max-height: 220px; max-width: 100%; object-fit: contain; }
 .solqam-gallery-tile { width: 110px; position: relative; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #fff; cursor: grab; }
 .solqam-gallery-tile.is-drag { opacity: .45; }
-.solqam-gallery-tile img { width: 110px; height: 90px; object-fit: cover; display: block; }
+.solqam-gallery-tile img, .solqam-gallery-tile video { width: 110px; height: 90px; object-fit: cover; display: block; background:#0f172a; }
 .solqam-gallery-pos { position: absolute; top: 4px; left: 6px; background: #0B30E6; color: #fff; font-size: 11px; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .solqam-gallery-actions { display: flex; justify-content: center; gap: 2px; padding: 4px; background: #f8fafc; }
 </style>
@@ -317,17 +322,21 @@ document.getElementById('addVariantRow')?.addEventListener('click', function () 
 
     function addFiles(fileList) {
         Array.from(fileList || []).forEach(function (file) {
-            if (!file.type || file.type.indexOf('image') !== 0) return;
+            const isImage = file.type && file.type.indexOf('image') === 0;
+            const isVideo = file.type && file.type.indexOf('video') === 0;
+            if (!isImage && !isVideo) return;
             const tile = document.createElement('div');
             tile.className = 'solqam-gallery-tile';
             tile.draggable = true;
             tile.dataset.kind = 'new';
             tile._file = file;
-            tile.innerHTML = '<img alt=""><div class="solqam-gallery-pos"></div><div class="solqam-gallery-actions">'
+            const media = isVideo ? '<video muted playsinline></video>' : '<img alt="">';
+            tile.innerHTML = media + '<div class="solqam-gallery-pos"></div><div class="solqam-gallery-actions">'
                 + '<button type="button" class="btn btn-sm btn-light py-0 px-1" data-move="-1" title="Move left">&larr;</button>'
                 + '<button type="button" class="btn btn-sm btn-light py-0 px-1" data-move="1" title="Move right">&rarr;</button>'
                 + '<button type="button" class="btn btn-sm btn-light py-0 px-1" data-remove="1" title="Remove">&times;</button></div>';
-            tile.querySelector('img').src = URL.createObjectURL(file);
+            const el = tile.querySelector('img, video');
+            if (el) el.src = URL.createObjectURL(file);
             galleryBoard.appendChild(tile);
         });
         syncGallery();

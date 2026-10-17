@@ -9,16 +9,6 @@
         </a>
     </div>
 
-    <?php if (session()->getFlashdata('errors')): ?>
-        <div class="alert alert-danger small">
-            <ul class="mb-0">
-                <?php foreach (session()->getFlashdata('errors') as $err): ?>
-                    <li><?= esc($err) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
-
     <form action="<?= site_url('seller/products/update/' . $product['id']) ?>" method="POST" enctype="multipart/form-data">
         <?= csrf_field() ?>
         <?= view('shared/product_form_fields', [

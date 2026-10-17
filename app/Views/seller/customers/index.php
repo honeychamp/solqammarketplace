@@ -41,5 +41,6 @@
             </tbody>
         </table>
     </div>
+    <?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
 </div>
 <?= $this->endSection() ?>

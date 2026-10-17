@@ -66,7 +66,52 @@ trait SavesProductCatalog
         }
     }
 
-    protected function imageRow(int $productId, string $path, int $primary, int $sort): array
+    protected function imageHasMediaType(): bool
+    {
+        try {
+            return \Config\Database::connect()->fieldExists('media_type', 'product_images');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    protected function clientMediaType($file): string
+    {
+        if (! $file) {
+            return 'image';
+        }
+        $mime = '';
+        $ext  = '';
+        try {
+            $mime = strtolower((string) $file->getClientMimeType());
+        } catch (\Throwable $e) {
+            $mime = '';
+        }
+        try {
+            $ext = strtolower((string) $file->getClientExtension());
+        } catch (\Throwable $e) {
+            $ext = '';
+        }
+        if (str_starts_with($mime, 'video/') || (bool) preg_match('/^(mp4|webm|ogg|ogv|mov|m4v)$/', $ext)) {
+            return 'video';
+        }
+
+        return 'image';
+    }
+
+    protected function mediaTypeForPath(string $path, $file = null): string
+    {
+        if ($this->clientMediaType($file) === 'video') {
+            return 'video';
+        }
+        if (function_exists('is_product_video') && is_product_video($path, '')) {
+            return 'video';
+        }
+
+        return 'image';
+    }
+
+    protected function imageRow(int $productId, string $path, int $primary, int $sort, string $mediaType = 'image'): array
     {
         $row = [
             'product_id' => $productId,
@@ -76,8 +121,37 @@ trait SavesProductCatalog
         if ($this->imageHasSort()) {
             $row['sort_order'] = $sort;
         }
+        if ($this->imageHasMediaType()) {
+            $row['media_type'] = $mediaType === 'video' ? 'video' : 'image';
+        }
+        try {
+            if (\Config\Database::connect()->fieldExists('created_at', 'product_images')) {
+                $row['created_at'] = date('Y-m-d H:i:s');
+            }
+        } catch (\Throwable $e) {
+            // skip
+        }
 
         return $row;
+    }
+
+    protected function galleryUploadFiles(): array
+    {
+        $files = $this->request->getFileMultiple('gallery_files');
+        if (is_array($files)) {
+            return array_values($files);
+        }
+        $one = $this->request->getFile('gallery_files');
+        if ($one) {
+            return [$one];
+        }
+
+        return [];
+    }
+
+    protected function postedEmptyForm(): bool
+    {
+        return $this->request->getPost('name') === null && $this->request->getPost('price') === null;
     }
 
     protected function storeUploadedFile($file): ?string
@@ -91,7 +165,16 @@ trait SavesProductCatalog
 
             return null;
         }
-        $newName = $file->getRandomName();
+        $ext = '';
+        try {
+            $ext = strtolower((string) preg_replace('/[^a-z0-9]/', '', (string) $file->getClientExtension()));
+        } catch (\Throwable $e) {
+            $ext = '';
+        }
+        if ($ext === '') {
+            $ext = 'bin';
+        }
+        $newName = date('YmdHis') . '-' . bin2hex(random_bytes(6)) . '.' . $ext;
         $file->move($uploadDir, $newName);
 
         return base_url('uploads/products/' . $newName);
@@ -109,16 +192,20 @@ trait SavesProductCatalog
             $imagePath = base_url('assets/images/product-placeholder.svg');
         }
 
-        $imageModel->insert($this->imageRow($productId, $imagePath, 1, 0));
+        $imageModel->insert($this->imageRow($productId, $imagePath, 1, 0, $this->mediaTypeForPath($imagePath, $img)));
     }
 
     protected function replacePrimaryImage(int $productId): void
     {
         $imageModel = $this->productImageModel ?? new ProductImageModel();
-        $path = $this->storeUploadedFile($this->request->getFile('image_file'));
+        $file = $this->request->getFile('image_file');
+        $path = $this->storeUploadedFile($file);
         if ($path) {
-            $imageModel->where('product_id', $productId)->set(['is_primary' => 0])->update();
-            $imageModel->insert($this->imageRow($productId, $path, 1, 0));
+            \Config\Database::connect()->table('product_images')
+                ->where('product_id', $productId)
+                ->set(['is_primary' => 0])
+                ->update();
+            $imageModel->insert($this->imageRow($productId, $path, 1, 0, $this->mediaTypeForPath($path, $file)));
         }
     }
 
@@ -126,7 +213,7 @@ trait SavesProductCatalog
     {
         $imageModel = $this->productImageModel ?? new ProductImageModel();
         $order = array_values(array_filter((array) $this->request->getPost('gallery_order'), static fn ($v) => $v !== '' && $v !== null));
-        $files = $this->request->getFileMultiple('gallery_files') ?? [];
+        $files = $this->galleryUploadFiles();
 
         if ($order === []) {
             $sort = 1;
@@ -136,7 +223,7 @@ trait SavesProductCatalog
                 if (! $path) {
                     continue;
                 }
-                $imageModel->insert($this->imageRow($productId, $path, $hasPrimary ? 0 : 1, $sort++));
+                $imageModel->insert($this->imageRow($productId, $path, $hasPrimary ? 0 : 1, $sort++, $this->mediaTypeForPath($path, $file)));
                 $hasPrimary = true;
             }
 
@@ -174,7 +261,7 @@ trait SavesProductCatalog
                 if ($this->imageHasSort()) {
                     $update['sort_order'] = $sort;
                 }
-                $imageModel->update($id, $update);
+                \Config\Database::connect()->table('product_images')->where('id', $id)->update($update);
                 $sort++;
             } elseif (str_starts_with($token, 'new:')) {
                 $idx = (int) substr($token, 4);
@@ -182,7 +269,7 @@ trait SavesProductCatalog
                 if (! $path) {
                     continue;
                 }
-                $imageModel->insert($this->imageRow($productId, $path, 0, $sort++));
+                $imageModel->insert($this->imageRow($productId, $path, 0, $sort++, $this->mediaTypeForPath($path, $files[$idx] ?? null)));
             }
         }
     }
@@ -194,7 +281,8 @@ trait SavesProductCatalog
         $stocks = (array) $this->request->getPost('variant_stock');
         $prices = (array) $this->request->getPost('variant_price');
         $keeps  = (array) $this->request->getPost('variant_image_keep');
-        $files  = $this->request->getFileMultiple('variant_image') ?: [];
+        $files  = $this->request->getFileMultiple('variant_image');
+        $files  = is_array($files) ? $files : [];
         $variantModel = new ProductVariantModel();
         $hasImageCol  = false;
         try {

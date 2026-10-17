@@ -13,10 +13,12 @@ class ChatController extends BaseController
     {
         $sellerId = (int) session()->get('user.id');
         $threads = (new ConversationModel())->forUser($sellerId, 'seller');
+        [$threads, $pager] = hub_paginate_array($threads, 25);
 
         return view('seller/chat/index', [
             'title'   => 'Inbox — Seller Hub',
             'threads' => $threads,
+            'pager'   => $pager,
         ]);
     }
 

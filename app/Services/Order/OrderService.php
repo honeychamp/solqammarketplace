@@ -306,13 +306,13 @@ class OrderService
 
             if ($this->db->tableExists('payments')) {
                 $this->paymentModel->insert($this->onlyTableColumns('payments', [
-                    'order_id'         => $orderId,
-                    'payment_method'   => $paymentMethod,
-                    'transaction_ref'  => $transactionRef,
-                    'amount'           => $finalPayable,
-                    'status'           => $paymentStatus,
-                    'gateway_response' => $gatewayResponse,
-                    'paid_at'          => ($paymentStatus === 'paid') ? date('Y-m-d H:i:s') : null,
+                'order_id'         => $orderId,
+                'payment_method'   => $paymentMethod,
+                'transaction_ref'  => $transactionRef,
+                'amount'           => $finalPayable,
+                'status'           => $paymentStatus,
+                'gateway_response' => $gatewayResponse,
+                'paid_at'          => ($paymentStatus === 'paid') ? date('Y-m-d H:i:s') : null,
                 ]));
             }
 
@@ -971,9 +971,9 @@ class OrderService
 
     protected function restockItems(array $items): void
     {
-        foreach ($items as $item) {
-            $this->db->table('products')
-                ->where('id', $item['product_id'])
+            foreach ($items as $item) {
+                $this->db->table('products')
+                    ->where('id', $item['product_id'])
                 ->increment('stock', $item['quantity']);
             if (! empty($item['variant_id'])) {
                 $this->db->table('product_variants')
@@ -987,9 +987,9 @@ class OrderService
     {
         $orderId = (int) $order['id'];
         if ((float) ($order['wallet_amount_used'] ?? 0) > 0 && ! $this->hasLedger($orderId, 'refund', 'wallet amount')) {
-            $this->walletService->credit(
-                (int) $order['user_id'],
-                (float) $order['wallet_amount_used'],
+                $this->walletService->credit(
+                    (int) $order['user_id'],
+                    (float) $order['wallet_amount_used'],
                 'refund',
                 $orderId,
                 "Refund of wallet amount for {$reason} Order {$order['order_number']}"

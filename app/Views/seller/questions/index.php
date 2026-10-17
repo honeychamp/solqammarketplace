@@ -19,4 +19,5 @@
 <?php if (empty($questions)): ?>
     <p class="text-muted">No questions yet.</p>
 <?php endif; ?>
+<?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
 <?= $this->endSection() ?>

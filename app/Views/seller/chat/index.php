@@ -15,5 +15,6 @@
             </a>
         <?php endforeach; ?>
     </div>
+    <?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
 <?php endif; ?>
 <?= $this->endSection() ?>

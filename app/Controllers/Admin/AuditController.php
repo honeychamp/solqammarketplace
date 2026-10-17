@@ -13,15 +13,17 @@ class AuditController extends BaseController
         try {
             $rows = Database::connect()->table('audit_logs')
                 ->orderBy('id', 'DESC')
-                ->limit(200)
                 ->get()
                 ->getResultArray();
+            [$rows, $pager] = hub_paginate_array($rows, 25);
         } catch (\Throwable $e) {
+            $pager = null;
         }
 
         return view('admin/audit/index', [
             'title' => 'Audit log — Solqam Admin',
             'rows'  => $rows,
+            'pager' => $pager ?? null,
         ]);
     }
 }

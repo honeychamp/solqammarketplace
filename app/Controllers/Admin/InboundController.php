@@ -27,15 +27,18 @@ class InboundController extends BaseController
             $packages = $model
                 ->whereNotIn('shipments.status', ['delivered', 'cancelled', 'undelivered'])
                 ->orderBy('shipments.id', 'DESC')
-                ->findAll(100);
+                ->paginate(25);
+            $pager = $model->pager;
         } catch (\Throwable $e) {
             log_message('error', 'Admin inbound: ' . $e->getMessage());
             $packages = [];
+            $pager = null;
         }
 
         return view('admin/inbound/index', [
             'title'    => 'Seller inbound — Solqam delivery',
             'packages' => $packages,
+            'pager'    => $pager ?? null,
         ]);
     }
 

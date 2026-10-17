@@ -50,18 +50,25 @@
             <tbody>
             <?php foreach ($zones as $z): ?>
                 <tr>
-                    <td class="fw-semibold"><?= esc($z['city']) ?></td>
-                    <td><?= esc($z['province']) ?></td>
-                    <td>Rs. <?= number_format((float) $z['rate'], 0) ?></td>
-                    <td>Rs. <?= number_format((float) $z['free_above'], 0) ?></td>
-                    <td><?= esc($z['eta_days']) ?></td>
-                    <td class="text-end">
-                        <a href="<?= site_url('admin/shipping/delete/' . $z['id']) ?>" class="btn btn-sm btn-outline-danger rounded-pill" onclick="return confirm('Remove this city rate?');">Remove</a>
+                    <td colspan="6" class="p-2">
+                        <form action="<?= site_url('admin/shipping/update/' . $z['id']) ?>" method="POST" class="row g-2 align-items-end">
+                            <?= csrf_field() ?>
+                            <div class="col-md-2"><input name="city" class="form-control form-control-sm" value="<?= esc($z['city']) ?>" required></div>
+                            <div class="col-md-2"><input name="province" class="form-control form-control-sm" value="<?= esc($z['province']) ?>"></div>
+                            <div class="col-md-2"><input type="number" step="1" min="0" name="rate" class="form-control form-control-sm" value="<?= esc($z['rate']) ?>" required></div>
+                            <div class="col-md-2"><input type="number" step="1" min="0" name="free_above" class="form-control form-control-sm" value="<?= esc($z['free_above']) ?>"></div>
+                            <div class="col-md-2"><input name="eta_days" class="form-control form-control-sm" value="<?= esc($z['eta_days']) ?>"></div>
+                            <div class="col-md-2 d-flex gap-1">
+                                <button class="btn btn-sm btn-primary flex-grow-1">Save</button>
+                                <a href="<?= site_url('admin/shipping/delete/' . $z['id']) ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this city rate?');">Delete</a>
+                            </div>
+                        </form>
                     </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
         </table>
+        <?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
     <?php endif; ?>
 </div>
 <?= $this->endSection() ?>

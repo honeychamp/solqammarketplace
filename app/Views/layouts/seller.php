@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261013b">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261017a">
 </head>
 <body class="hub-app seller-hub">
 <div class="d-flex flex-column flex-lg-row">
@@ -141,6 +141,7 @@
                     <div class="small text-muted fw-semibold text-uppercase" style="letter-spacing:.12em;">Solqam Marketplace</div>
                     <h5 class="mb-0 fw-bold"><?= esc($title ?? 'Seller Hub') ?></h5>
                 </div>
+                <?= view('partials/hub_page_tools') ?>
                 <div class="ms-auto d-flex align-items-center gap-2">
                     <?php if ($sellerApproved): ?>
                     <a href="<?= site_url('seller/products/create') ?>" class="btn btn-solqam btn-sm px-3">
@@ -169,6 +170,16 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
+            <?php if ($hubErrors = session()->getFlashdata('errors')): ?>
+                <div class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm" role="alert">
+                    <ul class="mb-0 small">
+                        <?php foreach ((array) $hubErrors as $err): ?>
+                            <li><?= esc($err) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <?php endif; ?>
             <?= $this->renderSection('content') ?>
         </div>
 
@@ -178,6 +189,7 @@
     </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261016c"></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>

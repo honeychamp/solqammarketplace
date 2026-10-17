@@ -153,6 +153,9 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
 
     // Platform-wide Product Catalog Moderation (all sellers)
     $routes->get('products', 'Admin\ProductController::index');
+    $routes->get('products/edit/(:num)', 'Admin\ProductController::edit/$1');
+    $routes->post('products/update/(:num)', 'Admin\ProductController::update/$1');
+    $routes->get('products/delete/(:num)', 'Admin\ProductController::delete/$1');
     $routes->post('products/(:num)/toggle', 'Admin\ProductController::toggleStatus/$1');
 
     // Admin's Own First-Party Products (CRUD)
@@ -190,19 +193,26 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->get('reports', 'Admin\ReportController::index');
     $routes->get('coupons', 'Admin\CouponController::index');
     $routes->post('coupons/store', 'Admin\CouponController::store');
+    $routes->post('coupons/update/(:num)', 'Admin\CouponController::update/$1');
+    $routes->get('coupons/delete/(:num)', 'Admin\CouponController::delete/$1');
     $routes->get('banners', 'Admin\BannerController::index');
     $routes->post('banners/store', 'Admin\BannerController::store');
+    $routes->post('banners/update/(:num)', 'Admin\BannerController::update/$1');
     $routes->get('banners/delete/(:num)', 'Admin\BannerController::delete/$1');
     $routes->get('flash-sales', 'Admin\FlashSaleController::index');
     $routes->post('flash-sales/store', 'Admin\FlashSaleController::store');
+    $routes->post('flash-sales/update/(:num)', 'Admin\FlashSaleController::update/$1');
+    $routes->get('flash-sales/delete/(:num)', 'Admin\FlashSaleController::delete/$1');
     $routes->post('flash-sales/item', 'Admin\FlashSaleController::addItem');
     $routes->post('flash-sales/item/(:num)/approve', 'Admin\FlashSaleController::approve/$1');
     $routes->post('flash-sales/item/(:num)/reject', 'Admin\FlashSaleController::reject/$1');
+    $routes->get('flash-sales/item/(:num)/delete', 'Admin\FlashSaleController::deleteItem/$1');
     $routes->match(['GET', 'POST'], 'marketing', 'Admin\MarketingController::settings');
     $routes->get('marketing/logs', 'Admin\MarketingController::logs');
     $routes->post('marketing/test', 'Admin\MarketingController::testEvent');
     $routes->get('shipping', 'Admin\ShippingController::index');
     $routes->post('shipping/store', 'Admin\ShippingController::store');
+    $routes->post('shipping/update/(:num)', 'Admin\ShippingController::update/$1');
     $routes->get('shipping/delete/(:num)', 'Admin\ShippingController::delete/$1');
     $routes->get('payouts', 'Admin\PayoutController::index');
     $routes->post('payouts/(:num)/paid', 'Admin\PayoutController::markPaid/$1');
@@ -210,6 +220,8 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->get('tickets', 'Admin\TicketController::index');
     $routes->get('tickets/(:num)', 'Admin\TicketController::show/$1');
     $routes->post('tickets/(:num)/reply', 'Admin\TicketController::reply/$1');
+    $routes->post('tickets/(:num)/update', 'Admin\TicketController::update/$1');
+    $routes->get('tickets/(:num)/delete', 'Admin\TicketController::delete/$1');
 });
 
 // --------------------------------------------------------------------

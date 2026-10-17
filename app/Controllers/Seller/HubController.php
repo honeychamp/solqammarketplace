@@ -18,10 +18,12 @@ class HubController extends BaseController
             ->where('products.seller_id', $sellerId)
             ->orderBy('product_questions.id', 'DESC')
             ->findAll();
+        [$questions, $pager] = hub_paginate_array($questions, 25);
 
         return view('seller/questions/index', [
             'title'     => 'Product Q&A — Seller Hub',
             'questions' => $questions,
+            'pager'     => $pager,
         ]);
     }
 
@@ -67,11 +69,14 @@ class HubController extends BaseController
             }
         }
 
+        [$payouts, $pager] = hub_paginate_array($payouts, 25);
+
         return view('seller/payouts/index', [
             'title'   => 'Payouts — Seller Hub',
             'payouts' => $payouts,
             'pending' => $pending,
             'paid'    => $paid,
+            'pager'   => $pager,
         ]);
     }
 

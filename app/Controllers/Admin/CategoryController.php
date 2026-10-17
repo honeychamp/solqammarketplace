@@ -44,6 +44,7 @@ class CategoryController extends BaseController
                 : 'Top-level';
         }
         unset($cat);
+        [$categories, $pager] = hub_paginate_array($categories, 25);
 
         $parentOptions = [];
         try {
@@ -56,6 +57,7 @@ class CategoryController extends BaseController
             'title'          => 'Manage Categories — Solqam Admin Console',
             'categories'     => $categories,
             'parentOptions'  => $parentOptions,
+            'pager'          => $pager,
         ]);
     }
 
@@ -123,7 +125,25 @@ class CategoryController extends BaseController
             $parentId = $parentId === '' ? null : $parentId;
         }
 
-        $payload = [];
+        if ($parentId !== null && (int) $parentId === $id) {
+            return redirect()->back()->with('error', 'A category cannot be its own parent.');
+        }
+        if ($parentId) {
+            $parentDepth = $this->categoryModel->depthOf((int) $parentId);
+            if ($parentDepth < 1) {
+                return redirect()->back()->with('error', 'Parent category was not found.');
+            }
+            if ($parentDepth >= 4) {
+                return redirect()->back()->with('error', 'Categories stop at 4 levels. Choose a higher parent.');
+            }
+        }
+
+        $payload = [
+            'parent_id' => $parentId,
+        ];
+        if ($this->request->getPost('is_active') !== null) {
+            $payload['is_active'] = (int) $this->request->getPost('is_active') ? 1 : 0;
+        }
         if ($this->categoryModel->db->fieldExists('commission_percent', 'categories')) {
             $payload['commission_percent'] = $this->parseCommissionPercent($parentId !== null && $parentId !== '');
         }

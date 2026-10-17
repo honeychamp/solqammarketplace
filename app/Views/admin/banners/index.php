@@ -58,19 +58,51 @@
         <thead><tr><th>Title</th><th>Placement</th><th>Schedule</th><th></th></tr></thead>
         <tbody>
         <?php foreach ($banners as $b): ?>
+            <?php
+            $toLocal = static fn ($v) => $v ? str_replace(' ', 'T', substr((string) $v, 0, 16)) : '';
+            ?>
             <tr>
-            <td>
-                <?php if (!empty($b['image_path'])): ?>
-                    <img src="<?= esc(preg_match('#^https?://#i', $b['image_path']) ? $b['image_path'] : base_url(ltrim($b['image_path'], '/'))) ?>" alt="" style="height:36px;width:64px;object-fit:cover;border-radius:6px;" class="me-2">
-                <?php endif; ?>
-                <?= esc($b['title']) ?>
-            </td>
-                <td><?= esc($b['placement']) ?></td>
-                <td class="small text-muted"><?= esc($b['starts_at'] ?? '—') ?> → <?= esc($b['ends_at'] ?? 'open') ?></td>
-                <td class="text-end"><a class="btn btn-sm btn-outline-danger" href="<?= site_url('admin/banners/delete/' . $b['id']) ?>">Delete</a></td>
+                <td colspan="4" class="p-3">
+                    <form action="<?= site_url('admin/banners/update/' . $b['id']) ?>" method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
+                        <?= csrf_field() ?>
+                        <div class="col-12 d-flex align-items-center gap-2">
+                            <?php if (!empty($b['image_path'])): ?>
+                                <img src="<?= esc(preg_match('#^https?://#i', $b['image_path']) ? $b['image_path'] : base_url(ltrim($b['image_path'], '/'))) ?>" alt="" style="height:36px;width:64px;object-fit:cover;border-radius:6px;">
+                            <?php endif; ?>
+                            <strong><?= esc($b['title']) ?></strong>
+                            <span class="badge bg-light text-dark"><?= esc($b['placement']) ?></span>
+                        </div>
+                        <div class="col-md-4"><input name="title" class="form-control form-control-sm" value="<?= esc($b['title']) ?>" required></div>
+                        <div class="col-md-4"><input name="subtitle" class="form-control form-control-sm" value="<?= esc($b['subtitle'] ?? '') ?>"></div>
+                        <div class="col-md-2"><input name="badge_text" class="form-control form-control-sm" value="<?= esc($b['badge_text'] ?? '') ?>" placeholder="Badge"></div>
+                        <div class="col-md-2"><input name="button_text" class="form-control form-control-sm" value="<?= esc($b['button_text'] ?? '') ?>" placeholder="Button"></div>
+                        <div class="col-md-4"><input name="link_url" class="form-control form-control-sm" value="<?= esc($b['link_url'] ?? '') ?>" placeholder="Link"></div>
+                        <div class="col-md-3"><input type="file" name="image" class="form-control form-control-sm" accept="image/jpeg,image/png,image/webp,image/gif"></div>
+                        <div class="col-md-3"><input name="image_path" class="form-control form-control-sm" value="<?= esc($b['image_path'] ?? '') ?>" placeholder="Image URL"></div>
+                        <div class="col-md-2">
+                            <select name="placement" class="form-select form-select-sm">
+                                <option value="hero" <?= ($b['placement'] ?? '') === 'hero' ? 'selected' : '' ?>>Hero</option>
+                                <option value="side" <?= ($b['placement'] ?? '') === 'side' ? 'selected' : '' ?>>Side</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select name="is_active" class="form-select form-select-sm">
+                                <option value="1" <?= !empty($b['is_active']) ? 'selected' : '' ?>>Active</option>
+                                <option value="0" <?= empty($b['is_active']) ? 'selected' : '' ?>>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3"><input type="datetime-local" name="starts_at" class="form-control form-control-sm" value="<?= esc($toLocal($b['starts_at'] ?? '')) ?>"></div>
+                        <div class="col-md-3"><input type="datetime-local" name="ends_at" class="form-control form-control-sm" value="<?= esc($toLocal($b['ends_at'] ?? '')) ?>"></div>
+                        <div class="col-md-6 d-flex gap-2">
+                            <button class="btn btn-sm btn-primary">Save changes</button>
+                            <a class="btn btn-sm btn-outline-danger" href="<?= site_url('admin/banners/delete/' . $b['id']) ?>" onclick="return confirm('Delete this banner?');">Delete</a>
+                        </div>
+                    </form>
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>
     </table>
+    <?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
 </div>
 <?= $this->endSection() ?>

@@ -8,7 +8,7 @@ namespace App\Services\Platform;
  */
 class SchemaHeal
 {
-    public const VERSION = 13;
+    public const VERSION = 15;
 
     public static function run(): void
     {
@@ -146,6 +146,12 @@ class SchemaHeal
                     'constraint' => 11,
                     'default'    => 0,
                     'null'       => false,
+                ]);
+                self::addColumn($db, $forge, 'product_images', 'media_type', [
+                    'type'       => 'VARCHAR',
+                    'constraint' => 20,
+                    'default'    => 'image',
+                    'null'       => true,
                 ]);
             }
             if ($db->tableExists('product_variants')) {

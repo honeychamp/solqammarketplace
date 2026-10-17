@@ -10,15 +10,17 @@ class TicketController extends BaseController
 {
     public function index()
     {
-        $tickets = (new SupportTicketModel())
+        $ticketModel = new SupportTicketModel();
+        $tickets = $ticketModel
             ->select('support_tickets.*, users.name as customer_name, users.email as customer_email')
             ->join('users', 'users.id = support_tickets.user_id', 'left')
             ->orderBy('support_tickets.id', 'DESC')
-            ->findAll();
+            ->paginate(25);
 
         return view('admin/tickets/index', [
             'title'   => 'Help Tickets — Solqam Admin',
             'tickets' => $tickets,
+            'pager'   => $ticketModel->pager,
         ]);
     }
 
@@ -69,5 +71,38 @@ class TicketController extends BaseController
         (new SupportTicketModel())->update((int) $id, ['status' => in_array($status, ['open', 'replied', 'closed'], true) ? $status : 'replied']);
 
         return $this->redirectAfterHub('/admin/tickets/' . $id, 'success', 'Reply sent.');
+    }
+
+    public function update($id)
+    {
+        $id     = (int) $id;
+        $ticket = (new SupportTicketModel())->find($id);
+        if (! $ticket) {
+            return redirect()->to('/admin/tickets')->with('error', 'Ticket not found.');
+        }
+
+        $status  = (string) $this->request->getPost('status');
+        $subject = trim((string) $this->request->getPost('subject'));
+        $payload = [];
+        if ($subject !== '') {
+            $payload['subject'] = $subject;
+        }
+        if (in_array($status, ['open', 'replied', 'closed'], true)) {
+            $payload['status'] = $status;
+        }
+        if ($payload !== []) {
+            (new SupportTicketModel())->update($id, $payload);
+        }
+
+        return redirect()->to('/admin/tickets/' . $id)->with('success', 'Ticket updated.');
+    }
+
+    public function delete($id)
+    {
+        $id = (int) $id;
+        (new TicketReplyModel())->where('ticket_id', $id)->delete();
+        (new SupportTicketModel())->delete($id);
+
+        return redirect()->to('/admin/tickets')->with('success', 'Ticket deleted.');
     }
 }

@@ -24,5 +24,6 @@
         <?php endforeach; ?>
         </tbody>
     </table>
+    <?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
 </div>
 <?= $this->endSection() ?>

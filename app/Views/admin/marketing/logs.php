@@ -64,7 +64,5 @@
         </tbody>
     </table>
 </div>
-<?php if (! empty($pager)): ?>
-    <div class="mt-3"><?= $pager->links() ?></div>
-<?php endif; ?>
+<?= view('shared/_pager', ['pager' => $pager ?? null, 'keep' => ['status', 'platform']]) ?>
 <?= $this->endSection() ?>

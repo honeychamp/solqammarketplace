@@ -41,6 +41,9 @@
                             </span>
                         </td>
                         <td class="text-end">
+                            <a href="<?= site_url('admin/products/edit/' . $p['id']) ?>" class="btn btn-outline-primary btn-sm rounded-pill px-3 me-1">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
                             <form action="<?= site_url('admin/products/' . $p['id'] . '/toggle') ?>" method="POST" class="d-inline">
                                 <?= csrf_field() ?>
                                 <?php if ($p['status'] === 'active'): ?>
@@ -53,6 +56,9 @@
                                     </button>
                                 <?php endif; ?>
                             </form>
+                            <a href="<?= site_url('admin/products/delete/' . $p['id']) ?>" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="return confirm('Delete this product?');">
+                                <i class="bi bi-trash"></i>
+                            </a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

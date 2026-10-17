@@ -107,5 +107,6 @@
             </tbody>
         </table>
     </div>
+    <?= view('shared/_pager', ['pager' => $pager ?? null, 'keep' => ['status']]) ?>
 </div>
 <?= $this->endSection() ?>

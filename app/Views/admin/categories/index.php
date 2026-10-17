@@ -47,15 +47,27 @@
                         </td>
                         <td class="small">L<?= (int) ($cat['depth'] ?? 1) ?> · <?= esc($cat['parent_name'] ?? 'Top-level') ?></td>
                         <td>
-                            <form action="<?= site_url('admin/categories/update/' . $cat['id']) ?>" method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-2" style="min-width:180px;">
+                            <form action="<?= site_url('admin/categories/update/' . $cat['id']) ?>" method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-2" style="min-width:220px;">
                                 <?= csrf_field() ?>
+                                <input type="text" name="name" class="form-control form-control-sm" value="<?= esc($cat['name']) ?>" required>
+                                <select name="parent_id" class="form-select form-select-sm">
+                                    <option value="">Top-level (Level 1)</option>
+                                    <?php foreach (($parentOptions ?? []) as $parent): ?>
+                                        <?php if ((int) $parent['id'] === (int) $cat['id']) continue; ?>
+                                        <option value="<?= $parent['id'] ?>" <?= (string) ($cat['parent_id'] ?? '') === (string) $parent['id'] ? 'selected' : '' ?>><?= esc($parent['label']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <select name="is_active" class="form-select form-select-sm">
+                                    <option value="1" <?= !empty($cat['is_active']) ? 'selected' : '' ?>>Active</option>
+                                    <option value="0" <?= empty($cat['is_active']) ? 'selected' : '' ?>>Inactive</option>
+                                </select>
                                 <div class="input-group input-group-sm">
                                     <input type="number" step="0.01" min="0" max="50" name="commission_percent" class="form-control" value="<?= esc($cat['commission_percent'] ?? '') ?>" placeholder="<?= !empty($cat['parent_id']) ? 'Inherit' : '10' ?>">
                                     <span class="input-group-text">%</span>
                                 </div>
                                 <div class="small text-muted">Applies <?= number_format((float) ($cat['effective_commission'] ?? 10), 1) ?>%</div>
                                 <input type="file" name="image" class="form-control form-control-sm" accept="image/jpeg,image/png,image/webp,image/gif">
-                                <button class="btn btn-sm btn-primary">Save</button>
+                                <button class="btn btn-sm btn-primary">Save changes</button>
                             </form>
                         </td>
                         <td>
@@ -73,6 +85,7 @@
             </tbody>
         </table>
     </div>
+    <?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
 </div>
 
 <?= $this->endSection() ?>
@@ -88,9 +101,6 @@
             <form id="newCatForm" action="" method="POST">
                 <?= csrf_field() ?>
                 <div class="modal-body">
-                    <?php if (session()->getFlashdata('error')): ?>
-                        <div class="alert alert-danger py-2 small"><?= session()->getFlashdata('error') ?></div>
-                    <?php endif; ?>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Category Name</label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Smartphones" value="<?= esc((string) old('name')) ?>" required>

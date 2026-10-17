@@ -13,6 +13,20 @@ class ProductVariantModel extends Model
     protected $allowedFields    = ['product_id', 'sku', 'color', 'size', 'price', 'stock', 'image'];
     protected $useTimestamps    = true;
 
+    protected function initialize()
+    {
+        try {
+            if (! $this->db->fieldExists('created_at', $this->table)) {
+                $this->useTimestamps = false;
+            }
+            if (! $this->db->fieldExists('image', $this->table)) {
+                $this->allowedFields = array_values(array_diff($this->allowedFields, ['image']));
+            }
+        } catch (\Throwable $e) {
+            $this->useTimestamps = false;
+        }
+    }
+
     public function forProduct(int $productId): array
     {
         $rows = $this->where('product_id', $productId)->orderBy('id', 'ASC')->findAll();

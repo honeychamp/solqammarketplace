@@ -87,6 +87,7 @@
                 </tbody>
             </table>
         </div>
+        <?= view('shared/_pager', ['pager' => $pager ?? null]) ?>
     <?php endif; ?>
 </div>
 <?= $this->endSection() ?>

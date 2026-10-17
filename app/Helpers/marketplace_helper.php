@@ -307,6 +307,34 @@ if (!function_exists('dash_delta')) {
     }
 }
 
+if (!function_exists('hub_paginate_array')) {
+    /**
+     * @return array{0: array, 1: \CodeIgniter\Pager\Pager}
+     */
+    function hub_paginate_array(array $rows, int $perPage = 25): array
+    {
+        $page  = max(1, (int) (service('request')->getGet('page') ?: 1));
+        $total = count($rows);
+        $pager = service('pager');
+        $pager->store('default', $page, $perPage, $total);
+        $offset = ($page - 1) * $perPage;
+
+        return [array_slice($rows, $offset, $perPage), $pager];
+    }
+}
+
+if (!function_exists('is_product_video')) {
+    function is_product_video($path, $type = ''): bool
+    {
+        if (strtolower((string) $type) === 'video') {
+            return true;
+        }
+        $path = strtolower((string) $path);
+
+        return (bool) preg_match('/\.(mp4|webm|ogg|ogv|mov|m4v)(\?|#|$)/i', $path);
+    }
+}
+
 if (!function_exists('nav_forget')) {
     function nav_forget($keys = null): void
     {

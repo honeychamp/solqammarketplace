@@ -9,11 +9,13 @@ class ShippingController extends BaseController
 {
     public function index()
     {
-        $zones = (new ShippingZoneModel())->orderBy('city', 'ASC')->findAll();
+        $model = new ShippingZoneModel();
+        $zones = $model->orderBy('city', 'ASC')->paginate(25);
 
         return view('admin/shipping/index', [
             'title' => 'City delivery charges — Solqam Admin',
             'zones' => $zones,
+            'pager' => $model->pager,
         ]);
     }
 
@@ -52,6 +54,31 @@ class ShippingController extends BaseController
         $model->insert($payload);
 
         return redirect()->to('/admin/shipping')->with('success', 'Delivery charges saved for ' . $city . '. Checkout will use this rate when the customer city matches.');
+    }
+
+    public function update($id)
+    {
+        $id    = (int) $id;
+        $model = new ShippingZoneModel();
+        $row   = $model->find($id);
+        if (! $row) {
+            return redirect()->to('/admin/shipping')->with('error', 'City rate not found.');
+        }
+
+        $city = trim((string) $this->request->getPost('city'));
+        if ($city === '') {
+            $city = (string) $row['city'];
+        }
+
+        $model->update($id, [
+            'city'       => $city,
+            'province'   => trim((string) $this->request->getPost('province')) ?: null,
+            'rate'       => max(0, (float) $this->request->getPost('rate')),
+            'free_above' => max(0, (float) $this->request->getPost('free_above')),
+            'eta_days'   => $this->request->getPost('eta_days') ?: '2-4',
+        ]);
+
+        return redirect()->to('/admin/shipping')->with('success', 'Delivery charges updated for ' . $city . '.');
     }
 
     public function delete($id)

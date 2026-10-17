@@ -9,10 +9,12 @@ class BannerController extends BaseController
 {
     public function index()
     {
-        $banners = (new BannerModel())->orderBy('sort_order', 'ASC')->findAll();
+        $model   = new BannerModel();
+        $banners = $model->orderBy('sort_order', 'ASC')->paginate(25);
         return view('admin/banners/index', [
             'title'   => 'Homepage Banners — Solqam Admin',
             'banners' => $banners,
+            'pager'   => $model->pager,
         ]);
     }
 
@@ -58,6 +60,57 @@ class BannerController extends BaseController
         }
 
         return redirect()->to('/admin/banners')->with('success', 'Banner saved. It now shows on the homepage.');
+    }
+
+    public function update($id)
+    {
+        $id    = (int) $id;
+        $model = new BannerModel();
+        $banner = $model->find($id);
+        if (! $banner) {
+            return redirect()->to('/admin/banners')->with('error', 'Banner not found.');
+        }
+
+        $title = trim((string) $this->request->getPost('title'));
+        if ($title === '') {
+            return redirect()->back()->with('error', 'Banner title is required.');
+        }
+
+        $imagePath = $this->storeBannerImage();
+        if ($imagePath === null) {
+            $posted = $this->normalizePublicImagePath((string) $this->request->getPost('image_path'));
+            $imagePath = $posted !== '' ? $posted : ($banner['image_path'] ?? null);
+        }
+
+        $row = [
+            'title'       => $title,
+            'subtitle'    => $this->request->getPost('subtitle'),
+            'badge_text'  => $this->request->getPost('badge_text'),
+            'button_text' => $this->request->getPost('button_text'),
+            'image_path'  => $imagePath !== '' ? $imagePath : null,
+            'link_url'    => $this->request->getPost('link_url'),
+            'placement'   => $this->request->getPost('placement') ?: 'hero',
+            'sort_order'  => (int) ($this->request->getPost('sort_order') ?? ($banner['sort_order'] ?? 0)),
+            'is_active'   => $this->request->getPost('is_active') === null ? (int) ($banner['is_active'] ?? 1) : ((int) $this->request->getPost('is_active') ? 1 : 0),
+            'starts_at'   => $this->normalizeDateTime($this->request->getPost('starts_at')),
+            'ends_at'     => $this->normalizeDateTime($this->request->getPost('ends_at')),
+        ];
+        $fields = $model->db->getFieldNames('banners');
+        $update = [];
+        foreach ($row as $key => $value) {
+            if (in_array($key, $fields, true)) {
+                $update[$key] = $value;
+            }
+        }
+        try {
+            $model->update($id, $update);
+        } catch (\Throwable $e) {
+            log_message('error', 'Banner update: ' . $e->getMessage());
+
+            return redirect()->back()->withInput()->with('error', 'Banner could not be updated.');
+        }
+
+        return redirect()->to('/admin/banners')->with('success', 'Banner updated.');
     }
 
     public function delete($id)

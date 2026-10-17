@@ -48,8 +48,13 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     <div class="row g-3 align-items-start">
         <div class="col-lg-5">
             <div class="sf-panel p-3 p-lg-4 pdp-gallery">
-                <div class="pdp-main-stage" id="pdpMainStage" role="button" tabindex="0" aria-label="Click to enlarge photo">
-                    <img id="mainProductImg" src="<?= esc($product['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" alt="<?= esc($product['name']) ?>">
+                <div class="pdp-main-stage" id="pdpMainStage" role="button" tabindex="0" aria-label="Click to enlarge photo or play video">
+                    <?php
+                    $mainSrc = $product['primary_image'] ?: base_url('assets/images/product-placeholder.svg');
+                    $mainIsVideo = function_exists('is_product_video') && is_product_video($mainSrc, $product['primary_media_type'] ?? '');
+                    ?>
+                    <img id="mainProductImg" class="<?= $mainIsVideo ? 'd-none' : '' ?>" src="<?= esc($mainSrc) ?>" alt="<?= esc($product['name']) ?>">
+                    <video id="mainProductVideo" class="<?= $mainIsVideo ? '' : 'd-none' ?>" src="<?= $mainIsVideo ? esc($mainSrc) : '' ?>" controls playsinline <?= $mainIsVideo ? 'autoplay muted' : '' ?>></video>
                     <?php if (!empty($product['is_mall'])): ?>
                     <span class="solqam-mall-badge position-absolute top-0 start-0 m-3">Solqam Mall</span>
                     <?php endif; ?>
@@ -58,8 +63,13 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                 <?php if ($gallery): ?>
                 <div class="pdp-thumbs mt-3">
                     <?php foreach ($gallery as $i => $img): ?>
-                        <button type="button" class="pdp-thumb <?= $i === 0 ? 'is-active' : '' ?>" data-index="<?= $i ?>" data-src="<?= esc($img['image_path']) ?>" title="View photo <?= $i + 1 ?>">
-                            <img src="<?= esc($img['image_path']) ?>" alt="Photo <?= $i + 1 ?>">
+                        <?php $isVid = function_exists('is_product_video') && is_product_video($img['image_path'] ?? '', $img['media_type'] ?? ''); ?>
+                        <button type="button" class="pdp-thumb <?= $i === 0 ? 'is-active' : '' ?>" data-index="<?= $i ?>" data-src="<?= esc($img['image_path']) ?>" data-kind="<?= $isVid ? 'video' : 'image' ?>" title="<?= $isVid ? 'Play video' : 'View photo' ?> <?= $i + 1 ?>">
+                            <?php if ($isVid): ?>
+                                <video src="<?= esc($img['image_path']) ?>" muted playsinline></video>
+                            <?php else: ?>
+                                <img src="<?= esc($img['image_path']) ?>" alt="Photo <?= $i + 1 ?>">
+                            <?php endif; ?>
                         </button>
                     <?php endforeach; ?>
                 </div>
@@ -455,13 +465,19 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
             <button type="button" class="pdp-lightbox-nav is-prev" id="pdpZoomPrev" aria-label="Previous photo"><i class="bi bi-chevron-left"></i></button>
             <div class="pdp-lightbox-stage" id="pdpZoomStage">
                 <img id="pdpZoomImg" src="<?= esc($product['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" alt="<?= esc($product['name']) ?>">
+                <video id="pdpZoomVideo" class="d-none" controls playsinline></video>
             </div>
             <button type="button" class="pdp-lightbox-nav is-next" id="pdpZoomNext" aria-label="Next photo"><i class="bi bi-chevron-right"></i></button>
             <?php if ($gallery): ?>
             <div class="pdp-lightbox-thumbs" id="pdpZoomThumbs">
                 <?php foreach ($gallery as $i => $img): ?>
-                    <button type="button" class="pdp-lightbox-thumb <?= $i === 0 ? 'is-active' : '' ?>" data-index="<?= $i ?>" data-src="<?= esc($img['image_path']) ?>">
-                        <img src="<?= esc($img['image_path']) ?>" alt="Photo <?= $i + 1 ?>">
+                    <?php $isVid = function_exists('is_product_video') && is_product_video($img['image_path'] ?? '', $img['media_type'] ?? ''); ?>
+                    <button type="button" class="pdp-lightbox-thumb <?= $i === 0 ? 'is-active' : '' ?>" data-index="<?= $i ?>" data-src="<?= esc($img['image_path']) ?>" data-kind="<?= $isVid ? 'video' : 'image' ?>">
+                        <?php if ($isVid): ?>
+                            <video src="<?= esc($img['image_path']) ?>" muted playsinline></video>
+                        <?php else: ?>
+                            <img src="<?= esc($img['image_path']) ?>" alt="Photo <?= $i + 1 ?>">
+                        <?php endif; ?>
                     </button>
                 <?php endforeach; ?>
             </div>
@@ -544,9 +560,26 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     function setMainImage(src) {
         if (!src) return;
         const main = document.getElementById('mainProductImg');
+        const video = document.getElementById('mainProductVideo');
         const zoom = document.getElementById('pdpZoomImg');
-        if (main) main.src = src;
-        if (zoom) zoom.src = src;
+        const zoomVid = document.getElementById('pdpZoomVideo');
+        if (video) {
+            video.pause();
+            video.classList.add('d-none');
+            video.removeAttribute('src');
+        }
+        if (zoomVid) {
+            zoomVid.pause();
+            zoomVid.classList.add('d-none');
+        }
+        if (main) {
+            main.classList.remove('d-none');
+            main.src = src;
+        }
+        if (zoom) {
+            zoom.classList.remove('d-none');
+            zoom.src = src;
+        }
         document.querySelectorAll('.pdp-thumb').forEach(function (b) {
             b.classList.toggle('is-active', b.dataset.src === src);
         });
@@ -640,11 +673,14 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     applyVariant();
 
     const main = document.getElementById('mainProductImg');
+    const mainVideo = document.getElementById('mainProductVideo');
     const zoom = document.getElementById('pdpZoomImg');
+    const zoomVideo = document.getElementById('pdpZoomVideo');
     const zoomModalEl = document.getElementById('pdpZoomModal');
     const galleryBtns = Array.from(document.querySelectorAll('.pdp-thumb'));
     const lightboxThumbs = Array.from(document.querySelectorAll('.pdp-lightbox-thumb'));
     const gallerySrcs = galleryBtns.map(function (btn) { return btn.dataset.src; });
+    const galleryKinds = galleryBtns.map(function (btn) { return btn.dataset.kind || 'image'; });
     if (gallerySrcs.length === 0 && main) {
         gallerySrcs.push(main.src);
     }
@@ -661,10 +697,37 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
         if (!gallerySrcs.length) return;
         galleryIndex = (index + gallerySrcs.length) % gallerySrcs.length;
         const src = gallerySrcs[galleryIndex];
-        if (main) main.src = src;
-        if (zoom) {
-            zoom.src = src;
-            zoom.classList.remove('is-zoomed');
+        const isVid = (galleryKinds[galleryIndex] || 'image') === 'video';
+        if (isVid) {
+            if (main) main.classList.add('d-none');
+            if (mainVideo) {
+                mainVideo.classList.remove('d-none');
+                mainVideo.src = src;
+                mainVideo.play().catch(function () {});
+            }
+            if (zoom) zoom.classList.add('d-none');
+            if (zoomVideo) {
+                zoomVideo.classList.remove('d-none');
+                zoomVideo.src = src;
+            }
+        } else {
+            if (mainVideo) {
+                mainVideo.pause();
+                mainVideo.classList.add('d-none');
+            }
+            if (zoomVideo) {
+                zoomVideo.pause();
+                zoomVideo.classList.add('d-none');
+            }
+            if (main) {
+                main.classList.remove('d-none');
+                main.src = src;
+            }
+            if (zoom) {
+                zoom.classList.remove('d-none');
+                zoom.src = src;
+                zoom.classList.remove('is-zoomed');
+            }
         }
         markThumbs(galleryIndex);
     }
@@ -682,6 +745,9 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
         }
         lightbox?.show();
     }
+
+    mainVideo?.addEventListener('click', function (e) { e.stopPropagation(); });
+    zoomVideo?.addEventListener('click', function (e) { e.stopPropagation(); });
 
     document.getElementById('pdpMainStage')?.addEventListener('click', function () {
         openLightbox(galleryIndex);

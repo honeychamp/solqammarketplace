@@ -26,11 +26,14 @@ class CampaignController extends BaseController
             ->orderBy('flash_sale_items.id', 'DESC')
             ->findAll(40);
 
+        [$mine, $pager] = hub_paginate_array($mine, 25);
+
         return view('seller/campaigns/index', [
             'title'      => 'Join campaigns — Seller Hub',
             'campaigns'  => $campaigns,
             'products'   => $products,
             'mine'       => $mine,
+            'pager'      => $pager,
         ]);
     }
 

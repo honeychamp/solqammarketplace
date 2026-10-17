@@ -23,10 +23,12 @@ class ReturnController extends BaseController
     public function index()
     {
         $returns = $this->returnModel->getAllWithDetails();
+        [$returns, $pager] = hub_paginate_array($returns, 25);
 
         return view('admin/returns/index', [
             'title'   => 'Returns & Refunds Manager — Solqam Admin Console',
             'returns' => $returns,
+            'pager'   => $pager,
         ]);
     }
 

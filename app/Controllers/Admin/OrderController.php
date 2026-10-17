@@ -57,7 +57,7 @@ class OrderController extends BaseController
             $builder->where('orders.status', $status);
         }
 
-        $orders = $builder->findAll(150);
+        $orders = $builder->paginate(25);
 
         foreach ($orders as &$order) {
             $items = $this->orderItemModel
@@ -76,6 +76,7 @@ class OrderController extends BaseController
             'orders'        => $orders,
             'currentStatus' => $status,
             'mineOnly'      => $mineOnly,
+            'pager'         => $this->orderModel->pager,
         ]);
     }
 

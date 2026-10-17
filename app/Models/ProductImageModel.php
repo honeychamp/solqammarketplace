@@ -16,9 +16,11 @@ class ProductImageModel extends Model
         'image_path',
         'is_primary',
         'sort_order',
+        'media_type',
+        'created_at',
     ];
 
-    protected $useTimestamps = true;
+    protected $useTimestamps = false;
     protected $dateFormat    = 'datetime';
     protected $createdField  = 'created_at';
     protected $updatedField  = '';
@@ -30,7 +32,24 @@ class ProductImageModel extends Model
                 $this->db->query('ALTER TABLE product_images ADD COLUMN sort_order INT NOT NULL DEFAULT 0 AFTER is_primary');
             }
         } catch (\Throwable $e) {
-            // Live DB without ALTER privilege — inserts skip the column
+            $this->allowedFields = array_values(array_diff($this->allowedFields, ['sort_order']));
+        }
+        try {
+            if (! $this->db->fieldExists('media_type', $this->table)) {
+                $this->db->query("ALTER TABLE product_images ADD COLUMN media_type VARCHAR(20) NULL DEFAULT 'image'");
+            }
+        } catch (\Throwable $e) {
+            $this->allowedFields = array_values(array_diff($this->allowedFields, ['media_type']));
+        }
+        try {
+            if (! $this->db->fieldExists('sort_order', $this->table)) {
+                $this->allowedFields = array_values(array_diff($this->allowedFields, ['sort_order']));
+            }
+            if (! $this->db->fieldExists('media_type', $this->table)) {
+                $this->allowedFields = array_values(array_diff($this->allowedFields, ['media_type']));
+            }
+        } catch (\Throwable $e) {
+            // keep inserting only columns that exist
         }
     }
 

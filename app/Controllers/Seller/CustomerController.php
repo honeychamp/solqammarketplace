@@ -12,10 +12,12 @@ class CustomerController extends BaseController
     {
         $sellerId = (int) session()->get('user.id');
         $buyers = (new OrderItemModel())->getSellerBuyers($sellerId);
+        [$buyers, $pager] = hub_paginate_array($buyers, 25);
 
         return view('seller/customers/index', [
             'title'  => 'Your buyers — Solqam Seller Hub',
             'buyers' => $buyers,
+            'pager'  => $pager,
         ]);
     }
 

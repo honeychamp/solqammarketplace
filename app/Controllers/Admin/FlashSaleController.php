@@ -35,6 +35,8 @@ class FlashSaleController extends BaseController
             ->orderBy('flash_sale_items.id', 'DESC')
             ->findAll(40);
 
+        [$sales, $pager] = hub_paginate_array($sales, 25);
+
         return view('admin/flash-sales/index', [
             'title'    => 'Campaigns — Solqam Admin',
             'sales'    => $sales,
@@ -42,6 +44,7 @@ class FlashSaleController extends BaseController
             'items'    => $items,
             'pending'  => $pending,
             'active'   => $live,
+            'pager'    => $pager,
         ]);
     }
 
@@ -59,6 +62,44 @@ class FlashSaleController extends BaseController
         ]);
 
         return redirect()->to('/admin/flash-sales')->with('success', 'Campaign created. Sellers can join if that option is on.');
+    }
+
+    public function update($id)
+    {
+        $id   = (int) $id;
+        $sale = (new FlashSaleModel())->find($id);
+        if (! $sale) {
+            return redirect()->to('/admin/flash-sales')->with('error', 'Campaign not found.');
+        }
+
+        $type = $this->request->getPost('campaign_type') === 'mega' ? 'mega' : 'flash';
+        (new FlashSaleModel())->update($id, [
+            'title'         => $this->request->getPost('title') ?: ($sale['title'] ?? 'Campaign'),
+            'campaign_type' => $type,
+            'starts_at'     => $this->normalizeDate($this->request->getPost('starts_at')) ?: $sale['starts_at'],
+            'ends_at'       => $this->normalizeDate($this->request->getPost('ends_at')) ?: $sale['ends_at'],
+            'is_active'     => $this->request->getPost('is_active') === null ? (int) ($sale['is_active'] ?? 1) : ((int) $this->request->getPost('is_active') ? 1 : 0),
+            'seller_join'   => $this->request->getPost('seller_join') ? 1 : 0,
+            'rules_note'    => $this->request->getPost('rules_note'),
+        ]);
+
+        return redirect()->to('/admin/flash-sales')->with('success', 'Campaign updated.');
+    }
+
+    public function delete($id)
+    {
+        $id = (int) $id;
+        (new FlashSaleItemModel())->where('flash_sale_id', $id)->delete();
+        (new FlashSaleModel())->delete($id);
+
+        return redirect()->to('/admin/flash-sales')->with('success', 'Campaign deleted.');
+    }
+
+    public function deleteItem(int $id)
+    {
+        (new FlashSaleItemModel())->delete($id);
+
+        return redirect()->to('/admin/flash-sales')->with('success', 'Deal removed.');
     }
 
     public function addItem()
