@@ -516,6 +516,8 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     const addCartBtn = document.getElementById('pdpAddCart');
     const basePrice = <?= json_encode($displayPrice) ?>;
     const baseStock = <?= (int) $product['stock'] ?>;
+    const catalogProductId = <?= (int) $product['id'] ?>;
+    let lastFeedId = '';
     const hasColors = !!document.getElementById('colorFamily');
     const hasSizes = !!document.getElementById('sizeFamily');
     let color = document.querySelector('#colorFamily .pdp-opt.is-active')?.dataset.color || '';
@@ -640,6 +642,23 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
             if (stockHint) stockHint.textContent = 'Please choose an available color and size';
             if (buyNowBtn) buyNowBtn.disabled = true;
             if (addCartBtn) addCartBtn.disabled = true;
+        }
+
+        const cid = (v && v.id) ? (catalogProductId + '_' + v.id) : String(catalogProductId);
+        if (!lastFeedId) {
+            lastFeedId = cid;
+        } else if (cid && cid !== lastFeedId && typeof fbq === 'function') {
+            lastFeedId = cid;
+            const price = parseFloat((v && v.price) || 0) || basePrice;
+            try {
+                fbq('track', 'ViewContent', {
+                    content_ids: [cid],
+                    content_type: 'product',
+                    contents: [{ id: cid, quantity: 1, item_price: price }],
+                    value: price,
+                    currency: 'PKR'
+                }, { eventID: 'vc_' + cid + '_' + Date.now() });
+            } catch (e) {}
         }
     }
 

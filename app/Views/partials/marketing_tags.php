@@ -15,7 +15,9 @@ try {
     $uid = (int) (session()->get('user.id') ?? 0);
     if ($uid) {
         $userEm = \App\Services\Marketing\MarketingService::hashPii((string) session()->get('user.email'));
-        $userPh = \App\Services\Marketing\MarketingService::hashPii(preg_replace('/\D+/', '', (string) session()->get('user.phone')) ?? '');
+        $userPh = \App\Services\Marketing\MarketingService::hashPii(
+            \App\Services\Marketing\MarketingService::normalizePkPhone((string) session()->get('user.phone'))
+        );
     }
 } catch (\Throwable $e) {
 }
@@ -62,4 +64,4 @@ window.SOLQAM_MKT = {
   queue: <?= json_encode($mktQueue) ?>
 };
 </script>
-<script src="<?= base_url('assets/js/solqam-marketing.js') ?>?v=20261008a" defer></script>
+<script src="<?= base_url('assets/js/solqam-marketing.js') ?>?v=20261019c" defer></script>

@@ -33,9 +33,13 @@ class SellerApprovalFilter implements FilterInterface
             return;
         }
 
-        $message = $status === 'rejected'
-            ? 'This seller account was not approved. Contact Solqam support.'
-            : 'Your seller account is pending admin approval. You can open the dashboard, but you cannot manage products, orders, or payouts until you are approved.';
+        if ($status === 'suspended') {
+            $message = 'Store suspended: unpaid COD commission/cashback. Pay Solqam, then ask admin to confirm receipt. Until then you cannot mark Delivered.';
+        } elseif ($status === 'rejected') {
+            $message = 'This seller account was not approved. Contact Solqam support.';
+        } else {
+            $message = 'Your seller account is pending admin approval. You can open the dashboard, but you cannot manage products, orders, or payouts until you are approved.';
+        }
 
         return redirect()->to('/seller/dashboard')->with('error', $message);
     }

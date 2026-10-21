@@ -84,4 +84,16 @@ $paths = new Paths();
 // LOAD THE FRAMEWORK BOOTSTRAP FILE
 require $paths->systemDirectory . '/Boot.php';
 
+$raw = $_ENV['CI_ENVIRONMENT'] ?? $_SERVER['CI_ENVIRONMENT'] ?? getenv('CI_ENVIRONMENT') ?: 'production';
+$env = strtolower(trim((string) $raw, " \t\n\r\0\x0B\"'"));
+if (! in_array($env, ['production', 'development', 'testing'], true)) {
+    $env = 'production';
+}
+putenv('CI_ENVIRONMENT=' . $env);
+$_ENV['CI_ENVIRONMENT']    = $env;
+$_SERVER['CI_ENVIRONMENT'] = $env;
+if (! defined('ENVIRONMENT')) {
+    define('ENVIRONMENT', $env);
+}
+
 exit(Boot::bootSpark($paths));

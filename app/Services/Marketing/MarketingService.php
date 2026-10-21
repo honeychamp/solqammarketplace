@@ -69,15 +69,34 @@ class MarketingService
             return '';
         }
 
-        return hash('sha256', $value);
+        return self::sha256Hex($value);
+    }
+
+    public static function normalizePkPhone(?string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $phone) ?? '';
+        if ($digits === '') {
+            return '';
+        }
+        if (str_starts_with($digits, '0092')) {
+            $digits = substr($digits, 2);
+        }
+        if (str_starts_with($digits, '0') && strlen($digits) === 11) {
+            $digits = '92' . substr($digits, 1);
+        } elseif (strlen($digits) === 10 && str_starts_with($digits, '3')) {
+            $digits = '92' . $digits;
+        }
+
+        return $digits;
     }
 
     public static function track(string $eventName, array $data = []): void
     {
         try {
-            if (! self::enabled()) {
+            if (! self::enabled() || is_cli() || self::isMachineTraffic()) {
                 return;
             }
+            self::captureClickIds();
             $settings = self::settings();
             if ((int) ($settings['consent_required'] ?? 0) === 1 && ! self::hasConsent()) {
                 return;
@@ -88,6 +107,10 @@ class MarketingService
             $payload['event_id'] = $eventId;
             $payload['currency'] = $payload['currency'] ?? $currency;
 
+            if (self::isDuplicateBrowse($eventName, $payload, $data)) {
+                return;
+            }
+
             $isPageView = $eventName === 'PageView';
             if ($isPageView && (int) ($settings['server_pageview'] ?? 1) !== 1) {
                 return;
@@ -95,6 +118,11 @@ class MarketingService
             if (! $isPageView) {
                 self::queueBrowser($eventName, $payload, $eventId);
                 (new MarketingEventLogModel())->record('browser', $eventName, $eventId, $payload, 'queued', 'queued');
+            }
+
+            $browserOnly = in_array($eventName, ['ViewContent', 'Search', 'ViewCart'], true);
+            if ($browserOnly) {
+                return;
             }
 
             $user    = self::userData($data);
@@ -113,7 +141,14 @@ class MarketingService
     {
         $qty   = max(1, (int) ($extra['quantity'] ?? 1));
         $price = (float) ($extra['price'] ?? $product['price'] ?? 0);
-        $id    = (string) ($product['id'] ?? '');
+        $vid   = (int) ($extra['variant_id'] ?? $product['variant_id'] ?? 0);
+        if ($vid < 1) {
+            $first = $product['variants'][0]['id'] ?? 0;
+            $vid   = (int) $first;
+        }
+        $id = function_exists('catalog_content_id')
+            ? catalog_content_id((int) ($product['id'] ?? 0), $vid ?: null)
+            : (string) ($product['id'] ?? '');
         self::track($eventName, array_merge($extra, [
             'value'             => $price * $qty,
             'content_ids'       => [$id],
@@ -184,15 +219,16 @@ class MarketingService
     public static function pageViewIfStorefront(): void
     {
         try {
-            if (! self::enabled() || is_cli()) {
+            if (! self::enabled() || is_cli() || self::isMachineTraffic()) {
                 return;
             }
+            self::captureClickIds();
             $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
             if ($method !== 'GET') {
                 return;
             }
             $uri = (string) uri_string();
-            if ($uri !== '' && (str_starts_with($uri, 'admin') || str_starts_with($uri, 'seller') || str_starts_with($uri, 'api'))) {
+            if ($uri !== '' && (str_starts_with($uri, 'admin') || str_starts_with($uri, 'seller') || str_starts_with($uri, 'api') || str_starts_with($uri, 'feed'))) {
                 return;
             }
             $path = current_url();
@@ -226,7 +262,9 @@ class MarketingService
         $value    = 0.0;
         $qty      = 0;
         foreach ($items as $item) {
-            $id    = (string) ($item['product_id'] ?? $item['id'] ?? '');
+            $pid   = (int) ($item['product_id'] ?? $item['id'] ?? 0);
+            $vid   = (int) ($item['variant_id'] ?? 0);
+            $id    = function_exists('catalog_content_id') ? catalog_content_id($pid, $vid ?: null) : (string) $pid;
             $q     = max(1, (int) ($item['quantity'] ?? 1));
             $price = (float) ($item['unit_price'] ?? $item['price'] ?? 0);
             $name  = (string) ($item['product_name'] ?? $item['name'] ?? '');
@@ -260,6 +298,7 @@ class MarketingService
         foreach ($items as $item) {
             $fake[] = [
                 'product_id'   => $item['product_id'] ?? '',
+                'variant_id'   => $item['variant_id'] ?? 0,
                 'quantity'     => $item['quantity'] ?? 1,
                 'unit_price'   => $item['unit_price'] ?? $item['price'] ?? 0,
                 'product_name' => $item['product_name'] ?? $item['name'] ?? '',
@@ -314,31 +353,124 @@ class MarketingService
 
     protected static function userData(array $data): array
     {
-        $email = self::hashPii($data['email'] ?? (string) (session()->get('user.email') ?? ''));
-        $phone = self::hashPii(preg_replace('/\D+/', '', (string) ($data['phone'] ?? session()->get('user.phone') ?? '')) ?? '');
-        $ext   = self::hashPii((string) ($data['external_id'] ?? session()->get('user.id') ?? ''));
-        $fn    = self::hashPii($data['first_name'] ?? '');
-        $ln    = self::hashPii($data['last_name'] ?? '');
-        $out   = array_filter([
+        $email = self::hashEmail((string) ($data['email'] ?? session()->get('user.email') ?? ''));
+        $phone = self::hashPhone((string) ($data['phone'] ?? session()->get('user.phone') ?? ''));
+        $uid   = trim((string) ($data['external_id'] ?? session()->get('user.id') ?? ''));
+        $ext   = ($uid !== '' && $uid !== '0') ? self::sha256Hex($uid) : '';
+        $ip    = self::clientIp();
+        $ua    = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512);
+        $ids   = self::facebookClickIds($data);
+
+        $out = array_filter([
             'em'                 => $email !== '' ? [$email] : null,
             'ph'                 => $phone !== '' ? [$phone] : null,
-            'fn'                 => $fn !== '' ? [$fn] : null,
-            'ln'                 => $ln !== '' ? [$ln] : null,
             'external_id'        => $ext !== '' ? [$ext] : null,
-            'client_ip_address'  => self::clientIp(),
-            'client_user_agent'  => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
-            'fbc'                => self::cookie('_fbc'),
-            'fbp'                => self::cookie('_fbp'),
+            'client_ip_address'  => ($ip !== '' && $ip !== '0.0.0.0') ? $ip : null,
+            'client_user_agent'  => $ua !== '' ? $ua : null,
+            'fbp'                => $ids['fbp'] !== '' ? $ids['fbp'] : null,
+            'fbc'                => $ids['fbc'] !== '' ? $ids['fbc'] : null,
         ], static fn ($v) => $v !== null && $v !== '' && $v !== []);
 
         return $out;
     }
 
+    protected static function hashEmail(string $email): string
+    {
+        $email = strtolower(trim($email));
+        $email = preg_replace('/\s+/', '', $email) ?? $email;
+        if ($email === '' || ! str_contains($email, '@')) {
+            return '';
+        }
+
+        return self::sha256Hex($email);
+    }
+
+    protected static function hashPhone(string $phone): string
+    {
+        $digits = self::normalizePkPhone($phone);
+        if ($digits === '') {
+            return '';
+        }
+
+        return self::sha256Hex($digits);
+    }
+
+    protected static function sha256Hex(string $value): string
+    {
+        if (preg_match('/^[a-f0-9]{64}$/', $value)) {
+            return $value;
+        }
+
+        return hash('sha256', $value);
+    }
+
+    protected static function facebookClickIds(array $data): array
+    {
+        $fbp = trim((string) ($data['fbp'] ?? ''));
+        if ($fbp === '') {
+            $fbp = self::cookie('_fbp') ?: (string) (session()->get('mkt_fbp') ?? '');
+        }
+        $fbc = trim((string) ($data['fbc'] ?? ''));
+        if ($fbc === '') {
+            $fbc = self::cookie('_fbc') ?: (string) (session()->get('mkt_fbc') ?? '');
+        }
+        if ($fbc === '') {
+            $fbclid = trim((string) ($data['fbclid'] ?? session()->get('mkt_fbclid') ?? $_GET['fbclid'] ?? ''));
+            if ($fbclid !== '') {
+                $fbc = 'fb.1.' . (int) round(microtime(true) * 1000) . '.' . $fbclid;
+            }
+        }
+
+        return [
+            'fbp' => $fbp,
+            'fbc' => $fbc,
+        ];
+    }
+
+    public static function captureClickIds(): void
+    {
+        try {
+            $req = function_exists('service') ? service('request') : null;
+            $pick = static function (string $name) use ($req): string {
+                $v = (string) ($_COOKIE[$name] ?? '');
+                if ($v !== '') {
+                    return $v;
+                }
+                if ($req) {
+                    $c = (string) ($req->getCookie($name) ?? '');
+                    if ($c !== '') {
+                        return $c;
+                    }
+                    $p = (string) ($req->getPost($name) ?? $req->getPost(ltrim($name, '_')) ?? '');
+                    if ($p !== '') {
+                        return $p;
+                    }
+                }
+
+                return '';
+            };
+            $fbp = $pick('_fbp') ?: $pick('fbp');
+            $fbc = $pick('_fbc') ?: $pick('fbc');
+            $fbclid = trim((string) ($_GET['fbclid'] ?? ($req ? $req->getGet('fbclid') : '') ?? ''));
+            if ($fbp !== '') {
+                session()->set('mkt_fbp', $fbp);
+            }
+            if ($fbc !== '') {
+                session()->set('mkt_fbc', $fbc);
+            }
+            if ($fbclid !== '') {
+                session()->set('mkt_fbclid', $fbclid);
+            }
+        } catch (\Throwable $e) {
+        }
+    }
+
     protected static function tiktokUser(array $data): array
     {
-        $email = self::hashPii($data['email'] ?? (string) (session()->get('user.email') ?? ''));
-        $phone = self::hashPii(preg_replace('/\D+/', '', (string) ($data['phone'] ?? session()->get('user.phone') ?? '')) ?? '');
-        $ext   = self::hashPii((string) ($data['external_id'] ?? session()->get('user.id') ?? ''));
+        $email = self::hashEmail((string) ($data['email'] ?? session()->get('user.email') ?? ''));
+        $phone = self::hashPhone((string) ($data['phone'] ?? session()->get('user.phone') ?? ''));
+        $uid   = trim((string) ($data['external_id'] ?? session()->get('user.id') ?? ''));
+        $ext   = ($uid !== '' && $uid !== '0') ? self::sha256Hex($uid) : '';
 
         return array_filter([
             'email'        => $email,
@@ -386,11 +518,95 @@ class MarketingService
 
     protected static function cookie(string $name): string
     {
-        return (string) ($_COOKIE[$name] ?? '');
+        $v = (string) ($_COOKIE[$name] ?? '');
+        if ($v !== '') {
+            return $v;
+        }
+        try {
+            $req = service('request');
+            $c = (string) ($req->getCookie($name) ?? '');
+            if ($c !== '') {
+                return $c;
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return (string) (session()->get('mkt' . $name) ?? session()->get('mkt_' . ltrim($name, '_')) ?? '');
     }
 
     protected static function hasConsent(): bool
     {
         return (string) ($_COOKIE['solqam_ads_consent'] ?? '1') !== '0';
+    }
+
+    /**
+     * Crawlers (Google, Meta share preview, SEO bots) hit PHP product/search pages
+     * and inflate CAPI ViewContent/Search. Browser pixel never runs for them.
+     */
+    protected static function isMachineTraffic(): bool
+    {
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        if (in_array($method, ['HEAD', 'OPTIONS', 'TRACE'], true)) {
+            return true;
+        }
+
+        $purpose = strtolower((string) ($_SERVER['HTTP_PURPOSE'] ?? $_SERVER['HTTP_SEC_PURPOSE'] ?? $_SERVER['HTTP_X_PURPOSE'] ?? ''));
+        if (str_contains($purpose, 'prefetch') || str_contains($purpose, 'preview')) {
+            return true;
+        }
+        $mode = strtolower((string) ($_SERVER['HTTP_SEC_FETCH_MODE'] ?? ''));
+        if ($mode === 'prefetch' || $mode === 'nested-navigate') {
+            return true;
+        }
+
+        $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+        if ($ua === '' || strlen($ua) < 12) {
+            return true;
+        }
+
+        $needles = [
+            'googlebot', 'adsbot-google', 'mediapartners-google', 'storebot-google',
+            'bingbot', 'yandex', 'baiduspider', 'duckduckbot', 'applebot', 'petalbot',
+            'bytespider', 'facebookexternalhit', 'facebot', 'meta-externalagent',
+            'meta-externalfetcher', 'facebookcatalog', 'twitterbot', 'linkedinbot',
+            'slackbot', 'discordbot', 'telegrambot', 'pinterestbot',
+            'semrush', 'ahrefs', 'mj12bot', 'dotbot', 'screaming frog',
+            'gptbot', 'claudebot', 'anthropic-ai', 'perplexitybot', 'ccbot',
+            'feedfetcher', 'ia_archiver', 'archive.org_bot',
+            'lighthouse', 'pagespeed', 'gtmetrix', 'pingdom', 'uptimerobot',
+            'statuscake', 'headlesschrome', 'phantomjs', 'selenium',
+            'puppeteer', 'playwright', 'curl/', 'wget/', 'python-requests', 'python-urllib',
+            'go-http-client', 'okhttp', 'libwww-perl', 'scrapy',
+            'spider', 'crawler',
+        ];
+        foreach ($needles as $n) {
+            if (str_contains($ua, $n)) {
+                return true;
+            }
+        }
+
+        if (! str_contains($ua, 'mozilla') && ! str_contains($ua, 'opera mini')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    protected static function isDuplicateBrowse(string $eventName, array $payload, array $data): bool
+    {
+        if (! in_array($eventName, ['ViewContent', 'Search', 'ViewCart'], true)) {
+            return false;
+        }
+        $key = $eventName . ':' . implode(',', $payload['content_ids'] ?? []) . ':' . ($payload['search_string'] ?? '');
+        if ($eventName === 'ViewCart') {
+            $key = 'ViewCart:' . current_url();
+        }
+        $last = session()->get('mkt_browse_dedupe');
+        if (is_array($last) && ($last['k'] ?? '') === $key && (int) ($last['t'] ?? 0) > time() - 20) {
+            return true;
+        }
+        session()->set('mkt_browse_dedupe', ['k' => $key, 't' => time()]);
+
+        return false;
     }
 }

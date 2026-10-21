@@ -7,9 +7,9 @@
                 <h4 class="fw-bold"><?= $success ? 'Payment update' : 'Payment not confirmed' ?></h4>
                 <p class="text-secondary"><?= esc($message) ?></p>
                 <?php if (!empty($orderId)): ?>
-                    <a class="btn btn-solqam rounded-pill" href="<?= site_url('account/orders/' . $orderId) ?>">Open order</a>
+                    <a class="btn btn-solqam rounded-pill" href="<?= order_status_url((int) $orderId) ?>">Open order</a>
                 <?php else: ?>
-                    <a class="btn btn-solqam rounded-pill" href="<?= site_url('login') ?>">Sign in to view order</a>
+                    <a class="btn btn-solqam rounded-pill" href="<?= site_url('track') ?>">Track order</a>
                 <?php endif; ?>
             </div>
         </div>

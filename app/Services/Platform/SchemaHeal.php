@@ -8,7 +8,7 @@ namespace App\Services\Platform;
  */
 class SchemaHeal
 {
-    public const VERSION = 15;
+    public const VERSION = 18;
 
     public static function run(): void
     {
@@ -193,6 +193,14 @@ class SchemaHeal
             self::healBannersTable($db, $forge);
             self::ensureSpeedIndexes($db);
             self::ensureMarketingTables($db, $forge);
+            self::widenMarketingSecrets($db);
+            self::ensureSellerCodDues($db, $forge);
+            self::addColumn($db, $forge, 'seller_cod_dues', 'paid_amount', [
+                'type'       => 'DECIMAL',
+                'constraint' => '12,2',
+                'default'    => '0.00',
+                'null'       => false,
+            ]);
 
             if (! is_dir(WRITEPATH . 'cache')) {
                 @mkdir(WRITEPATH . 'cache', 0755, true);
@@ -254,6 +262,57 @@ class SchemaHeal
             'constraint' => 80,
             'null'       => true,
         ]);
+    }
+
+    protected static function widenMarketingSecrets($db): void
+    {
+        if (! $db->tableExists('marketing_settings')) {
+            return;
+        }
+        foreach (['meta_capi_token', 'tiktok_api_token'] as $col) {
+            try {
+                $db->query('ALTER TABLE `marketing_settings` MODIFY `' . $col . '` TEXT NULL');
+            } catch (\Throwable $e) {
+                log_message('error', 'SchemaHeal widen ' . $col . ': ' . $e->getMessage());
+            }
+        }
+        try {
+            $db->query('ALTER TABLE `marketing_settings` MODIFY `tiktok_pixel_id` VARCHAR(120) NULL');
+        } catch (\Throwable $e) {
+            // already wide enough
+        }
+    }
+
+    protected static function ensureSellerCodDues($db, $forge): void
+    {
+        if ($db->tableExists('seller_cod_dues')) {
+            return;
+        }
+        $forge->addField([
+            'id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+            'seller_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+            'order_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+            'shipment_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+            'goods_amount' => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+            'shipping_amount' => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+            'commission_amount' => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+            'cashback_amount' => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+            'due_amount' => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+            'paid_amount' => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+            'collected_cash' => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+            'payment_method' => ['type' => 'VARCHAR', 'constraint' => 30, 'null' => true],
+            'fulfill_by' => ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'seller'],
+            'status' => ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'unpaid'],
+            'paid_at' => ['type' => 'DATETIME', 'null' => true],
+            'paid_note' => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+            'created_at' => ['type' => 'DATETIME', 'null' => true],
+            'updated_at' => ['type' => 'DATETIME', 'null' => true],
+        ]);
+        $forge->addKey('id', true);
+        $forge->addKey('seller_id');
+        $forge->addKey('order_id');
+        $forge->addKey('status');
+        $forge->createTable('seller_cod_dues', true);
     }
 
     protected static function addColumn($db, $forge, string $table, string $column, array $def): void

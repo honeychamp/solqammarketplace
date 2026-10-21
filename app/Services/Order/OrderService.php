@@ -75,6 +75,16 @@ class OrderService
         }
 
         $cart = $this->cartModel->where('user_id', $userId)->first();
+        if (! $cart) {
+            $sid = session_id();
+            if ($sid !== '') {
+                $cart = $this->cartModel->where('session_id', $sid)->first();
+                if ($cart) {
+                    $this->cartModel->update((int) $cart['id'], ['user_id' => $userId]);
+                    $cart['user_id'] = $userId;
+                }
+            }
+        }
         if (!$cart) {
             throw new RuntimeException('Cart is empty.');
         }
@@ -734,6 +744,9 @@ class OrderService
         }
 
         $fulfillBy = (string) ($shipment['fulfill_by'] ?? 'seller');
+        if ($newStatus === 'delivered' && $fulfillBy === 'seller' && ! $this->isAdminSeller($sellerId)) {
+            (new \App\Services\Commission\SellerDueService())->assertCanDeliver($sellerId, $orderId);
+        }
         if ($fulfillBy === 'admin' && ! $asAdminCourier && ! $this->isAdminSeller($sellerId) && in_array($newStatus, ['shipped', 'delivered', 'undelivered'], true)) {
             throw new RuntimeException('This package is assigned to Solqam delivery. You cannot mark it shipped, delivered, or not received.');
         }
@@ -828,7 +841,7 @@ class OrderService
 
     protected function settleSellerFunds(int $orderId, string $mode, ?int $onlySellerId = null): void
     {
-        $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
+            $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
         $bySeller = [];
         foreach ($items as $item) {
             $sid = (int) $item['seller_id'];
@@ -888,6 +901,7 @@ class OrderService
         }
 
         $this->upsertPayout($orderId, $sellerId, $net);
+        (new \App\Services\Commission\SellerDueService())->tryOffsetFromWallet($sellerId);
     }
 
     protected function settlePackageOnDelivered(int $orderId, int $sellerId, string $method, ?array $totals = null): void
@@ -936,6 +950,15 @@ class OrderService
                     'seller_payout',
                     $orderId,
                     "COD collected by Solqam, goods after commission order {$orderNumber} seller {$sellerId}"
+                );
+            } elseif ($fulfillBy !== 'admin') {
+                (new \App\Services\Commission\SellerDueService())->recordSellerCodDelivery(
+                    $sellerId,
+                    $orderId,
+                    (int) ($shipment['id'] ?? 0),
+                    $totals,
+                    $shipAmt,
+                    $method
                 );
             }
         } elseif ($sellerGetsDelivery && $deliveryToSeller > 0 && ! $this->hasLedger($orderId, 'seller_shipping', 'seller ' . $sellerId)) {
@@ -990,8 +1013,8 @@ class OrderService
                 $this->walletService->credit(
                     (int) $order['user_id'],
                     (float) $order['wallet_amount_used'],
-                'refund',
-                $orderId,
+                    'refund',
+                    $orderId,
                 "Refund of wallet amount for {$reason} Order {$order['order_number']}"
             );
         }
@@ -1282,6 +1305,10 @@ class OrderService
         }
 
         $this->restockItems($items);
+        try {
+            (new \App\Services\Commission\SellerDueService())->waiveForOrder($orderId);
+        } catch (\Throwable $e) {
+        }
         $this->orderModel->update($orderId, ['status' => 'returned']);
         foreach ($items as $item) {
             $this->orderItemModel->update((int) $item['id'], ['fulfillment_status' => 'returned']);

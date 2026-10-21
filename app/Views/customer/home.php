@@ -76,7 +76,7 @@
                 </div>
             </div>
 
-            <div class="col-lg-4">
+            <div class="col-lg-4 d-none d-lg-block">
                 <div class="sf-side-stack">
                     <?php
                     $defaultSides = [
@@ -131,7 +131,7 @@
     </div>
 </section>
 
-<section class="pb-2">
+<section class="pb-2 d-none d-lg-block">
     <div class="container">
         <div class="sf-rail <?= empty($hasFlashDeal) ? 'sf-rail-compact' : '' ?>">
             <?php if (!empty($hasFlashDeal)): ?>

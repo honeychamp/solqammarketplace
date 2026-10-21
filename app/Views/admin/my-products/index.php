@@ -44,13 +44,13 @@
                     </tr>
                 <?php else: ?>
                     <?php foreach ($products as $p): ?>
-                        <tr>
+                        <tr data-product-url="<?= esc(site_url('product/' . $p['id'])) ?>" data-product-image="<?= esc(function_exists('media_url') ? media_url($p['primary_image'] ?? '') : ($p['primary_image'] ?? '')) ?>">
                             <td>
                                 <div class="d-flex align-items-center gap-3">
                                     <img src="<?= esc($p['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>"
                                          class="rounded-3 object-fit-cover border" style="width: 48px; height: 48px;" alt="Product">
                                     <div>
-                                        <a href="<?= site_url('product/' . $p['slug']) ?>" target="_blank" class="fw-semibold text-dark text-decoration-none">
+                                        <a href="<?= site_url('product/' . $p['id']) ?>" target="_blank" class="fw-semibold text-dark text-decoration-none">
                                             <?= esc($p['name']) ?>
                                         </a>
                                         <div class="small text-muted"><span class="badge bg-danger-subtle text-danger border border-danger-subtle py-0">Admin Direct</span></div>

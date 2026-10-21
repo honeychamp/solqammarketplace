@@ -122,24 +122,70 @@
         return html;
     }
 
+    function productUrl(tr) {
+        if (!tr) return '';
+        if (tr.dataset && tr.dataset.productUrl) return tr.dataset.productUrl.trim();
+        const a = tr.querySelector('a[href*="/product/"]');
+        return a && a.href ? a.href : '';
+    }
+
+    function productImage(tr) {
+        if (!tr) return '';
+        if (tr.dataset && tr.dataset.productImage) return tr.dataset.productImage.trim();
+        const img = tr.querySelector('img');
+        if (!img || !img.src) return '';
+        if (/placeholder|data:image/i.test(img.src)) return '';
+        return img.src;
+    }
+
     function tablesToHtml() {
         const parts = [];
         content.querySelectorAll('table').forEach(function (table) {
             const heads = Array.from(table.querySelectorAll('thead th, thead td')).map(cellText);
-            const rows = [];
+            const packed = [];
+            let hasUrl = false;
+            let hasImage = false;
             table.querySelectorAll('tbody tr').forEach(function (tr) {
                 const cells = Array.from(tr.children)
                     .filter(function (c) { return c.tagName === 'TD' || c.tagName === 'TH'; })
                     .map(cellText);
-                if (cells.join('').trim() !== '') rows.push(cells);
+                if (cells.join('').trim() === '') return;
+                const url = productUrl(tr);
+                const image = productImage(tr);
+                if (url) hasUrl = true;
+                if (image) hasImage = true;
+                packed.push({ cells: cells, url: url, image: image });
             });
             if (!table.querySelector('tbody')) {
                 Array.from(table.rows).forEach(function (tr, i) {
                     if (i === 0 && heads.length) return;
                     const cells = Array.from(tr.cells).map(cellText);
-                    if (cells.join('').trim() !== '') rows.push(cells);
+                    if (cells.join('').trim() === '') return;
+                    const url = productUrl(tr);
+                    const image = productImage(tr);
+                    if (url) hasUrl = true;
+                    if (image) hasImage = true;
+                    packed.push({ cells: cells, url: url, image: image });
                 });
             }
+            if (heads.length && /^(actions?|moderation)$/i.test(heads[heads.length - 1])) {
+                heads.pop();
+                packed.forEach(function (row) {
+                    if (row.cells.length > heads.length) row.cells.pop();
+                });
+            }
+            if (hasUrl) {
+                heads.push('Product URL');
+            }
+            if (hasImage) {
+                heads.push('Image URL');
+            }
+            const rows = packed.map(function (row) {
+                let cells = row.cells.slice();
+                if (hasUrl) cells.push(row.url || '');
+                if (hasImage) cells.push(row.image || '');
+                return cells;
+            });
             const chunk = htmlTable(heads, rows);
             if (chunk) parts.push(chunk);
         });

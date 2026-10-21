@@ -35,6 +35,7 @@ class DashboardController extends BaseController
                 'approvalStatus'  => $status !== '' ? $status : 'pending',
                 'rejectionReason' => $profile['rejection_reason'] ?? null,
                 'storeName'       => $profile['store_name'] ?? (session()->get('user.store_name') ?? 'Your store'),
+                'dueSummary'      => (new \App\Services\Commission\SellerDueService())->summary($sellerId),
             ]);
         }
 
@@ -144,6 +145,7 @@ class DashboardController extends BaseController
             'slaBreaches'     => $slaBreaches,
             'slaConfirmHours' => $confirmH,
             'slaShipHours'    => $shipH,
+            'dueSummary'      => (new \App\Services\Commission\SellerDueService())->summary($sellerId),
         ]);
     }
 

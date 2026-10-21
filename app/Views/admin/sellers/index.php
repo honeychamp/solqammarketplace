@@ -14,6 +14,8 @@
     <a href="<?= site_url('admin/sellers?status=pending') ?>" class="btn btn-sm rounded-pill <?= $st === 'pending' ? 'btn-solqam' : 'btn-light border' ?>">Pending</a>
     <a href="<?= site_url('admin/sellers?status=approved') ?>" class="btn btn-sm rounded-pill <?= $st === 'approved' ? 'btn-solqam' : 'btn-light border' ?>">Approved</a>
     <a href="<?= site_url('admin/sellers?status=rejected') ?>" class="btn btn-sm rounded-pill <?= $st === 'rejected' ? 'btn-solqam' : 'btn-light border' ?>">Rejected</a>
+    <a href="<?= site_url('admin/sellers?status=suspended') ?>" class="btn btn-sm rounded-pill <?= $st === 'suspended' ? 'btn-solqam' : 'btn-light border' ?>">Suspended</a>
+    <a href="<?= site_url('admin/dues') ?>" class="btn btn-sm rounded-pill btn-outline-danger">COD dues</a>
 </div>
 
 <div class="card-custom p-4">

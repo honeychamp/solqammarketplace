@@ -111,6 +111,11 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="<?= site_url('admin/dues') ?>" class="nav-link <?= strpos(uri_string(), 'admin/dues') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-exclamation-octagon"></i></span><span class="label">COD dues</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="<?= site_url('admin/reports') ?>" class="nav-link <?= strpos(uri_string(), 'admin/reports') !== false ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-bar-chart-line"></i></span><span class="label">Reports</span>
                 </a>
@@ -227,7 +232,7 @@
 </div>
 <?= $this->renderSection('modals') ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261016c"></script>
+<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261019a"></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>

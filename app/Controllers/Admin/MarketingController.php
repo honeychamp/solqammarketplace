@@ -22,7 +22,13 @@ class MarketingController extends BaseController
             if ($ga4 !== '' && ! preg_match('/^G-[A-Z0-9]+$/', $ga4)) {
                 return redirect()->back()->withInput()->with('error', 'GA4 ID must look like G-XXXX.');
             }
-            $model->saveCurrent($this->request->getPost() ?? []);
+            try {
+                $model->saveCurrent($this->request->getPost() ?? []);
+            } catch (\Throwable $e) {
+                log_message('error', 'Marketing settings save: ' . $e->getMessage());
+
+                return redirect()->back()->withInput()->with('error', 'TikTok/Meta keys could not be saved. Hosting security (ModSecurity) sometimes blocks long API tokens, or the token column is too short. Try again after the latest update. If it still fails, paste Pixel ID first, save, then paste the token alone.');
+            }
             AuditService::log('marketing_settings', 'platform');
 
             return redirect()->to('/admin/marketing')->with('success', 'Marketing tracking saved. Tokens stay on the server and are never printed in the storefront.');

@@ -19,7 +19,11 @@
             </div>
             <p class="small text-muted mt-2 mb-1">Courier: <?= esc($order['courier'] ?: 'Not assigned yet') ?></p>
             <p class="small text-muted">Tracking: <?= esc($order['tracking_number'] ?: 'Pending dispatch') ?></p>
-            <a href="<?= site_url('account/orders/' . $order['id']) ?>" class="btn btn-sm btn-outline-primary rounded-pill mt-2">View full details</a>
+            <?php if (session()->get('user.isLoggedIn')): ?>
+                <a href="<?= site_url('account/orders/' . $order['id']) ?>" class="btn btn-sm btn-outline-primary rounded-pill mt-2">View full details</a>
+            <?php elseif (guest_can_see_order((int) $order['id'])): ?>
+                <a href="<?= site_url('order/thanks/' . $order['id']) ?>" class="btn btn-sm btn-outline-primary rounded-pill mt-2">Order receipt</a>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 </div>

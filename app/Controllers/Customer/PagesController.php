@@ -26,6 +26,20 @@ class PagesController extends BaseController
         ]);
     }
 
+    public function privacy()
+    {
+        return view('customer/pages/privacy', [
+            'title' => 'Privacy Policy — Solqam Marketplace',
+        ]);
+    }
+
+    public function dataDeletion()
+    {
+        return view('customer/pages/data_deletion', [
+            'title' => 'User Data Deletion — Solqam Marketplace',
+        ]);
+    }
+
     public function policies()
     {
         return view('customer/pages/policies', [

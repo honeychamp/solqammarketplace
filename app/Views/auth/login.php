@@ -46,6 +46,7 @@
                     <div class="text-center small text-secondary">
                         Don't have an account? <a href="<?= site_url('register') ?>" class="fw-bold text-decoration-none" style="color: var(--sol-primary);">Sign Up for Free</a>
                     </div>
+                    <?= view('partials/guest_cta') ?>
                 </form>
             </div>
         </div>

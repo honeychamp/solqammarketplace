@@ -27,7 +27,7 @@ class ProductController extends BaseController
     public function index()
     {
         $products = $this->productModel
-            ->select('products.*, categories.name as category_name, users.name as seller_name, seller_profiles.store_name')
+            ->select('products.*, categories.name as category_name, users.name as seller_name, seller_profiles.store_name, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
             ->join('categories', 'categories.id = products.category_id', 'left')
             ->join('users', 'users.id = products.seller_id', 'left')
             ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')

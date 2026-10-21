@@ -71,12 +71,16 @@ class HubController extends BaseController
 
         [$payouts, $pager] = hub_paginate_array($payouts, 25);
 
+        $dueSvc = new \App\Services\Commission\SellerDueService();
+
         return view('seller/payouts/index', [
-            'title'   => 'Payouts — Seller Hub',
-            'payouts' => $payouts,
-            'pending' => $pending,
-            'paid'    => $paid,
-            'pager'   => $pager,
+            'title'      => 'Payouts — Seller Hub',
+            'payouts'    => $payouts,
+            'pending'    => $pending,
+            'paid'       => $paid,
+            'pager'      => $pager,
+            'dueSummary' => $dueSvc->summary($sellerId),
+            'dueLines'   => $dueSvc->linesForSeller($sellerId),
         ]);
     }
 

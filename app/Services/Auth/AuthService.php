@@ -36,17 +36,29 @@ class AuthService
         $this->db->transStart();
 
         $apiToken = bin2hex(random_bytes(32));
-
-        $userId = $this->userModel->insert([
-            'name'          => $data['name'],
-            'email'         => $data['email'],
-            'phone'         => $data['phone'],
-            'password_hash' => password_hash($data['password'], PASSWORD_BCRYPT),
-            'role'          => 'customer',
-            'status'        => 'active',
-            'is_verified'   => 0, // Requires OTP verification
-            'api_token'     => $apiToken,
-        ]);
+        $existing = $this->userModel->findByEmailOrPhone((string) ($data['phone'] ?? ''));
+        if ($existing && ($existing['role'] ?? '') === 'customer' && \App\Services\Checkout\GuestCheckoutService::isGuestEmail($existing['email'] ?? '')) {
+            $this->userModel->skipValidation()->update((int) $existing['id'], [
+                'name'          => $data['name'],
+                'email'         => $data['email'],
+                'phone'         => $data['phone'],
+                'password_hash' => password_hash($data['password'], PASSWORD_BCRYPT),
+                'api_token'     => $apiToken,
+                'is_verified'   => 0,
+            ]);
+            $userId = (int) $existing['id'];
+        } else {
+            $userId = $this->userModel->insert([
+                'name'          => $data['name'],
+                'email'         => $data['email'],
+                'phone'         => $data['phone'],
+                'password_hash' => password_hash($data['password'], PASSWORD_BCRYPT),
+                'role'          => 'customer',
+                'status'        => 'active',
+                'is_verified'   => 0, // Requires OTP verification
+                'api_token'     => $apiToken,
+            ]);
+        }
 
         // Auto-initialize Wallet ledger
         $this->walletService->getOrCreateWallet($userId);

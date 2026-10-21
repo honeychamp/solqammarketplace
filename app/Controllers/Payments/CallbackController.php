@@ -77,7 +77,10 @@ class CallbackController extends BaseController
 
     protected function finish(?int $orderId, string $message, bool $success = true)
     {
-        $target = $orderId ? '/account/orders/' . $orderId : '/account/orders';
+        if ($orderId) {
+            remember_guest_order((int) $orderId);
+        }
+        $target = $orderId ? order_status_url((int) $orderId) : '/track';
         if (session()->get('user.isLoggedIn')) {
             return redirect()->to($target)->with($success ? 'success' : 'error', $message);
         }

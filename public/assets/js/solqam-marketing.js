@@ -84,4 +84,29 @@
   (cfg.queue || []).forEach(fire);
 
   dl({ event: 'page_view' });
+
+  const readCookie = (name) => {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  };
+  const attachClickIds = (form) => {
+    if (!form || form.dataset.mktIds === '1') return;
+    const add = (name, val) => {
+      if (!val) return;
+      let el = form.querySelector('input[name="' + name + '"]');
+      if (!el) {
+        el = document.createElement('input');
+        el.type = 'hidden';
+        el.name = name;
+        form.appendChild(el);
+      }
+      el.value = val;
+    };
+    add('fbp', readCookie('_fbp'));
+    add('fbc', readCookie('_fbc'));
+    form.dataset.mktIds = '1';
+  };
+  document.querySelectorAll('form').forEach((form) => {
+    form.addEventListener('submit', () => attachClickIds(form));
+  });
 })();

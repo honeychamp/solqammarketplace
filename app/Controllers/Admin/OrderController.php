@@ -104,6 +104,7 @@ class OrderController extends BaseController
             'adminId'       => $adminId,
             'hasAdminItems' => $hasAdminItems,
             'fromMine'      => $this->request->getGet('from') === 'mine',
+            'codDues'       => (new \App\Services\Commission\SellerDueService())->forOrder((int) $id),
         ]);
     }
 

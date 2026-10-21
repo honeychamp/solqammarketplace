@@ -177,6 +177,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                 <div class="text-center mt-4 small text-secondary">
                     Already registered? <a href="<?= site_url('login') ?>" class="fw-bold text-decoration-none" style="color: var(--sol-primary);">Sign In</a>
                 </div>
+                <?= view('partials/guest_cta') ?>
             </div>
         </div>
     </div>

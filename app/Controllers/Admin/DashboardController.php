@@ -136,6 +136,12 @@ class DashboardController extends BaseController
         $topSkus = $analytics->topProducts(6);
         $aov = count($allOrders) > 0 ? round($totalGmv / count($allOrders), 0) : 0;
 
+        $dueSnap = ['amount' => 0.0, 'sellers' => 0];
+        try {
+            $dueSnap = (new \App\Services\Commission\SellerDueService())->unpaidSnapshot();
+        } catch (\Throwable $e) {
+        }
+
         $walletCashback = 0.0;
         $walletSpend = 0.0;
         try {
@@ -177,6 +183,7 @@ class DashboardController extends BaseController
             'aov'                   => $aov,
             'walletCashback'        => $walletCashback,
             'walletSpend'           => $walletSpend,
+            'codDueSnap'            => $dueSnap,
         ]);
     }
 }

@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\AddressModel;
 use App\Models\CartItemModel;
 use App\Models\CartModel;
+use App\Services\Checkout\GuestCheckoutService;
 use App\Services\Order\OrderService;
 use App\Services\Promotion\CouponService;
 use App\Services\Shipping\ShippingService;
@@ -35,8 +36,12 @@ class CheckoutController extends BaseController
 
     public function index()
     {
-        $userId = (int) session()->get('user.id');
-        $cart = $this->cartModel->where('user_id', $userId)->first();
+        if (session()->get('user.isLoggedIn') && session()->get('user.role') !== 'customer') {
+            return redirect()->to('/')->with('error', 'Customer checkout is for shoppers. Open Guest checkout in a private window, or use a customer account.');
+        }
+        $userId = $this->sessionUserId();
+        $guest  = $userId < 1;
+        $cart   = $this->currentCart();
         if (!$cart) {
             return redirect()->to('/cart')->with('error', 'Your cart is empty.');
         }
@@ -51,9 +56,9 @@ class CheckoutController extends BaseController
             $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
         }
 
-        $addresses     = $this->addressModel->getUserAddresses($userId);
-        $walletBalance = $this->walletService->getBalance($userId);
-        $walletDebt    = $this->walletService->getOutstandingDebt($userId);
+        $addresses     = $userId > 0 ? $this->addressModel->getUserAddresses($userId) : [];
+        $walletBalance = $guest ? 0.0 : $this->walletService->getBalance($userId);
+        $walletDebt    = $guest ? 0.0 : $this->walletService->getOutstandingDebt($userId);
         $defaultAddr   = $addresses[0] ?? null;
         $draft         = session()->get('checkout_draft') ?? [];
         $draftAddrId   = (string) ($draft['address_id'] ?? '');
@@ -85,7 +90,7 @@ class CheckoutController extends BaseController
         $couponDiscount = 0.0;
         if ($couponCode) {
             try {
-                $applied = $this->couponService->apply($couponCode, $userId, $subtotal);
+                $applied = $this->couponService->apply($couponCode, max(0, $userId), $subtotal);
                 $couponDiscount = $applied['discount'];
             } catch (Exception $e) {
                 session()->remove('checkout_coupon_code');
@@ -94,8 +99,11 @@ class CheckoutController extends BaseController
         }
 
         \App\Services\Marketing\MarketingService::trackCartItems('InitiateCheckout', $items, [
-            'value'  => max(0, $subtotal - $couponDiscount),
-            'coupon' => (string) $couponCode,
+            'value'       => max(0, $subtotal - $couponDiscount),
+            'coupon'      => (string) $couponCode,
+            'phone'       => (string) (session()->get('user.phone') ?? ''),
+            'email'       => (string) (session()->get('user.email') ?? ''),
+            'external_id' => (string) $userId,
         ]);
 
         return view('customer/checkout', [
@@ -111,17 +119,18 @@ class CheckoutController extends BaseController
             'estimatedCashback' => cart_cashback_total($items),
             'payfastReady'   => config('Payments')->payfastReady(),
             'shippingZones'  => $this->shippingService->cityList(),
+            'isGuest'        => $guest,
         ]);
     }
 
     public function shippingQuote()
     {
-        $userId = (int) session()->get('user.id');
+        $userId = $this->sessionUserId();
         $city   = trim((string) $this->request->getGet('city'));
         $province = trim((string) $this->request->getGet('province'));
         $addressId = (int) $this->request->getGet('address_id');
 
-        if ($addressId > 0) {
+        if ($addressId > 0 && $userId > 0) {
             $addr = $this->addressModel->where('id', $addressId)->where('user_id', $userId)->first();
             if ($addr) {
                 $city     = (string) $addr['city'];
@@ -129,7 +138,7 @@ class CheckoutController extends BaseController
             }
         }
 
-        $cart = $this->cartModel->where('user_id', $userId)->first();
+        $cart = $this->currentCart();
         $items = $cart ? $this->cartItemModel->getItemsWithProducts((int) $cart['id']) : [];
         $subtotal = 0.0;
         foreach ($items as $item) {
@@ -143,9 +152,9 @@ class CheckoutController extends BaseController
 
     public function applyCoupon()
     {
-        $userId = (int) session()->get('user.id');
+        $userId = $this->sessionUserId();
         $code = (string) $this->request->getPost('coupon_code');
-        $cart = $this->cartModel->where('user_id', $userId)->first();
+        $cart = $this->currentCart();
         $items = $cart ? $this->cartItemModel->getItemsWithProducts($cart['id']) : [];
         $subtotal = 0.0;
         foreach ($items as $item) {
@@ -154,7 +163,7 @@ class CheckoutController extends BaseController
 
         $this->rememberCheckoutDraft();
         try {
-            $this->couponService->apply($code, $userId, $subtotal);
+            $this->couponService->apply($code, max(0, $userId), $subtotal);
             session()->set('checkout_coupon_code', strtoupper(trim($code)));
             \App\Services\Marketing\MarketingService::track('CouponApplied', [
                 'coupon' => strtoupper(trim($code)),
@@ -169,13 +178,34 @@ class CheckoutController extends BaseController
 
     public function process()
     {
-        $userId = (int) session()->get('user.id');
+        if (session()->get('user.isLoggedIn') && session()->get('user.role') !== 'customer') {
+            return redirect()->to('/')->with('error', 'Customer checkout is for shoppers.');
+        }
+        $loggedIn = $this->sessionUserId();
+        $guest    = $loggedIn < 1;
         $this->rememberCheckoutDraft();
 
         $addressId = $this->request->getPost('address_id');
         $fail      = $this->failCheckoutAddress($addressId);
         if ($fail !== null) {
             return $fail;
+        }
+
+        $paymentMethod = $this->request->getPost('payment_method') ?? 'cod';
+        $useWallet     = $guest ? false : (bool) $this->request->getPost('use_wallet');
+        if ($guest && $paymentMethod === 'pay_later') {
+            return $this->checkoutReject([], 'Pay later needs a signed-in wallet. Use COD or Pay online, or Sign In.');
+        }
+
+        $userId = $loggedIn;
+        if ($guest) {
+            $guestSvc = new GuestCheckoutService();
+            $userId = $guestSvc->resolveBuyer(
+                (string) $this->request->getPost('recipient_name'),
+                (string) $this->request->getPost('phone'),
+                (string) $this->request->getPost('guest_email')
+            );
+            $guestSvc->attachSessionCart($userId);
         }
 
         if ($addressId === 'new') {
@@ -197,8 +227,6 @@ class CheckoutController extends BaseController
         }
 
         $addressId     = (int) $addressId;
-        $paymentMethod = $this->request->getPost('payment_method') ?? 'cod';
-        $useWallet     = (bool) $this->request->getPost('use_wallet');
         $notes         = $this->request->getPost('notes');
         $couponCode    = session()->get('checkout_coupon_code');
 
@@ -229,10 +257,16 @@ class CheckoutController extends BaseController
                 ];
             }
 
-            $cartSnap = $this->cartModel->where('user_id', $userId)->first();
+            $cartSnap = $this->cartModel->where('user_id', $userId)->first() ?: $this->currentCart();
             $snapItems = $cartSnap ? $this->cartItemModel->getItemsWithProducts((int) $cartSnap['id']) : [];
+            $addrRow = $this->addressModel->find($addressId);
             \App\Services\Marketing\MarketingService::trackCartItems('AddPaymentInfo', $snapItems, [
                 'payment_type' => (string) $paymentMethod,
+                'phone'        => (string) ($this->request->getPost('phone') ?: ($addrRow['phone'] ?? session()->get('user.phone') ?? '')),
+                'email'        => (string) (session()->get('user.email') ?? ''),
+                'external_id'  => (string) $userId,
+                'fbp'          => (string) ($this->request->getPost('fbp') ?? ''),
+                'fbc'          => (string) ($this->request->getPost('fbc') ?? ''),
             ]);
 
             $result = $this->orderService->checkout(
@@ -247,6 +281,9 @@ class CheckoutController extends BaseController
 
             session()->remove('checkout_coupon_code');
             session()->remove('checkout_draft');
+            if ($guest) {
+                remember_guest_order((int) $result['order_id']);
+            }
 
             if (! empty($result['redirect']['fields']) && ($result['payment_status'] ?? '') === 'pending') {
                 return view('customer/pay_redirect', [
@@ -261,7 +298,7 @@ class CheckoutController extends BaseController
                 ? "Order placed and payment confirmed. {$result['order_number']}"
                 : "Order placed. Payment pending confirmation. {$result['order_number']}";
 
-            return redirect()->to('/account/orders/' . $result['order_id'])->with('success', $msg);
+            return redirect()->to(order_status_url((int) $result['order_id']))->with('success', $msg);
         } catch (Exception $e) {
             return $this->checkoutReject([], $e->getMessage());
         }
@@ -309,6 +346,10 @@ class CheckoutController extends BaseController
         if ($digits === '' || strlen($digits) < 10 || strlen($digits) > 12) {
             $errors['phone'] = 'Enter a valid mobile number (e.g. 03XXXXXXXXX).';
         }
+        $guestEmail = trim((string) $this->request->getPost('guest_email'));
+        if ($guestEmail !== '' && ! filter_var($guestEmail, FILTER_VALIDATE_EMAIL)) {
+            $errors['guest_email'] = 'Enter a valid email or leave it blank.';
+        }
         if ($street === '' || strlen($street) < 8) {
             $errors['street_address'] = 'Street / house address is required.';
         }
@@ -348,20 +389,40 @@ class CheckoutController extends BaseController
         return base_url('uploads/pay-later/' . $newName);
     }
 
+    public function thanks($id)
+    {
+        $orderId = (int) $id;
+        $order   = (new \App\Models\OrderModel())->getOrderDetail($orderId);
+        $userId  = $this->sessionUserId();
+        $ok      = $order && (guest_can_see_order($orderId) || ($userId > 0 && (int) $order['user_id'] === $userId));
+        if (! $ok) {
+            return redirect()->to('/track')->with('error', 'Enter your order number to track this order.');
+        }
+
+        return view('customer/order_thanks', [
+            'title' => 'Order placed — Solqam',
+            'order' => $order,
+        ]);
+    }
+
     public function pay($orderId)
     {
-        $userId = (int) session()->get('user.id');
+        $userId = $this->sessionUserId();
         $order = (new \App\Models\OrderModel())->getOrderDetail((int) $orderId);
-        if (! $order || (int) $order['user_id'] !== $userId) {
+        $allowed = $order && (
+            ($userId > 0 && (int) $order['user_id'] === $userId)
+            || guest_can_see_order((int) $orderId)
+        );
+        if (! $allowed) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Order not found');
         }
         if (($order['payment_status'] ?? '') === 'paid') {
-            return redirect()->to('/account/orders/' . $orderId)->with('success', 'This order is already paid.');
+            return redirect()->to(order_status_url((int) $orderId))->with('success', 'This order is already paid.');
         }
 
         $redirect = $this->orderService->rebuildGatewayRedirect((int) $orderId);
         if (! $redirect) {
-            return redirect()->to('/account/orders/' . $orderId)->with('error', 'This order does not need online payment.');
+            return redirect()->to(order_status_url((int) $orderId))->with('error', 'This order does not need online payment.');
         }
 
         return view('customer/pay_redirect', [
@@ -370,5 +431,27 @@ class CheckoutController extends BaseController
             'orderId'=> (int) $orderId,
             'orderNo'=> $order['order_number'],
         ]);
+    }
+
+    protected function sessionUserId(): int
+    {
+        return session()->get('user.isLoggedIn') ? (int) session()->get('user.id') : 0;
+    }
+
+    protected function currentCart(): ?array
+    {
+        $userId = $this->sessionUserId();
+        if ($userId > 0) {
+            $cart = $this->cartModel->where('user_id', $userId)->first();
+            if ($cart) {
+                return $cart;
+            }
+        }
+        $sid = session_id();
+        if ($sid === '') {
+            return null;
+        }
+
+        return $this->cartModel->where('session_id', $sid)->first();
     }
 }

@@ -27,6 +27,27 @@ class ProductVariantModel extends Model
         }
     }
 
+    public function firstIdsForProducts(array $productIds): array
+    {
+        $productIds = array_values(array_unique(array_filter(array_map('intval', $productIds))));
+        if ($productIds === []) {
+            return [];
+        }
+        $rows = $this->select('id, product_id')
+            ->whereIn('product_id', $productIds)
+            ->orderBy('id', 'ASC')
+            ->findAll();
+        $map = [];
+        foreach ($rows as $row) {
+            $pid = (int) ($row['product_id'] ?? 0);
+            if ($pid > 0 && ! isset($map[$pid])) {
+                $map[$pid] = (int) $row['id'];
+            }
+        }
+
+        return $map;
+    }
+
     public function forProduct(int $productId): array
     {
         $rows = $this->where('product_id', $productId)->orderBy('id', 'ASC')->findAll();

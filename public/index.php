@@ -56,4 +56,23 @@ $paths = new Paths();
 // LOAD THE FRAMEWORK BOOTSTRAP FILE
 require $paths->systemDirectory . '/Boot.php';
 
+/*
+ * Live .env sometimes has an empty, quoted, or Windows-CRLF CI_ENVIRONMENT
+ * ("prod", "live", "production\r"). CI then cannot load
+ * app/Config/Boot/{ENVIRONMENT}.php and shows:
+ * "The application environment is not set correctly."
+ */
+$raw  = $_ENV['CI_ENVIRONMENT'] ?? $_SERVER['CI_ENVIRONMENT'] ?? getenv('CI_ENVIRONMENT') ?: 'production';
+$env  = strtolower(trim((string) $raw, " \t\n\r\0\x0B\"'"));
+$host = strtolower((string) preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+if (in_array($host, ['solqam.com', 'www.solqam.com'], true) || ! in_array($env, ['production', 'development', 'testing'], true)) {
+    $env = 'production';
+}
+putenv('CI_ENVIRONMENT=' . $env);
+$_ENV['CI_ENVIRONMENT']    = $env;
+$_SERVER['CI_ENVIRONMENT'] = $env;
+if (! defined('ENVIRONMENT')) {
+    define('ENVIRONMENT', $env);
+}
+
 exit(Boot::bootWeb($paths));

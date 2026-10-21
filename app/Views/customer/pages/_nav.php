@@ -4,6 +4,8 @@
     <a href="<?= site_url('fulfillment') ?>" class="list-group-item list-group-item-action <?= uri_string() === 'fulfillment' ? 'active' : '' ?>">Fulfillment by Solqam</a>
     <a href="<?= site_url('returns-policy') ?>" class="list-group-item list-group-item-action <?= uri_string() === 'returns-policy' ? 'active' : '' ?>">Returns &amp; refunds</a>
     <a href="<?= site_url('shipping-info') ?>" class="list-group-item list-group-item-action <?= uri_string() === 'shipping-info' ? 'active' : '' ?>">Shipping &amp; delivery</a>
+    <a href="<?= site_url('privacy') ?>" class="list-group-item list-group-item-action <?= uri_string() === 'privacy' ? 'active' : '' ?>">Privacy Policy</a>
+    <a href="<?= site_url('data-deletion') ?>" class="list-group-item list-group-item-action <?= uri_string() === 'data-deletion' ? 'active' : '' ?>">Data deletion</a>
     <a href="<?= site_url('help') ?>" class="list-group-item list-group-item-action">Help Center</a>
     <a href="<?= site_url('register?role=seller') ?>" class="list-group-item list-group-item-action">Become a seller</a>
 </div>

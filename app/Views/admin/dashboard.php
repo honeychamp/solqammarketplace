@@ -69,6 +69,11 @@ $pipeTotal = max(1, array_sum($statusCounts ?? []));
     <div class="col-6 col-xl">
         <div class="kpi-tile gold h-100"><span>Catalog</span><strong><?= (int) $totalProducts ?></strong><em><?= (int) $myProductCount ?> first-party SKUs</em></div>
     </div>
+    <div class="col-6 col-xl">
+        <a href="<?= site_url('admin/dues') ?>" class="text-decoration-none">
+            <div class="kpi-tile accent h-100"><span>COD dues unpaid</span><strong>Rs. <?= number_format((float) ($codDueSnap['amount'] ?? 0), 0) ?></strong><em><?= (int) ($codDueSnap['sellers'] ?? 0) ?> sellers · collect commission + cashback</em></div>
+        </a>
+    </div>
 </div>
 
 <div class="row g-4 mb-4">
@@ -152,6 +157,7 @@ $pipeTotal = max(1, array_sum($statusCounts ?? []));
             <div class="ops-queue">
                 <a href="#hub-sellers"><strong><?= (int) $pendingSellerCount ?></strong><span>Seller applications</span></a>
                 <a href="#hub-returns"><strong><?= count($pendingReturns) ?></strong><span>Returns to wallet</span></a>
+                <a href="<?= site_url('admin/dues') ?>"><strong><?= (int) ($codDueSnap['sellers'] ?? 0) ?></strong><span>COD dues</span></a>
                 <a href="#hub-payouts"><strong><?= count($pendingPayouts) ?></strong><span>Unpaid payouts</span></a>
                 <a href="#hub-tickets"><strong><?= count($openTickets) ?></strong><span>Open tickets</span></a>
             </div>

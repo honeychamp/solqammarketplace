@@ -24,7 +24,7 @@
             </thead>
             <tbody>
                 <?php foreach ($products as $p): ?>
-                    <tr>
+                    <tr data-product-url="<?= esc(site_url('product/' . $p['id'])) ?>" data-product-image="<?= esc(function_exists('media_url') ? media_url($p['primary_image'] ?? '') : ($p['primary_image'] ?? '')) ?>">
                         <td>
                             <div class="fw-bold text-dark"><?= esc($p['name']) ?></div>
                             <small class="text-muted"><a href="<?= site_url('product/' . $p['id']) ?>" target="_blank">View Live <i class="bi bi-box-arrow-up-right"></i></a></small>

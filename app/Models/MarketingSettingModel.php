@@ -68,7 +68,7 @@ class MarketingSettingModel extends Model
 
         $existing = $row ? $this->current() : $this->defaults();
         foreach (self::SECRET_FIELDS as $field) {
-            $incoming = trim((string) ($data[$field] ?? ''));
+            $incoming = self::decodePostedSecret((string) ($data[$field] ?? ''));
             $payload[$field] = $this->seal($incoming !== '' ? $incoming : (string) ($existing[$field] ?? ''));
         }
 
@@ -117,6 +117,22 @@ class MarketingSettingModel extends Model
             'google_ads_id'        => '',
             'google_ads_label'     => '',
         ];
+    }
+
+    public static function decodePostedSecret(string $incoming): string
+    {
+        $incoming = trim($incoming);
+        if ($incoming === '') {
+            return '';
+        }
+        if (str_starts_with($incoming, 'rawb64:')) {
+            $decoded = base64_decode(substr($incoming, 7), true);
+            if (is_string($decoded) && $decoded !== '') {
+                return trim($decoded);
+            }
+        }
+
+        return $incoming;
     }
 
     public static function mask(?string $value): string

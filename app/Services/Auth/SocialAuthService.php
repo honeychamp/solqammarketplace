@@ -114,9 +114,75 @@ class SocialAuthService
         return $user;
     }
 
+    public function completeWithAccessToken(string $provider, string $accessToken, string $intent = 'customer'): array
+    {
+        $provider = strtolower($provider);
+        if (! in_array($provider, self::PROVIDERS, true)) {
+            throw new RuntimeException('Unknown sign-in method.');
+        }
+        $accessToken = trim($accessToken);
+        if ($accessToken === '') {
+            throw new RuntimeException('Sign-in was cancelled.');
+        }
+        $intent  = $intent === 'seller' ? 'seller' : 'customer';
+        $profile = $provider === 'google'
+            ? $this->googleProfileFromAccess($accessToken)
+            : $this->facebookProfileFromAccess($accessToken);
+        $user = $this->findOrCreate($provider, $profile, $intent);
+        if (($user['role'] ?? '') === 'admin') {
+            throw new RuntimeException('Administrator accounts cannot sign in here.');
+        }
+        if (($user['status'] ?? '') === 'suspended') {
+            throw new RuntimeException('Your account has been suspended by the administrator.');
+        }
+        $this->auth->setSession($user);
+
+        return $user;
+    }
+
     public function callbackUrl(string $provider): string
     {
+        $provider = strtolower($provider);
+        $host     = strtolower((string) (parse_url((string) site_url(), PHP_URL_HOST) ?: ''));
+        $host     = preg_replace('/^www\./', '', $host) ?? $host;
+        if ($host === 'solqam.com' || str_ends_with($host, '.solqam.com')) {
+            if ($provider === 'facebook') {
+                return 'https://solqam.com/auth/facebook/callback';
+            }
+
+            return 'https://solqam.com/oauth/google.php';
+        }
+
         return rtrim(site_url('auth/' . $provider . '/callback'), '/');
+    }
+
+    /**
+     * @return array{code:string,state:string,error:string}
+     */
+    public function consumeBridge(string $token): array
+    {
+        $token = strtolower(preg_replace('/[^a-f0-9]/', '', $token) ?? '');
+        if (strlen($token) !== 32) {
+            throw new RuntimeException('Sign-in expired. Please try Google or Facebook again.');
+        }
+
+        $file = WRITEPATH . 'oauth' . DIRECTORY_SEPARATOR . $token . '.json';
+        if (! is_file($file)) {
+            throw new RuntimeException('Sign-in expired. Please try Google or Facebook again.');
+        }
+
+        $raw = (string) @file_get_contents($file);
+        @unlink($file);
+        $data = json_decode($raw, true);
+        if (! is_array($data) || (int) ($data['exp'] ?? 0) < time()) {
+            throw new RuntimeException('Sign-in expired. Please try Google or Facebook again.');
+        }
+
+        return [
+            'code'  => (string) ($data['code'] ?? ''),
+            'state' => (string) ($data['state'] ?? ''),
+            'error' => (string) ($data['error'] ?? ''),
+        ];
     }
 
     protected function fetchGoogle(string $code): array
@@ -134,6 +200,11 @@ class SocialAuthService
             throw new RuntimeException('Google did not return an access token. Check Client ID, secret, and callback URL.');
         }
 
+        return $this->googleProfileFromAccess($access);
+    }
+
+    protected function googleProfileFromAccess(string $access): array
+    {
         $infoRes = $this->http('GET', 'https://www.googleapis.com/oauth2/v3/userinfo', [], [
             'Authorization: Bearer ' . $access,
         ]);
@@ -165,6 +236,11 @@ class SocialAuthService
             throw new RuntimeException('Facebook did not return an access token. Check App ID, secret, and callback URL.');
         }
 
+        return $this->facebookProfileFromAccess($access);
+    }
+
+    protected function facebookProfileFromAccess(string $access): array
+    {
         $infoRes = $this->http('GET', 'https://graph.facebook.com/v21.0/me?' . http_build_query([
             'fields'       => 'id,name,email,picture.type(large)',
             'access_token' => $access,

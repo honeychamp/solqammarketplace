@@ -1,2 +1,6 @@
 User-agent: *
-Disallow: 
+Disallow:
+
+User-agent: facebookexternalhit
+Allow: /feed/meta.csv
+Allow: / 

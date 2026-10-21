@@ -46,6 +46,14 @@ $greet = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good ev
         </div>
     </div>
 </div>
+<?php $dueSummary = $dueSummary ?? []; if ((float) ($dueSummary['unpaid'] ?? 0) > 0): ?>
+<div class="alert alert-warning rounded-4 border-0 mb-4">
+    <strong>COD dues:</strong> Solqam ko Rs. <?= number_format((float) $dueSummary['unpaid'], 0) ?> dena hai
+    (commission Rs. <?= number_format((float) $dueSummary['commission'], 0) ?>
+    + cashback Rs. <?= number_format((float) $dueSummary['cashback'], 0) ?>).
+    Next order <strong>Delivered</strong> tabhi hoga jab admin yeh amount received mark kare.
+</div>
+<?php endif; ?>
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-xl">

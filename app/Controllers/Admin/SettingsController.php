@@ -41,8 +41,8 @@ class SettingsController extends BaseController
             'google_secret_set'      => SettingService::get('google_oauth_client_secret') !== '',
             'facebook_app_id'        => SettingService::get('facebook_app_id'),
             'facebook_secret_set'    => SettingService::get('facebook_app_secret') !== '',
-            'google_callback'        => site_url('auth/google/callback'),
-            'facebook_callback'      => site_url('auth/facebook/callback'),
+            'google_callback'        => (new \App\Services\Auth\SocialAuthService())->callbackUrl('google'),
+            'facebook_callback'      => (new \App\Services\Auth\SocialAuthService())->callbackUrl('facebook'),
         ]);
     }
 }

@@ -98,34 +98,86 @@ class AuthController extends BaseController
     {
         $provider = strtolower((string) $provider);
         try {
-            $user = (new \App\Services\Auth\SocialAuthService())->complete(
-                $provider,
-                $this->request->getGet('code'),
-                $this->request->getGet('state')
-            );
-
-            if (($user['role'] ?? '') === 'admin') {
-                $this->authService->logout();
-
-                return redirect()->to('/login')->with('error', 'Administrator accounts cannot log in here.');
+            $social = new \App\Services\Auth\SocialAuthService();
+            $code   = $this->request->getGet('code');
+            $state  = $this->request->getGet('state');
+            $key    = trim((string) $this->request->getGet('k'));
+            if ($key !== '') {
+                $bridged = $social->consumeBridge($key);
+                if (($bridged['error'] ?? '') !== '') {
+                    throw new \RuntimeException('Sign-in was cancelled.');
+                }
+                $code  = $bridged['code'] !== '' ? $bridged['code'] : $code;
+                $state = $bridged['state'] !== '' ? $bridged['state'] : $state;
             }
+            $user = $social->complete($provider, $code, $state);
 
-            if (($user['role'] ?? '') === 'seller') {
-                $approved = seller_is_approved((int) $user['id']);
-                $msg      = $approved
-                    ? 'Signed in with ' . ucfirst($provider) . '. Welcome to your Seller Hub.'
-                    : 'Signed in with ' . ucfirst($provider) . '. Your store is pending admin approval.';
-
-                return redirect()->to('/seller/dashboard')->with('success', $msg);
-            }
-
-            $redirectUrl = session()->get('redirect_url') ?? '/';
-            session()->remove('redirect_url');
-
-            return redirect()->to($redirectUrl)->with('success', 'Signed in with ' . ucfirst($provider) . '. Welcome to Solqam!');
+            return $this->finishSocialLogin($user, $provider);
         } catch (\Throwable $e) {
             return redirect()->to('/login')->with('error', $e->getMessage());
         }
+    }
+
+    public function socialToken($provider)
+    {
+        $provider = strtolower((string) $provider);
+        $intent   = (string) $this->request->getPost('intent') === 'seller' ? 'seller' : 'customer';
+        $ajax     = $this->request->isAJAX()
+            || str_contains(strtolower((string) $this->request->getHeaderLine('Accept')), 'application/json');
+        $failTo   = $intent === 'seller' ? '/register?role=seller' : '/login';
+
+        try {
+            if (! \App\Services\Auth\RateLimitService::hit('social_login', 12)) {
+                throw new \RuntimeException('Too many sign-in attempts. Try again in 15 minutes.');
+            }
+            $token = trim((string) ($this->request->getPost('access_token') ?? ''));
+            $user  = (new \App\Services\Auth\SocialAuthService())->completeWithAccessToken($provider, $token, $intent);
+            [$url, $msg] = $this->socialLanding($user, $provider);
+            if ($ajax) {
+                return $this->response->setJSON(['ok' => true, 'redirect' => $url, 'message' => $msg]);
+            }
+
+            return redirect()->to($url)->with('success', $msg);
+        } catch (\Throwable $e) {
+            if ($ajax) {
+                return $this->response->setStatusCode(400)->setJSON(['ok' => false, 'error' => $e->getMessage()]);
+            }
+
+            return redirect()->to($failTo)->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * @return array{0:string,1:string}
+     */
+    protected function socialLanding(array $user, string $provider): array
+    {
+        if (($user['role'] ?? '') === 'admin') {
+            $this->authService->logout();
+            throw new \RuntimeException('Administrator accounts cannot log in here.');
+        }
+        if (($user['role'] ?? '') === 'seller') {
+            $approved = seller_is_approved((int) $user['id']);
+            $msg      = $approved
+                ? 'Signed in with ' . ucfirst($provider) . '. Welcome to your Seller Hub.'
+                : 'Signed in with ' . ucfirst($provider) . '. Your store is pending admin approval.';
+
+            return ['/seller/dashboard', $msg];
+        }
+        $redirectUrl = (string) (session()->get('redirect_url') ?? '/');
+        session()->remove('redirect_url');
+        if ($redirectUrl === '') {
+            $redirectUrl = '/';
+        }
+
+        return [$redirectUrl, 'Signed in with ' . ucfirst($provider) . '. Welcome to Solqam!'];
+    }
+
+    protected function finishSocialLogin(array $user, string $provider)
+    {
+        [$url, $msg] = $this->socialLanding($user, $provider);
+
+        return redirect()->to($url)->with('success', $msg);
     }
 
     public function register()

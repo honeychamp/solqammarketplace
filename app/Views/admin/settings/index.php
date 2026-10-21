@@ -10,10 +10,10 @@
 
     <hr class="my-4">
     <h5 class="fw-bold mb-1">Google &amp; Facebook login</h5>
-    <p class="small text-secondary">Same as Daraz: customer and seller can continue with Google or Facebook. Paste keys here — not in code. Add these callback URLs in Google Cloud and Meta Developer:</p>
+    <p class="small text-secondary">Login uses a popup (not a redirect), so hosting ModSecurity cannot block it. In Google Cloud add <strong>Authorized JavaScript origins</strong> only:</p>
     <ul class="small mb-3">
-        <li><code><?= esc($google_callback ?? '') ?></code></li>
-        <li><code><?= esc($facebook_callback ?? '') ?></code></li>
+        <li><code>https://solqam.com</code></li>
+        <li>Facebook App domains: <code>solqam.com</code> — Website: <code>https://solqam.com/</code></li>
     </ul>
     <div class="mb-3">
         <label class="form-label">Google Client ID</label>

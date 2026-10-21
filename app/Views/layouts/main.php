@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261016c">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261019b">
     <?php if (is_file(APPPATH . 'Views/partials/marketing_tags.php')): ?>
         <?= view('partials/marketing_tags') ?>
     <?php endif; ?>
@@ -81,6 +81,8 @@
                     $session = session();
                     $user = $session->get('user');
                     $cartCount = 0;
+                    $cartModel = new \App\Models\CartModel();
+                    $cartItemModel = new \App\Models\CartItemModel();
                     if ($user) {
                         $userModel = new \App\Models\UserModel();
                         $dbUser = !empty($user['id']) ? $userModel->find($user['id']) : null;
@@ -88,12 +90,16 @@
                             $session->remove('user');
                             $user = null;
                         } else {
-                            $cartModel = new \App\Models\CartModel();
-                            $cartItemModel = new \App\Models\CartItemModel();
                             $c = $cartModel->where('user_id', $user['id'])->first();
                             if ($c) {
                                 $cartCount = $cartItemModel->where('cart_id', $c['id'])->countAllResults();
                             }
+                        }
+                    }
+                    if (! $user) {
+                        $c = $cartModel->where('session_id', session_id())->first();
+                        if ($c) {
+                            $cartCount = $cartItemModel->where('cart_id', $c['id'])->countAllResults();
                         }
                     }
                     ?>
@@ -170,6 +176,7 @@
                         <?php else: ?>
                             <a href="<?= site_url('login') ?>" class="btn btn-solqam-outline btn-sm px-3 d-none d-sm-inline-flex">Sign In</a>
                             <a href="<?= site_url('register') ?>" class="btn btn-solqam btn-sm px-3">Join Solqam</a>
+                            <a href="<?= site_url('guest') ?>" class="btn btn-light border btn-sm px-3">Guest</a>
                         <?php endif; ?>
                     </div>
                 </div>

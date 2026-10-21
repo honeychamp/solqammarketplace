@@ -100,10 +100,43 @@ $adminPkgStatus = $adminShipment['status'] ?? 'placed';
     <div class="col-lg-4">
         <div class="card-custom p-4 mb-4">
             <h5 class="fw-bold mb-3 border-bottom pb-2">Money</h5>
-            <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Gross</span><span>Rs. <?= number_format($order['total_amount'], 2) ?></span></div>
-            <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Payable</span><span>Rs. <?= number_format($order['final_payable'], 2) ?></span></div>
+            <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Gross (goods)</span><span>Rs. <?= number_format((float) $order['total_amount'], 2) ?></span></div>
+            <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Delivery</span><span>Rs. <?= number_format((float) ($order['shipping_amount'] ?? 0), 2) ?></span></div>
+            <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Wallet used</span><span>Rs. <?= number_format((float) ($order['wallet_amount_used'] ?? 0), 2) ?></span></div>
+            <div class="d-flex justify-content-between mb-2"><span class="text-secondary">Buyer paid now</span><span>Rs. <?= number_format((float) $order['final_payable'], 2) ?></span></div>
             <div class="d-flex justify-content-between mb-2 text-success"><span>Buyer cashback</span><span>Rs. <?= number_format((float) ($order['cashback_amount'] ?? 0), 2) ?></span></div>
-            <div class="d-flex justify-content-between mb-3 text-primary"><span>Commission (category rates<?= isset($order['commission_rate']) ? ', avg ' . esc($order['commission_rate']) . '%' : '' ?>)</span><span>Rs. <?= number_format($order['commission_amount'], 2) ?></span></div>
+            <div class="d-flex justify-content-between mb-3 text-primary"><span>Commission (category<?= isset($order['commission_rate']) ? ', avg ' . esc($order['commission_rate']) . '%' : '' ?>)</span><span>Rs. <?= number_format((float) $order['commission_amount'], 2) ?></span></div>
+            <?php if (!empty($order['shipments'])): ?>
+                <hr>
+                <div class="small fw-bold mb-2">Packages</div>
+                <?php foreach ($order['shipments'] as $pkg): ?>
+                    <div class="small border rounded-3 p-2 mb-2">
+                        <div><strong><?= ((int) ($pkg['seller_id'] ?? 0) === (int) $adminId) ? 'Solqam' : 'Seller #' . (int) $pkg['seller_id'] ?></strong>
+                            · <?= esc($pkg['fulfill_by'] ?? 'seller') ?> deliver
+                            · <?= esc($pkg['status'] ?? '') ?></div>
+                        <div>Delivery share Rs. <?= number_format((float) ($pkg['shipping_amount'] ?? 0), 0) ?></div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            <?php foreach ($codDues ?? [] as $d): ?>
+                <div class="small alert alert-warning py-2 mb-2">
+                    COD self-ship <?= esc($d['store_name'] ?? 'seller') ?>:
+                    collected Rs. <?= number_format((float) $d['collected_cash'], 0) ?>,
+                    commission Rs. <?= number_format((float) $d['commission_amount'], 0) ?>,
+                    cashback Rs. <?= number_format((float) $d['cashback_amount'], 0) ?>,
+                    due <strong>Rs. <?= number_format((float) $d['due_amount'], 0) ?></strong>
+                    · left Rs. <?= number_format(\App\Services\Commission\SellerDueService::remaining($d), 0) ?>
+                    — <?= esc($d['status']) ?>
+                    <a class="ms-1" href="<?= site_url('admin/dues/' . (int) $d['id'] . '/receipt') ?>">Receipt</a>
+                    <?php if ($d['status'] === 'unpaid'): ?>
+                        <form method="POST" action="<?= site_url('admin/dues/' . (int) $d['id'] . '/paid') ?>" class="mt-2 d-flex gap-2">
+                            <?= csrf_field() ?>
+                            <input type="number" name="amount" class="form-control form-control-sm" style="max-width:120px" value="<?= (int) \App\Services\Commission\SellerDueService::remaining($d) ?>">
+                            <button class="btn btn-sm btn-success">Mark Solqam received</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
             <div class="small">
                 <div><strong>Payment:</strong> <?= strtoupper($order['payment_method'] ?? 'COD') ?></div>
                 <div><strong>Status:</strong> <?= strtoupper($order['payment_status'] ?? 'PENDING') ?></div>

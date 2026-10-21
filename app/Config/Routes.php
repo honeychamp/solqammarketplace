@@ -11,6 +11,7 @@ use CodeIgniter\Router\RouteCollection;
 // --------------------------------------------------------------------
 $routes->get('uploads/(:any)', 'MediaController::uploads/$1');
 $routes->get('sitemap.xml', 'SeoController::sitemap');
+$routes->get('feed/meta.csv', 'FeedController::metaCsv');
 $routes->get('compare', 'Customer\CatalogController::compare');
 $routes->get('compare/toggle/(:num)', 'Customer\CatalogController::compareToggle/$1');
 $routes->get('/', 'Customer\HomeController::index');
@@ -25,6 +26,8 @@ $routes->post('wishlist/toggle', 'Customer\AccountController::toggleWishlist', [
 $routes->post('store/follow', 'Customer\AccountController::toggleFollow', ['filter' => 'auth']);
 $routes->get('help', 'Customer\HelpController::index');
 $routes->get('commission', 'Customer\PagesController::commission');
+$routes->match(['GET', 'HEAD'], 'privacy', 'Customer\PagesController::privacy');
+$routes->match(['GET', 'HEAD'], 'data-deletion', 'Customer\PagesController::dataDeletion');
 $routes->get('seller-policies', 'Customer\PagesController::policies');
 $routes->get('fulfillment', 'Customer\PagesController::fulfillment');
 $routes->get('returns-policy', 'Customer\PagesController::returns');
@@ -34,6 +37,13 @@ $routes->get('cart', 'Customer\CartController::index');
 $routes->post('cart/add', 'Customer\CartController::add');
 $routes->post('cart/update', 'Customer\CartController::update');
 $routes->get('cart/remove/(:num)', 'Customer\CartController::remove/$1');
+$routes->get('guest', 'Customer\GuestController::start');
+$routes->get('checkout', 'Customer\CheckoutController::index');
+$routes->post('checkout', 'Customer\CheckoutController::process');
+$routes->post('checkout/coupon', 'Customer\CheckoutController::applyCoupon');
+$routes->get('checkout/shipping-quote', 'Customer\CheckoutController::shippingQuote');
+$routes->get('checkout/pay/(:num)', 'Customer\CheckoutController::pay/$1');
+$routes->get('order/thanks/(:num)', 'Customer\CheckoutController::thanks/$1');
 
 // --------------------------------------------------------------------
 // Authentication Web Routes
@@ -48,6 +58,7 @@ $routes->post('forgot-password/verify/resend', 'Auth\AuthController::resendReset
 $routes->match(['GET', 'POST'], 'forgot-password/reset', 'Auth\AuthController::forgotReset');
 $routes->get('logout', 'Auth\AuthController::logout');
 $routes->get('auth/(:segment)/callback', 'Auth\AuthController::socialCallback/$1');
+$routes->post('auth/(:segment)/token', 'Auth\AuthController::socialToken/$1');
 $routes->get('auth/(:segment)', 'Auth\AuthController::socialStart/$1');
 
 // --------------------------------------------------------------------
@@ -58,12 +69,6 @@ $routes->match(['GET', 'POST'], 'payments/payfast/failure', 'Payments\CallbackCo
 $routes->post('payments/payfast/ipn', 'Payments\CallbackController::payfastIpn');
 
 $routes->group('', ['filter' => ['auth', 'role:customer']], static function ($routes) {
-    $routes->get('checkout', 'Customer\CheckoutController::index');
-    $routes->post('checkout', 'Customer\CheckoutController::process');
-    $routes->post('checkout/coupon', 'Customer\CheckoutController::applyCoupon');
-    $routes->get('checkout/shipping-quote', 'Customer\CheckoutController::shippingQuote');
-    $routes->get('checkout/pay/(:num)', 'Customer\CheckoutController::pay/$1');
-
     $routes->group('account', static function ($routes) {
         $routes->get('orders', 'Customer\OrderController::index');
         $routes->get('orders/(:num)', 'Customer\OrderController::show/$1');
@@ -143,6 +148,10 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->get('sellers/(:num)', 'Admin\SellerController::show/$1');
     $routes->post('sellers/(:num)/approve', 'Admin\SellerController::approve/$1');
     $routes->post('sellers/(:num)/reject', 'Admin\SellerController::reject/$1');
+    $routes->get('dues', 'Admin\DueController::index');
+    $routes->post('dues/(:num)/paid', 'Admin\DueController::markPaid/$1');
+    $routes->get('dues/(:num)/receipt', 'Admin\DueController::receipt/$1');
+    $routes->post('dues/seller/(:num)/offset', 'Admin\DueController::offsetWallet/$1');
 
     // Categories Management
     $routes->get('categories', 'Admin\CategoryController::index');

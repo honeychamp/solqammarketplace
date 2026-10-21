@@ -89,8 +89,14 @@ class CartController extends BaseApiController
         }
 
         \App\Services\Marketing\MarketingService::trackProduct('AddToCart', $product, [
-            'quantity' => $quantity,
-            'price'    => (float) $product['price'],
+            'quantity'    => $quantity,
+            'price'       => (float) $product['price'],
+            'variant_id'  => (int) ($input['variant_id'] ?? 0),
+            'phone'       => (string) (session()->get('user.phone') ?? ''),
+            'email'       => (string) (session()->get('user.email') ?? ''),
+            'external_id' => (string) (session()->get('user.id') ?? ''),
+            'fbp'         => (string) ($input['fbp'] ?? ''),
+            'fbc'         => (string) ($input['fbc'] ?? ''),
         ]);
 
         return $this->index();

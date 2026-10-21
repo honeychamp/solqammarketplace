@@ -17,7 +17,7 @@
         <div class="card-custom p-4 mb-4">
             <div class="d-flex justify-content-between align-items-start mb-3 border-bottom pb-2">
                 <h5 class="fw-bold mb-0">Business &amp; Store Details</h5>
-                <span class="badge fs-6 bg-<?= match($seller['approval_status']) { 'approved' => 'success', 'pending' => 'warning text-dark', default => 'danger' } ?>">
+                <span class="badge fs-6 bg-<?= match($seller['approval_status']) { 'approved' => 'success', 'pending' => 'warning text-dark', 'suspended' => 'danger', default => 'danger' } ?>">
                     <?= ucfirst($seller['approval_status']) ?>
                 </span>
             </div>
@@ -52,6 +52,87 @@
             <?php if (!empty($seller['rejection_reason'])): ?>
                 <div class="alert alert-danger py-2 small mb-0">
                     <strong>Previous Rejection Note:</strong> <?= esc($seller['rejection_reason']) ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <?php $life = $life ?? []; $dueSummary = $dueSummary ?? []; $dueLines = $dueLines ?? []; ?>
+        <div class="card-custom p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                <h5 class="fw-bold mb-0">Money — lifetime + COD dues</h5>
+                <?php if ((float) ($dueSummary['unpaid'] ?? 0) > 0): ?>
+                    <form method="POST" action="<?= site_url('admin/dues/seller/' . (int) $seller['user_id'] . '/offset') ?>">
+                        <?= csrf_field() ?>
+                        <button class="btn btn-sm btn-outline-primary rounded-pill">Cut from payout wallet</button>
+                    </form>
+                <?php endif; ?>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-3"><div class="small text-muted">Orders</div><div class="fw-bold"><?= (int) ($life['order_count'] ?? 0) ?></div></div>
+                <div class="col-md-3"><div class="small text-muted">Goods total</div><div class="fw-bold">Rs. <?= number_format((float) ($life['goods'] ?? 0), 0) ?></div></div>
+                <div class="col-md-3"><div class="small text-muted">Commission</div><div class="fw-bold text-primary">Rs. <?= number_format((float) ($life['commission'] ?? 0), 0) ?></div></div>
+                <div class="col-md-3"><div class="small text-muted">Cashback</div><div class="fw-bold text-success">Rs. <?= number_format((float) ($life['cashback'] ?? 0), 0) ?></div></div>
+                <div class="col-md-3"><div class="small text-muted">Seller net (goods − comm − CB)</div><div class="fw-bold">Rs. <?= number_format((float) ($life['net'] ?? 0), 0) ?></div></div>
+                <div class="col-md-3"><div class="small text-muted">COD unpaid to Solqam</div><div class="fw-bold text-danger">Rs. <?= number_format((float) ($dueSummary['unpaid'] ?? 0), 0) ?></div></div>
+                <div class="col-md-3"><div class="small text-muted">COD dues paid</div><div class="fw-bold">Rs. <?= number_format((float) ($dueSummary['paid'] ?? 0), 0) ?></div></div>
+                <div class="col-md-3"><div class="small text-muted">Cash seller collected (COD self-ship)</div><div class="fw-bold">Rs. <?= number_format((float) ($dueSummary['collected'] ?? 0), 0) ?></div></div>
+            </div>
+            <?php if ($dueLines === []): ?>
+                <p class="small text-muted mb-0">No COD self-delivery dues yet.</p>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light small">
+                            <tr>
+                                <th>Order</th>
+                                <th>Collected</th>
+                                <th>Commission</th>
+                                <th>Cashback</th>
+                                <th>Due</th>
+                                <th>Left</th>
+                                <th>Paid?</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($dueLines as $d): ?>
+                                <tr>
+                                    <td>
+                                        <a href="<?= site_url('admin/orders/' . (int) $d['order_id']) ?>"><?= esc($d['order_number'] ?? ('#' . $d['order_id'])) ?></a>
+                                        <div class="small text-muted">Order Rs. <?= number_format((float) ($d['total_amount'] ?? 0), 0) ?> · payable Rs. <?= number_format((float) ($d['final_payable'] ?? 0), 0) ?> · wallet Rs. <?= number_format((float) ($d['wallet_amount_used'] ?? 0), 0) ?></div>
+                                    </td>
+                                    <td>Rs. <?= number_format((float) $d['collected_cash'], 0) ?></td>
+                                    <td>Rs. <?= number_format((float) $d['commission_amount'], 0) ?></td>
+                                    <td>Rs. <?= number_format((float) $d['cashback_amount'], 0) ?></td>
+                                    <?php $left = \App\Services\Commission\SellerDueService::remaining($d); ?>
+                                    <td class="fw-bold">Rs. <?= number_format((float) $d['due_amount'], 0) ?></td>
+                                    <td class="<?= $left > 0 ? 'text-danger fw-bold' : 'text-success' ?>">Rs. <?= number_format($left, 0) ?></td>
+                                    <td>
+                                        <?php if ($d['status'] === 'paid'): ?>
+                                            <span class="badge bg-success">Paid <?= !empty($d['paid_at']) ? date('d M', strtotime($d['paid_at'])) : '' ?></span>
+                                        <?php elseif ($d['status'] === 'waived'): ?>
+                                            <span class="badge bg-secondary">Waived</span>
+                                        <?php elseif ((float) ($d['paid_amount'] ?? 0) > 0): ?>
+                                            <span class="badge bg-warning text-dark">Partial Rs. <?= number_format((float) $d['paid_amount'], 0) ?></span>
+                                        <?php else: ?>
+                                            <span class="badge bg-danger">Unpaid</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= site_url('admin/dues/' . (int) $d['id'] . '/receipt') ?>">Receipt</a>
+                                        <?php if ($d['status'] === 'unpaid' && $left > 0): ?>
+                                            <form method="POST" action="<?= site_url('admin/dues/' . (int) $d['id'] . '/paid') ?>" class="d-inline-flex gap-1 align-items-center mt-1">
+                                                <?= csrf_field() ?>
+                                                <input type="number" step="1" min="1" name="amount" class="form-control form-control-sm" style="width:90px" placeholder="<?= (int) $left ?>" value="<?= (int) $left ?>">
+                                                <input type="hidden" name="paid_note" value="Received from seller">
+                                                <button class="btn btn-sm btn-success rounded-pill" onclick="return confirm('Record this cash received?');">Receive</button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             <?php endif; ?>
         </div>

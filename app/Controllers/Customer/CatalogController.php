@@ -105,8 +105,26 @@ class CatalogController extends BaseController
         }
 
         if (! empty($filters['search'])) {
+            $searchIds = [];
+            try {
+                $slice = array_slice($products, 0, 10);
+                $pids  = array_map(static fn ($p) => (int) ($p['id'] ?? 0), $slice);
+                $first = (new \App\Models\ProductVariantModel())->firstIdsForProducts($pids);
+                foreach ($slice as $p) {
+                    $pid = (int) ($p['id'] ?? 0);
+                    if ($pid < 1) {
+                        continue;
+                    }
+                    $searchIds[] = catalog_content_id($pid, $first[$pid] ?? null);
+                }
+            } catch (\Throwable $e) {
+                $searchIds = [];
+            }
             \App\Services\Marketing\MarketingService::track('Search', [
                 'search_string' => (string) $filters['search'],
+                'content_ids'   => $searchIds,
+                'content_type'  => 'product',
+                'contents'      => array_map(static fn ($id) => ['id' => $id, 'quantity' => 1], $searchIds),
             ]);
         }
 
@@ -228,7 +246,19 @@ class CatalogController extends BaseController
 
         $highlights = array_values(array_filter(array_map('trim', preg_split('/\r\n|\n/', (string) ($product['highlights'] ?? '')) ?: [])));
 
-        \App\Services\Marketing\MarketingService::trackProduct('ViewContent', $product);
+        $viewPrice = $flashPrice ? (float) $flashPrice : (float) ($product['price'] ?? 0);
+        $viewVid   = (int) (($product['variants'][0]['id'] ?? 0));
+        if ($viewVid > 0 && ! empty($product['variants'][0]['price'])) {
+            $viewPrice = (float) $product['variants'][0]['price'];
+            if ($flashPrice) {
+                $viewPrice = min($viewPrice, (float) $flashPrice);
+            }
+        }
+        \App\Services\Marketing\MarketingService::trackProduct('ViewContent', $product, [
+            'variant_id' => $viewVid ?: null,
+            'price'      => $viewPrice,
+            'quantity'   => 1,
+        ]);
 
         $seen = session()->get('recently_viewed') ?? [];
         array_unshift($seen, (int) $id);

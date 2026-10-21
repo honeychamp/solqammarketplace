@@ -11,7 +11,7 @@
                     <div class="alert alert-warning text-start">
                         Merchant API keys are not in <code>.env</code> yet. Add PayFast merchant ID + secured key, then open this page again. Paid tabhi jab PayFast success/IPN aaye.
                     </div>
-                    <a class="btn btn-solqam rounded-pill" href="<?= site_url('account/orders/' . $orderId) ?>">View order</a>
+                    <a class="btn btn-solqam rounded-pill" href="<?= order_status_url((int) $orderId) ?>">View order</a>
                 <?php else: ?>
                     <p class="small text-muted">Redirecting to the payment page…</p>
                     <form id="gwForm" method="<?= esc($pay['http_method'] ?? 'POST') ?>" action="<?= esc($pay['redirect_url']) ?>">

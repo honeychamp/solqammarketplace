@@ -59,11 +59,26 @@ class SellerController extends BaseController
         }
 
         $buyers = (new OrderItemModel())->getSellerBuyers((int) $seller['user_id']);
+        $dues   = new \App\Services\Commission\SellerDueService();
+        $items  = (new OrderItemModel())->getSellerOrderItems((int) $seller['user_id']);
+        $life   = ['goods' => 0.0, 'commission' => 0.0, 'cashback' => 0.0, 'orders' => []];
+        foreach ($items as $it) {
+            $life['goods'] += (float) ($it['subtotal'] ?? 0);
+            $life['commission'] += (float) ($it['commission_amount'] ?? 0);
+            $life['cashback'] += function_exists('item_cashback') ? item_cashback($it) : (float) ($it['cashback_amount'] ?? 0);
+            $life['orders'][(int) ($it['order_id'] ?? 0)] = true;
+        }
+        $life['net'] = round($life['goods'] - $life['commission'] - $life['cashback'], 2);
+        $life['order_count'] = count($life['orders']);
+        unset($life['orders']);
 
         return view('admin/sellers/show', [
-            'title'  => "Seller Application: {$seller['store_name']} — Solqam Admin",
-            'seller' => $seller,
-            'buyers' => $buyers,
+            'title'      => "Seller Application: {$seller['store_name']} — Solqam Admin",
+            'seller'     => $seller,
+            'buyers'     => $buyers,
+            'dueSummary' => $dues->summary((int) $seller['user_id']),
+            'dueLines'   => $dues->linesForSeller((int) $seller['user_id']),
+            'life'       => $life,
         ]);
     }
 

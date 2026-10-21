@@ -323,6 +323,22 @@ if (!function_exists('hub_paginate_array')) {
     }
 }
 
+if (! function_exists('catalog_content_id')) {
+    /**
+     * Meta catalog feed id — must match pixel content_ids.
+     * Product without variants: "123". With a variant: "123_45".
+     */
+    function catalog_content_id(int $productId, $variantId = null): string
+    {
+        if ($productId < 1) {
+            return '';
+        }
+        $variantId = (int) $variantId;
+
+        return $variantId > 0 ? $productId . '_' . $variantId : (string) $productId;
+    }
+}
+
 if (!function_exists('is_product_video')) {
     function is_product_video($path, $type = ''): bool
     {
@@ -347,5 +363,43 @@ if (!function_exists('nav_forget')) {
         } catch (\Throwable $e) {
             // session may be unavailable in CLI
         }
+    }
+}
+
+if (! function_exists('is_customer_logged_in')) {
+    function is_customer_logged_in(): bool
+    {
+        return (bool) session()->get('user.isLoggedIn') && session()->get('user.role') === 'customer';
+    }
+}
+
+if (! function_exists('remember_guest_order')) {
+    function remember_guest_order(int $orderId): void
+    {
+        if ($orderId < 1) {
+            return;
+        }
+        $ids = array_map('intval', session()->get('guest_order_ids') ?? []);
+        $ids[] = $orderId;
+        session()->set('guest_order_ids', array_values(array_unique($ids)));
+        session()->set('guest_mode', 1);
+    }
+}
+
+if (! function_exists('guest_can_see_order')) {
+    function guest_can_see_order(int $orderId): bool
+    {
+        return in_array($orderId, array_map('intval', session()->get('guest_order_ids') ?? []), true);
+    }
+}
+
+if (! function_exists('order_status_url')) {
+    function order_status_url(int $orderId): string
+    {
+        if (session()->get('user.isLoggedIn')) {
+            return site_url('account/orders/' . $orderId);
+        }
+
+        return site_url('order/thanks/' . $orderId);
     }
 }

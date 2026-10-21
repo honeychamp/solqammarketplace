@@ -123,11 +123,16 @@
                     </div>
 
                     <a href="<?= site_url('checkout') ?>" class="btn btn-solqam-accent btn-lg w-100 rounded-pill py-2 fw-bold shadow-sm">
-                        Proceed to Checkout <i class="bi bi-arrow-right ms-1"></i>
+                        <?= session()->get('user.isLoggedIn') ? 'Proceed to Checkout' : 'Checkout as Guest' ?> <i class="bi bi-arrow-right ms-1"></i>
                     </a>
+                    <?php if (! session()->get('user.isLoggedIn')): ?>
+                        <div class="small text-center mt-2">
+                            <a href="<?= site_url('login') ?>">Sign In</a> · <a href="<?= site_url('register') ?>">Join Solqam</a>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="text-center mt-3 small text-muted">
-                        <i class="bi bi-shield-check text-success me-1"></i> Buyer protection · COD &amp; wallet
+                        <i class="bi bi-shield-check text-success me-1"></i> Buyer protection · COD<?= session()->get('user.isLoggedIn') ? ' &amp; wallet' : '' ?>
                     </div>
                 </div>
             </div>

@@ -54,7 +54,7 @@
         </div>
         <div class="col-md-5">
             <label class="form-label small">Conversions API token <?= !empty($masks['meta_capi_token']) ? '<span class="text-muted">saved: ' . esc($masks['meta_capi_token']) . '</span>' : '' ?></label>
-            <input type="password" name="meta_capi_token" class="form-control" autocomplete="new-password" placeholder="Paste new token to replace">
+            <textarea name="meta_capi_token" class="form-control font-monospace" rows="2" autocomplete="new-password" placeholder="Paste new token to replace"></textarea>
         </div>
         <div class="col-md-3">
             <label class="form-label small">Test event code</label>
@@ -70,7 +70,7 @@
         </div>
         <div class="col-md-5">
             <label class="form-label small">Events API access token <?= !empty($masks['tiktok_api_token']) ? '<span class="text-muted">saved: ' . esc($masks['tiktok_api_token']) . '</span>' : '' ?></label>
-            <input type="password" name="tiktok_api_token" class="form-control" autocomplete="new-password" placeholder="Paste new token to replace">
+            <textarea name="tiktok_api_token" class="form-control font-monospace" rows="2" autocomplete="new-password" placeholder="Paste new token to replace"></textarea>
         </div>
         <div class="col-md-3">
             <label class="form-label small">App ID (optional)</label>
@@ -107,4 +107,22 @@
     <?= csrf_field() ?>
     <button class="btn btn-outline-primary btn-sm">Send test ViewContent now</button>
 </form>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+(function () {
+    var form = document.querySelector('form[action*="admin/marketing"]:not([action*="test"])');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+        ['meta_capi_token', 'tiktok_api_token'].forEach(function (name) {
+            var el = form.querySelector('[name="' + name + '"]');
+            if (!el) return;
+            var v = (el.value || '').trim();
+            if (!v || v.indexOf('rawb64:') === 0) return;
+            el.value = 'rawb64:' + btoa(unescape(encodeURIComponent(v)));
+        });
+    });
+})();
+</script>
 <?= $this->endSection() ?>

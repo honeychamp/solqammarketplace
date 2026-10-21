@@ -131,8 +131,14 @@ class CartController extends BaseController
             nav_forget(['cart']);
         }
         \App\Services\Marketing\MarketingService::trackProduct('AddToCart', $product, [
-            'quantity' => $quantity,
-            'price'    => $unitPrice,
+            'quantity'    => $quantity,
+            'price'       => $unitPrice,
+            'variant_id'  => $variantId,
+            'phone'       => (string) ($this->request->getPost('phone') ?: session()->get('user.phone') ?? ''),
+            'email'       => (string) (session()->get('user.email') ?? ''),
+            'external_id' => (string) (session()->get('user.id') ?? ''),
+            'fbp'         => (string) ($this->request->getPost('fbp') ?? ''),
+            'fbc'         => (string) ($this->request->getPost('fbc') ?? ''),
         ]);
 
         $buyNow = (string) $this->request->getPost('buy_now') === '1';

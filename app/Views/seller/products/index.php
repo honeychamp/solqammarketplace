@@ -51,7 +51,7 @@
                 </thead>
                 <tbody>
                     <?php foreach ($products as $p): ?>
-                        <tr>
+                        <tr data-product-url="<?= esc(site_url('product/' . $p['id'])) ?>" data-product-image="<?= esc(function_exists('media_url') ? media_url($p['primary_image'] ?? '') : ($p['primary_image'] ?? '')) ?>">
                             <td>
                                 <div class="d-flex align-items-center">
                                     <img src="<?= esc($p['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" class="rounded-3 me-3" style="width: 50px; height: 50px; object-fit: cover;">

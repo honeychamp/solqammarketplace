@@ -17,8 +17,16 @@ $invalid = static function (string $key) use ($fieldErrors): string {
     <div class="ck-hero">
         <div>
             <div class="sf-eyebrow mb-1">Secure checkout</div>
-            <h3 class="fw-bold mb-1 text-dark">Delivery &amp; payment</h3>
+            <h3 class="fw-bold mb-1 text-dark"><?= ! empty($isGuest) ? 'Guest checkout' : 'Delivery &amp; payment' ?></h3>
             <div class="small text-muted"><i class="bi bi-lock-fill text-success me-1"></i> 256-bit encrypted · 7-day returns</div>
+            <?php if (! empty($isGuest)): ?>
+                <div class="alert alert-light border rounded-4 mt-3 mb-0 small text-start">
+                    Ordering as a guest. Enter name, mobile and address below. Wallet / Pay later need a signed-in account.
+                    <a href="<?= site_url('login') ?>" class="fw-semibold">Sign In</a>
+                    or
+                    <a href="<?= site_url('register') ?>" class="fw-semibold">Join Solqam</a>
+                </div>
+            <?php endif; ?>
         </div>
         <div class="ck-steps">
             <span class="ck-step is-done"><span class="ck-step-num">1</span> Cart</span>
@@ -95,6 +103,12 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                                 <label class="form-label small fw-semibold text-muted">Mobile Number (Active) <span class="text-danger">*</span></label>
                                 <input type="text" name="phone" id="ck_phone" class="form-control<?= $invalid('phone') ?>" placeholder="03XXXXXXXXX" value="<?= checkout_keep('phone') ?>" required>
                             </div>
+                            <?php if (! empty($isGuest)): ?>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold text-muted">Email (optional)</label>
+                                <input type="email" name="guest_email" class="form-control<?= $invalid('guest_email') ?>" placeholder="For order updates" value="<?= checkout_keep('guest_email') ?>">
+                            </div>
+                            <?php endif; ?>
                         </div>
                         <div class="mb-2">
                             <label class="form-label small fw-semibold text-muted">Street / House / Apartment / Sector <span class="text-danger">*</span></label>
@@ -176,9 +190,9 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                                 </div>
                             </div>
                             <?php endif; ?>
-                            <div class="col-12">
+                            <div class="col-12 <?= ! empty($isGuest) ? 'd-none' : '' ?>">
                                 <div class="form-check pay-tile">
-                                    <input class="form-check-input ms-0 me-2" type="radio" name="payment_method" id="pay_later" value="pay_later" <?= $keepPay === 'pay_later' ? 'checked' : '' ?>>
+                                    <input class="form-check-input ms-0 me-2" type="radio" name="payment_method" id="pay_later" value="pay_later" <?= $keepPay === 'pay_later' ? 'checked' : '' ?> <?= ! empty($isGuest) ? 'disabled' : '' ?>>
                                     <label class="form-check-label w-100 ps-1" for="pay_later">
                                         <div class="fw-bold text-dark"><i class="bi bi-calendar2-week text-warning fs-5"></i> Pay later (wallet shortfall)</div>
                                         <small class="text-secondary d-block mt-1">Wallet shortfall wallet mein minus dikhega jab tak baad mein pay na ho.</small>
@@ -257,7 +271,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                     <hr>
 
                     <!-- Wallet Ledger Box -->
-                    <div class="p-3 rounded-3 mb-3" style="background: linear-gradient(135deg, #F0F4FF 0%, #E0E7FF 100%); border: 1px solid #C7D2FE;">
+                    <div class="p-3 rounded-3 mb-3 <?= ! empty($isGuest) ? 'd-none' : '' ?>" style="background: linear-gradient(135deg, #F0F4FF 0%, #E0E7FF 100%); border: 1px solid #C7D2FE;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div>
                                 <i class="bi bi-wallet2 text-warning fs-5 me-1"></i>
