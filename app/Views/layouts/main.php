@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($title ?? 'Solqam Marketplace') ?></title>
     <?= view('partials/favicon') ?>
+    <?= view('partials/pwa') ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -292,7 +293,18 @@
 
     <?= $this->renderSection('modals') ?>
 
+    <div id="solqam-pwa-install" role="dialog" aria-label="Install Solqam app">
+        <img src="<?= base_url('assets/images/solqam-pwa-192.png') ?>" alt="">
+        <div class="pwa-copy">
+            <strong>Install Solqam</strong>
+            <span class="pwa-hint">Home screen pe Solqam kholo</span>
+        </div>
+        <button type="button" class="btn-pwa" id="solqam-pwa-btn">Install</button>
+        <button type="button" class="btn-pwa-x" id="solqam-pwa-close" aria-label="Close">&times;</button>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= base_url('assets/js/solqam-pwa.js') ?>?v=20261022a" defer></script>
     <script>
     (() => {
         const wrap = document.querySelector('.mega-wrap');

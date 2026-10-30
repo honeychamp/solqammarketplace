@@ -50,9 +50,13 @@ class PricingService
 
     public function resolveUnitPrice(array $product, ?array $variant = null): float
     {
-        $base = $variant && ! empty($variant['price'])
-            ? (float) $variant['price']
-            : (float) $product['price'];
+        $base = (float) ($product['price'] ?? 0);
+        if ($variant) {
+            $skuPrice = (float) ($variant['price'] ?? 0);
+            if ($skuPrice > 0) {
+                $base = $skuPrice;
+            }
+        }
 
         $flashMap = $this->getFlashPriceMap();
         $productId = (int) $product['id'];

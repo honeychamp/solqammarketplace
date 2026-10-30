@@ -274,7 +274,24 @@ trait SavesProductCatalog
         }
     }
 
-    protected function saveVariants(int $productId): void
+    /**
+     * SKU rows copy the previous list price in the form. If the seller only changes
+     * the main Price field, those SKUs must follow the new list price on the storefront.
+     */
+    protected function persistCatalogUpdate(int $id, array $existing, array $payload): void
+    {
+        $oldPrice = (float) ($existing['price'] ?? 0);
+        $newPrice = (float) ($payload['price'] ?? 0);
+        $this->productModel->updateCatalog($id, $payload);
+        $this->persistPostedCashback($id);
+        $this->replacePrimaryImage($id);
+        $this->saveGalleryImages($id, true);
+        $this->replaceVariants($id, $newPrice, $oldPrice);
+        $this->applyListPriceToVariants($id, $newPrice, $oldPrice);
+        $this->syncDealPrices($id, $oldPrice, $newPrice);
+    }
+
+    protected function saveVariants(int $productId, ?float $listPrice = null, ?float $previousListPrice = null): void
     {
         $colors = (array) $this->request->getPost('variant_color');
         $sizes  = (array) $this->request->getPost('variant_size');
@@ -297,7 +314,7 @@ trait SavesProductCatalog
             $color = trim((string) ($colors[$i] ?? ''));
             $size  = trim((string) ($sizes[$i] ?? ''));
             $stock = (int) ($stocks[$i] ?? 0);
-            $price = ($prices[$i] ?? '') !== '' ? (float) $prices[$i] : null;
+            $price = $this->inheritVariantPrice($prices[$i] ?? '', $listPrice, $previousListPrice);
             if ($color === '' && $size === '') {
                 continue;
             }
@@ -324,9 +341,79 @@ trait SavesProductCatalog
         }
     }
 
-    protected function replaceVariants(int $productId): void
+    protected function replaceVariants(int $productId, ?float $listPrice = null, ?float $previousListPrice = null): void
     {
         (new ProductVariantModel())->where('product_id', $productId)->delete();
-        $this->saveVariants($productId);
+        $this->saveVariants($productId, $listPrice, $previousListPrice);
+    }
+
+    protected function inheritVariantPrice($posted, ?float $listPrice, ?float $previousListPrice): ?float
+    {
+        if ($posted === '' || $posted === null) {
+            return $listPrice !== null && $listPrice > 0 ? $listPrice : null;
+        }
+        $price = (float) $posted;
+        if ($price <= 0) {
+            return $listPrice !== null && $listPrice > 0 ? $listPrice : null;
+        }
+        if ($previousListPrice !== null && abs($price - $previousListPrice) < 0.009) {
+            return $listPrice !== null && $listPrice > 0 ? $listPrice : $price;
+        }
+        if ($listPrice !== null && abs($price - $listPrice) < 0.009) {
+            return $listPrice;
+        }
+
+        return $price;
+    }
+
+    protected function applyListPriceToVariants(int $productId, float $newPrice, float $oldPrice): void
+    {
+        if ($productId <= 0 || $newPrice <= 0) {
+            return;
+        }
+        try {
+            $db = \Config\Database::connect();
+            if (! $db->tableExists('product_variants')) {
+                return;
+            }
+            $db->table('product_variants')
+                ->where('product_id', $productId)
+                ->groupStart()
+                    ->where('price', null)
+                    ->orWhere('price', 0)
+                    ->orWhere('price', $oldPrice)
+                ->groupEnd()
+                ->update(['price' => $newPrice]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Variant list price sync: ' . $e->getMessage());
+        }
+    }
+
+    protected function syncDealPrices(int $productId, float $oldPrice, float $newPrice): void
+    {
+        if ($productId <= 0 || $newPrice <= 0) {
+            return;
+        }
+        try {
+            $db = \Config\Database::connect();
+            if (! $db->tableExists('flash_sale_items')) {
+                return;
+            }
+            $rows = $db->table('flash_sale_items')->where('product_id', $productId)->get()->getResultArray();
+            foreach ($rows as $row) {
+                $sale = (float) ($row['sale_price'] ?? 0);
+                $next = $sale;
+                if ($oldPrice > 0 && abs($sale - $oldPrice) < 0.009) {
+                    $next = $newPrice;
+                } elseif ($sale > $newPrice) {
+                    $next = $newPrice;
+                }
+                if (abs($next - $sale) > 0.009) {
+                    $db->table('flash_sale_items')->where('id', (int) $row['id'])->update(['sale_price' => $next]);
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Deal price sync: ' . $e->getMessage());
+        }
     }
 }

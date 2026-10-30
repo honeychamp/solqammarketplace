@@ -115,6 +115,9 @@ class MarketingService
             if ($isPageView && (int) ($settings['server_pageview'] ?? 1) !== 1) {
                 return;
             }
+            if (in_array($eventName, ['Purchase', 'Refund'], true) && (($payload['value'] ?? 0) <= 0)) {
+                return;
+            }
             if (! $isPageView) {
                 self::queueBrowser($eventName, $payload, $eventId);
                 (new MarketingEventLogModel())->record('browser', $eventName, $eventId, $payload, 'queued', 'queued');
@@ -126,8 +129,8 @@ class MarketingService
             }
 
             $user    = self::userData($data);
-            $custom  = self::metaCustom($payload);
-            $url     = (string) ($data['event_source_url'] ?? current_url());
+            $custom  = $eventName === 'PageView' ? [] : self::metaCustom($payload);
+            $url     = (string) ($data['event_source_url'] ?? self::sourceUrl());
             $tiktokU = self::tiktokUser($data);
 
             (new MetaTrackingService())->sendCapi($settings, $eventName, $eventId, $custom, $user, $url);
@@ -191,16 +194,12 @@ class MarketingService
                 } catch (\Throwable $e) {
                 }
             }
-            $goods = (float) $order['total_amount'] - (float) ($order['discount_amount'] ?? 0);
-            $value = $goods + (float) ($order['shipping_amount'] ?? 0);
-            if ($eventName === 'Refund') {
-                $value = (float) ($order['total_amount'] ?? $value);
-            }
             $mapped = self::mapOrderItems($items);
+            $value  = self::orderEventValue($order, $mapped, $eventName);
             self::track($eventName, array_merge($mapped, [
                 'event_id'        => $eventName === 'Purchase' ? $eventId : ($eventName . '_' . $eventId),
                 'transaction_id'  => (string) ($order['order_number'] ?? $orderId),
-                'value'           => round($value, 2),
+                'value'           => $value,
                 'tax'             => 0,
                 'shipping'        => (float) ($order['shipping_amount'] ?? 0),
                 'coupon'          => (string) ($order['coupon_code'] ?? ''),
@@ -231,7 +230,7 @@ class MarketingService
             if ($uri !== '' && (str_starts_with($uri, 'admin') || str_starts_with($uri, 'seller') || str_starts_with($uri, 'api') || str_starts_with($uri, 'feed'))) {
                 return;
             }
-            $path = current_url();
+            $path = self::sourceUrl();
             $last = session()->get('mkt_last_pv');
             if (is_array($last) && ($last['u'] ?? '') === $path && (int) ($last['t'] ?? 0) > time() - 8) {
                 return;
@@ -266,11 +265,18 @@ class MarketingService
             $vid   = (int) ($item['variant_id'] ?? 0);
             $id    = function_exists('catalog_content_id') ? catalog_content_id($pid, $vid ?: null) : (string) $pid;
             $q     = max(1, (int) ($item['quantity'] ?? 1));
-            $price = (float) ($item['unit_price'] ?? $item['price'] ?? 0);
+            $price = self::firstMoney($item['price'] ?? null, $item['unit_price'] ?? null, $item['sale_price'] ?? null);
+            $line  = self::firstMoney($item['subtotal'] ?? null, $item['line_total'] ?? null);
+            if ($line <= 0) {
+                $line = round($price * $q, 2);
+            }
+            if ($price <= 0 && $q > 0 && $line > 0) {
+                $price = round($line / $q, 2);
+            }
             $name  = (string) ($item['product_name'] ?? $item['name'] ?? '');
             $ids[] = $id;
             $qty  += $q;
-            $value += $price * $q;
+            $value += $line;
             $contents[] = ['id' => $id, 'quantity' => $q, 'item_price' => $price];
             $gaItems[]  = [
                 'item_id'       => $id,
@@ -300,7 +306,9 @@ class MarketingService
                 'product_id'   => $item['product_id'] ?? '',
                 'variant_id'   => $item['variant_id'] ?? 0,
                 'quantity'     => $item['quantity'] ?? 1,
+                'price'        => $item['price'] ?? $item['unit_price'] ?? 0,
                 'unit_price'   => $item['unit_price'] ?? $item['price'] ?? 0,
+                'subtotal'     => $item['subtotal'] ?? 0,
                 'product_name' => $item['product_name'] ?? $item['name'] ?? '',
             ];
         }
@@ -316,7 +324,7 @@ class MarketingService
             'event'            => $eventName,
             'ga4_event'        => self::GA4[$eventName] ?? strtolower($eventName),
             'currency'         => $currency,
-            'value'            => isset($data['value']) ? round((float) $data['value'], 2) : null,
+            'value'            => self::moneyOrNull($data['value'] ?? null),
             'content_ids'      => $data['content_ids'] ?? [],
             'content_type'     => $data['content_type'] ?? 'product',
             'content_name'     => $data['content_name'] ?? '',
@@ -335,9 +343,11 @@ class MarketingService
 
     protected static function metaCustom(array $payload): array
     {
+        $value = self::moneyOrNull($payload['value'] ?? null);
+
         $custom = array_filter([
             'currency'         => $payload['currency'] ?? self::CURRENCY,
-            'value'            => $payload['value'],
+            'value'            => $value,
             'content_ids'      => $payload['content_ids'] ?: null,
             'content_type'     => $payload['content_type'] ?? 'product',
             'content_name'     => $payload['content_name'] ?: null,
@@ -406,61 +416,145 @@ class MarketingService
 
     protected static function facebookClickIds(array $data): array
     {
-        $fbp = trim((string) ($data['fbp'] ?? ''));
-        if ($fbp === '') {
-            $fbp = self::cookie('_fbp') ?: (string) (session()->get('mkt_fbp') ?? '');
-        }
-        $fbc = trim((string) ($data['fbc'] ?? ''));
-        if ($fbc === '') {
-            $fbc = self::cookie('_fbc') ?: (string) (session()->get('mkt_fbc') ?? '');
-        }
-        if ($fbc === '') {
-            $fbclid = trim((string) ($data['fbclid'] ?? session()->get('mkt_fbclid') ?? $_GET['fbclid'] ?? ''));
-            if ($fbclid !== '') {
-                $fbc = 'fb.1.' . (int) round(microtime(true) * 1000) . '.' . $fbclid;
+        return [
+            'fbp' => self::exactFbp((string) ($data['fbp'] ?? '')),
+            'fbc' => self::exactFbc((string) ($data['fbc'] ?? '')),
+        ];
+    }
+
+    /**
+     * Cookie first, exact string only. Never build fbc from fbclid (Meta flags that as a modified click id).
+     */
+    protected static function exactFbc(string $posted): string
+    {
+        foreach ([self::rawCookie('_fbc'), $posted] as $candidate) {
+            $ok = self::pixelFbc($candidate);
+            if ($ok !== '') {
+                return $ok;
             }
         }
 
-        return [
-            'fbp' => $fbp,
-            'fbc' => $fbc,
-        ];
+        return '';
+    }
+
+    protected static function pixelFbc(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '' || strlen($value) > 2048) {
+            return '';
+        }
+        // Accept Pixel cookie / hidden-field copy only. Do not rewrite the click-id segment.
+        if (! preg_match('/^fb\.\d+\.\d+\.\S+$/', $value)) {
+            return '';
+        }
+
+        return $value;
+    }
+
+    protected static function exactFbp(string $posted): string
+    {
+        foreach ([self::rawCookie('_fbp'), $posted] as $v) {
+            $v = trim($v);
+            if ($v !== '' && preg_match('/^fb\.\d+\.\d+\.\d+$/', $v)) {
+                return $v;
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Read Set-Cookie payload as the browser sent it. PHP's $_COOKIE url-decodes and can
+     * change fbclid characters, which Meta then reports as a modified fbc.
+     */
+    protected static function rawCookie(string $name): string
+    {
+        $header = (string) ($_SERVER['HTTP_COOKIE'] ?? '');
+        if ($header !== '' && preg_match('/(?:^|;\s*)' . preg_quote($name, '/') . '=([^;]*)/', $header, $m)) {
+            return $m[1];
+        }
+
+        return isset($_COOKIE[$name]) ? (string) $_COOKIE[$name] : '';
+    }
+
+    /**
+     * @param mixed $a
+     * @param mixed $b
+     * @param mixed $c
+     */
+    protected static function firstMoney($a = null, $b = null, $c = null): float
+    {
+        foreach ([$a, $b, $c] as $v) {
+            $n = self::moneyOrNull($v);
+            if ($n !== null) {
+                return $n;
+            }
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * @param mixed $value
+     */
+    protected static function moneyOrNull($value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_string($value)) {
+            $value = str_replace([',', ' '], '', $value);
+        }
+        if (! is_numeric($value)) {
+            return null;
+        }
+        $n = round((float) $value, 2);
+
+        return $n > 0 ? $n : null;
+    }
+
+    protected static function orderEventValue(array $order, array $mapped, string $eventName): float
+    {
+        $goods   = self::firstMoney($mapped['value'] ?? null, $order['total_amount'] ?? null);
+        $ship    = round((float) ($order['shipping_amount'] ?? 0), 2);
+        $disc    = round((float) ($order['discount_amount'] ?? $order['coupon_discount'] ?? 0), 2);
+        $wallet  = round((float) ($order['wallet_amount_used'] ?? 0), 2);
+        $payable = round((float) ($order['final_payable'] ?? 0), 2);
+        $value   = round(max(0, $goods - $disc) + max(0, $ship), 2);
+        if ($value <= 0) {
+            $value = round($payable + $wallet, 2);
+        }
+        if ($value <= 0) {
+            $value = $payable > 0 ? $payable : $goods;
+        }
+        if ($eventName === 'Refund') {
+            $refund = self::firstMoney($order['final_payable'] ?? null, $order['total_amount'] ?? null, $value);
+            $value  = $refund > 0 ? $refund : $value;
+        }
+
+        return round(max(0, $value), 2);
+    }
+
+    protected static function sourceUrl(): string
+    {
+        $https = (! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'solqam.com');
+        $uri  = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+
+        return ($https ? 'https' : 'http') . '://' . $host . $uri;
     }
 
     public static function captureClickIds(): void
     {
         try {
+            $posted = '';
             $req = function_exists('service') ? service('request') : null;
-            $pick = static function (string $name) use ($req): string {
-                $v = (string) ($_COOKIE[$name] ?? '');
-                if ($v !== '') {
-                    return $v;
-                }
-                if ($req) {
-                    $c = (string) ($req->getCookie($name) ?? '');
-                    if ($c !== '') {
-                        return $c;
-                    }
-                    $p = (string) ($req->getPost($name) ?? $req->getPost(ltrim($name, '_')) ?? '');
-                    if ($p !== '') {
-                        return $p;
-                    }
-                }
-
-                return '';
-            };
-            $fbp = $pick('_fbp') ?: $pick('fbp');
-            $fbc = $pick('_fbc') ?: $pick('fbc');
-            $fbclid = trim((string) ($_GET['fbclid'] ?? ($req ? $req->getGet('fbclid') : '') ?? ''));
-            if ($fbp !== '') {
-                session()->set('mkt_fbp', $fbp);
+            if ($req) {
+                $posted = (string) ($req->getPost('fbc') ?? '');
             }
-            if ($fbc !== '') {
-                session()->set('mkt_fbc', $fbc);
-            }
-            if ($fbclid !== '') {
-                session()->set('mkt_fbclid', $fbclid);
-            }
+            self::exactFbc($posted);
+            self::exactFbp($req ? (string) ($req->getPost('fbp') ?? '') : '');
         } catch (\Throwable $e) {
         }
     }

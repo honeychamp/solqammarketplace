@@ -14,16 +14,19 @@ class MetaTrackingService
             return;
         }
 
+        $row = [
+            'event_name'       => $eventName,
+            'event_time'       => time(),
+            'event_source_url' => $sourceUrl,
+            'action_source'    => 'website',
+            'event_id'         => $eventId,
+            'user_data'        => $user,
+        ];
+        if ($custom !== []) {
+            $row['custom_data'] = $custom;
+        }
         $payload = [
-            'data' => [[
-                'event_name'       => $eventName,
-                'event_time'       => time(),
-                'event_source_url' => $sourceUrl,
-                'action_source'    => 'website',
-                'event_id'         => $eventId,
-                'user_data'        => $user,
-                'custom_data'      => $custom,
-            ]],
+            'data' => [$row],
         ];
         $test = trim((string) ($settings['meta_test_event_code'] ?? ''));
         if ((int) ($settings['test_mode'] ?? 0) === 1 && $test !== '') {

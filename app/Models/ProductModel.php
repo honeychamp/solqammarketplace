@@ -154,7 +154,12 @@ class ProductModel extends Model
 
     protected function buildCatalogQuery(array $filters, bool $countOnly)
     {
-        $builder = $this->select($countOnly ? 'products.id' : ('products.*, categories.name as category_name, categories.slug as category_slug, seller_profiles.store_name, ' . $this->catalogImageSelect()))
+        $ratingSql = '';
+        if (! $countOnly && $this->db->tableExists('reviews')) {
+            $ratingSql = ', (SELECT AVG(rating) FROM reviews WHERE reviews.product_id = products.id AND reviews.is_approved = 1) AS avg_rating'
+                . ', (SELECT COUNT(*) FROM reviews WHERE reviews.product_id = products.id AND reviews.is_approved = 1) AS review_count';
+        }
+        $builder = $this->select($countOnly ? 'products.id' : ('products.*, categories.name as category_name, categories.slug as category_slug, seller_profiles.store_name, ' . $this->catalogImageSelect() . $ratingSql))
             ->join('categories', 'categories.id = products.category_id', 'left')
             ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
             ->where('products.status', 'active');

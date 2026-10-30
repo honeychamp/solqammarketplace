@@ -122,6 +122,12 @@ _modules/*
 .phpintel
 /api/
 
+# Android / TWA signing keys — never commit
+*.jks
+*.keystore
+twa/android/
+twa/keystore.properties
+
 # Visual Studio Code
 .vscode/
 

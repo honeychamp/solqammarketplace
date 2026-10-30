@@ -165,14 +165,7 @@
                                         <?= esc($product['name']) ?>
                                     </a>
 
-                                    <div class="star-rating">
-                                        <i class="bi bi-star"></i>
-                                        <i class="bi bi-star"></i>
-                                        <i class="bi bi-star"></i>
-                                        <i class="bi bi-star"></i>
-                                        <i class="bi bi-star"></i>
-                                        <span class="review-count">(0)</span>
-                                    </div>
+                                    <?= view('customer/_star_rating', ['product' => $product]) ?>
 
                                     <div class="small text-muted mb-2">
                                         <i class="bi bi-shop text-solqam me-1"></i> <?= esc($product['store_name'] ?? 'Vendor Store') ?>

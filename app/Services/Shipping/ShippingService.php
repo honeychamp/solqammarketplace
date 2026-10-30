@@ -21,6 +21,26 @@ class ShippingService
         return $city;
     }
 
+    protected function aliasCity(string $normalized): string
+    {
+        $map = [
+            'lhr' => 'lahore',
+            'khi' => 'karachi',
+            'isb' => 'islamabad',
+            'isbd' => 'islamabad',
+            'rwp' => 'rawalpindi',
+            'pindi' => 'rawalpindi',
+            'fsd' => 'faisalabad',
+            'lyp' => 'faisalabad',
+            'mux' => 'multan',
+            'pew' => 'peshawar',
+            'uett' => 'quetta',
+            'gujranwala city' => 'gujranwala',
+        ];
+
+        return $map[$normalized] ?? $normalized;
+    }
+
     public function quote(?string $city, ?string $province, float $subtotal): array
     {
         if ($this->normalizeCity($city) === '') {
@@ -77,12 +97,24 @@ class ShippingService
         $want  = $this->normalizeCity($city);
 
         if ($want !== '') {
+            $want = $this->aliasCity($want);
             foreach ($zones as $zone) {
                 if ($this->isDefaultLabel((string) $zone['city'])) {
                     continue;
                 }
                 if ($this->normalizeCity($zone['city']) === $want) {
                     return $zone;
+                }
+            }
+            if (strlen($want) >= 3) {
+                foreach ($zones as $zone) {
+                    if ($this->isDefaultLabel((string) $zone['city'])) {
+                        continue;
+                    }
+                    $zc = $this->normalizeCity($zone['city']);
+                    if ($zc !== '' && (str_contains($want, $zc) || str_contains($zc, $want))) {
+                        return $zone;
+                    }
                 }
             }
         }

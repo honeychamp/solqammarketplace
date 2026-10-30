@@ -104,7 +104,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                                 <input type="text" name="phone" id="ck_phone" class="form-control<?= $invalid('phone') ?>" placeholder="03XXXXXXXXX" value="<?= checkout_keep('phone') ?>" required>
                             </div>
                             <?php if (! empty($isGuest)): ?>
-                            <div class="col-12">
+                            <div class="col-12 d-none d-md-block ">
                                 <label class="form-label small fw-semibold text-muted">Email (optional)</label>
                                 <input type="email" name="guest_email" class="form-control<?= $invalid('guest_email') ?>" placeholder="For order updates" value="<?= checkout_keep('guest_email') ?>">
                             </div>
@@ -120,19 +120,18 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                                 <?php
                                 $zones = $shippingZones ?? [];
                                 $keepCity = form_keep_raw('checkout_draft', 'city');
-                                $keepCityOther = form_keep_raw('checkout_draft', 'city_other');
+                                if ($keepCity === '__other') {
+                                    $keepCity = form_keep_raw('checkout_draft', 'city_other');
+                                }
                                 ?>
+                                <input type="text" name="city" id="checkoutCity" class="form-control<?= $invalid('city') ?>" list="checkoutCityList" placeholder="Type your city" value="<?= esc($keepCity) ?>" autocomplete="address-level2" required>
                                 <?php if ($zones !== []): ?>
-                                    <select name="city" id="checkoutCity" class="form-select<?= $invalid('city') ?>" onchange="refreshShipping()" required>
-                                        <option value="">Select city</option>
-                                        <?php foreach ($zones as $z): ?>
-                                            <option value="<?= esc($z['city']) ?>" <?= $keepCity === (string) $z['city'] ? 'selected' : '' ?>><?= esc($z['city']) ?> — Rs. <?= number_format((float) $z['rate'], 0) ?></option>
-                                        <?php endforeach; ?>
-                                        <option value="__other" <?= $keepCity === '__other' ? 'selected' : '' ?>>Other city</option>
-                                    </select>
-                                    <input type="text" name="city_other" id="checkoutCityOther" class="form-control mt-2<?= $keepCity === '__other' ? '' : ' d-none' ?>" placeholder="Type city name" value="<?= checkout_keep('city_other') ?>" oninput="refreshShipping()">
-                                <?php else: ?>
-                                    <input type="text" name="city" id="checkoutCity" class="form-control<?= $invalid('city') ?>" placeholder="e.g. Lahore" value="<?= checkout_keep('city') ?>" oninput="refreshShipping()" required>
+                                <datalist id="checkoutCityList">
+                                    <?php foreach ($zones as $z): ?>
+                                        <?php if (strcasecmp((string) $z['city'], 'Default') === 0) continue; ?>
+                                        <option value="<?= esc($z['city']) ?>"></option>
+                                    <?php endforeach; ?>
+                                </datalist>
                                 <?php endif; ?>
                             </div>
                             <div class="col-md-4">
@@ -144,9 +143,9 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-semibold text-muted">Postal Code <span class="text-danger">*</span></label>
-                                <input type="text" name="postal_code" id="ck_postal" class="form-control<?= $invalid('postal_code') ?>" placeholder="e.g. 54000" value="<?= checkout_keep('postal_code') ?>" required>
+                            <div class="col-md-4 d-none d-md-block ">
+                                <label class="form-label small fw-semibold text-muted">Postal Code <span class="text-muted fw-normal">(optional)</span></label>
+                                <input type="text" name="postal_code" id="ck_postal" class="form-control<?= $invalid('postal_code') ?>" placeholder="e.g. 54000" value="<?= checkout_keep('postal_code') ?>" inputmode="numeric">
                             </div>
                         </div>
                     </div>
@@ -159,8 +158,8 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                         Payment Method
                     </h5>
 
-                    <div class="small fw-bold text-muted text-uppercase mb-2" style="letter-spacing:.08em;">Accepted methods</div>
-                    <div class="mb-3"><?= view('customer/_payment_methods') ?></div>
+                    <div class="small fw-bold text-muted text-uppercase mb-2 d-none d-md-block" style="letter-spacing:.08em;">Accepted methods</div>
+                    <div class="mb-3 d-none d-md-block"><?= view('customer/_payment_methods') ?></div>
 
                     <div id="walletCoversBox" class="alert alert-success d-none mb-0">
                         <i class="bi bi-check-circle-fill me-1"></i>
@@ -168,7 +167,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                     </div>
 
                     <div id="remainderPayBox">
-                        <p class="small text-muted mb-3" id="remainderHint">Select how you want to pay.</p>
+                        <p class="small text-muted mb-3 d-none d-md-block" id="remainderHint">Select how you want to pay.</p>
                         <div class="row g-3" id="standardPayOptions">
                             <div class="col-12">
                                 <div class="form-check pay-tile">
@@ -238,7 +237,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                 </div>
 
                 <!-- 3. Delivery Notes -->
-                <div class="sf-panel p-4">
+                <div class="sf-panel p-4 d-none d-md-block">
                     <h6 class="fw-bold mb-2 text-dark">Special Delivery Notes (Optional)</h6>
                                     <textarea name="notes" class="form-control" rows="2" placeholder="Nearby landmark, gate security code, preferred delivery time, etc."><?= checkout_keep('notes') ?></textarea>
                 </div>
@@ -325,7 +324,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                         <span class="text-secondary">Shipping <span id="shipEta"><?= $needsCity ? '' : esc(shipping_eta_label($shippingQuote['eta_days'] ?? '')) ?></span></span>
                         <span class="fw-bold font-monospace" id="shipAmount">
                             <?php if ($needsCity): ?>
-                                <span class="text-muted">Select city</span>
+                                <span class="text-muted">Type city</span>
                             <?php elseif (!empty($shippingQuote['is_free'])): ?>
                                 <span class="text-success">FREE</span>
                             <?php else: ?>
@@ -413,16 +412,15 @@ $invalid = static function (string $key) use ($fieldErrors): string {
             return { city: selected.getAttribute('data-city') || '', province: selected.getAttribute('data-province') || '', addressId: selected.value };
         }
         const sel = document.getElementById('checkoutCity');
-        let city = sel ? sel.value : '';
-        const other = document.getElementById('checkoutCityOther');
-        if (city === '__other' && other) {
-            other.classList.remove('d-none');
-            city = other.value;
-        } else if (other) {
-            other.classList.add('d-none');
-        }
+        const city = sel ? sel.value.trim() : '';
         const prov = document.getElementById('checkoutProvince');
         return { city, province: prov ? prov.value : '', addressId: '' };
+    }
+
+    let shipTimer = null;
+    function refreshShippingDebounced() {
+        clearTimeout(shipTimer);
+        shipTimer = setTimeout(refreshShipping, 280);
     }
 
     function formatEta(eta) {
@@ -440,21 +438,21 @@ $invalid = static function (string $key) use ($fieldErrors): string {
         const note = document.getElementById('shipNote');
         if (amt) {
             amt.innerHTML = needs
-                ? '<span class="text-muted">Select city</span>'
+                                ? '<span class="text-muted">Type city</span>'
                 : (q.is_free ? '<span class="text-success">FREE</span>' : ('Rs. ' + shipping.toFixed(2)));
         }
         if (eta) eta.textContent = needs ? '' : formatEta(q.eta_days);
         if (note) {
             if (needs) {
-                note.textContent = 'Select a city to see delivery charges and days';
+                note.textContent = 'Type your city to see delivery charges';
             } else if (q.is_free && Number(q.free_above || 0) > 0) {
                 note.textContent = 'Free over Rs. ' + Number(q.free_above).toLocaleString();
             } else if (q.matched) {
-                note.textContent = 'Admin rate for ' + q.matched;
+                note.textContent = 'Delivery rate for ' + q.matched;
             } else if (q.unlisted) {
-                note.textContent = 'City not in admin list — highest listed delivery rate';
+                note.textContent = 'City not in rate list — standard delivery rate applied';
             } else {
-                note.textContent = 'Select a city to see delivery charges and days';
+                note.textContent = 'Type your city to see delivery charges';
             }
         }
         calculatePayable();
@@ -580,11 +578,10 @@ $invalid = static function (string $key) use ($fieldErrors): string {
         const phoneEl = document.getElementById('ck_phone');
         const streetEl = document.getElementById('ck_street');
         const cityEl = document.getElementById('checkoutCity');
-        const cityOther = document.getElementById('checkoutCityOther');
         const provEl = document.getElementById('checkoutProvince');
         const postalEl = document.getElementById('ck_postal');
 
-        [nameEl, phoneEl, streetEl, cityEl, cityOther, provEl, postalEl].forEach(function (el) {
+        [nameEl, phoneEl, streetEl, cityEl, provEl, postalEl].forEach(function (el) {
             if (el) el.classList.remove('is-invalid');
         });
 
@@ -601,20 +598,18 @@ $invalid = static function (string $key) use ($fieldErrors): string {
             errors.push('Street / house address is required.');
             if (streetEl) streetEl.classList.add('is-invalid');
         }
-        let city = cityEl ? cityEl.value.trim() : '';
-        if (city === '__other') {
-            city = cityOther ? cityOther.value.trim() : '';
-        }
-        if (!city) {
-            errors.push('City is required.');
+        const city = cityEl ? cityEl.value.trim() : '';
+        if (!city || city.length < 2) {
+            errors.push('Type your city so delivery charges can be applied.');
             if (cityEl) cityEl.classList.add('is-invalid');
         }
         if (!provEl || !provEl.value.trim()) {
             errors.push('Province is required.');
             if (provEl) provEl.classList.add('is-invalid');
         }
-        if (!postalEl || !/^[0-9]{4,6}$/.test(postalEl.value.trim())) {
-            errors.push('Postal code is required (4–6 digits).');
+        const postal = postalEl ? postalEl.value.trim() : '';
+        if (postal !== '' && !/^[0-9]{4,6}$/.test(postal)) {
+            errors.push('Postal code must be 4–6 digits, or leave it blank.');
             if (postalEl) postalEl.classList.add('is-invalid');
         }
 
@@ -626,6 +621,11 @@ $invalid = static function (string $key) use ($fieldErrors): string {
         return true;
     }
 
+    const cityInput = document.getElementById('checkoutCity');
+    if (cityInput) {
+        cityInput.addEventListener('input', refreshShippingDebounced);
+        cityInput.addEventListener('change', refreshShipping);
+    }
     calculatePayable();
     togglePayLater();
     refreshShipping();

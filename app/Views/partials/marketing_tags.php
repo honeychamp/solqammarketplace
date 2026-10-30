@@ -64,4 +64,4 @@ window.SOLQAM_MKT = {
   queue: <?= json_encode($mktQueue) ?>
 };
 </script>
-<script src="<?= base_url('assets/js/solqam-marketing.js') ?>?v=20261019c" defer></script>
+<script src="<?= base_url('assets/js/solqam-marketing.js') ?>?v=20261023c" defer></script>

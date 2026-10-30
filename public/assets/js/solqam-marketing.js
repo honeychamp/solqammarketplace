@@ -24,10 +24,17 @@
     window.dataLayer.push(obj);
   };
 
+  const money = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : undefined;
+  };
+
   const fire = (row) => {
     if (!allowed() || !row) return;
     const p = row.params || {};
     const eventId = row.event_id;
+    const value = money(p.value);
+    if (row.event === 'Purchase' && value === undefined) return;
     const meta = {
       content_ids: p.content_ids || [],
       content_type: p.content_type || 'product',
@@ -35,7 +42,7 @@
       content_category: p.content_category || undefined,
       contents: p.contents || undefined,
       currency: p.currency || cfg.currency || 'PKR',
-      value: p.value,
+      value: value,
       num_items: p.num_items,
       search_string: p.search_string,
       event_id: eventId
@@ -55,7 +62,7 @@
       event: gaEvent,
       event_id: eventId,
       currency: p.currency || cfg.currency || 'PKR',
-      value: p.value,
+      value: value,
       items: p.items || [],
       transaction_id: p.transaction_id,
       tax: p.tax,
@@ -73,7 +80,7 @@
       try {
         gtag('event', 'conversion', {
           send_to: cfg.adsId + '/' + cfg.adsLabel,
-          value: p.value,
+          value: value,
           currency: p.currency || 'PKR',
           transaction_id: p.transaction_id
         });
@@ -87,7 +94,12 @@
 
   const readCookie = (name) => {
     const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
-    return m ? decodeURIComponent(m[1]) : '';
+    if (!m) return '';
+    try {
+      return decodeURIComponent(m[1]);
+    } catch (e) {
+      return m[1];
+    }
   };
   const attachClickIds = (form) => {
     if (!form || form.dataset.mktIds === '1') return;
@@ -102,8 +114,12 @@
       }
       el.value = val;
     };
-    add('fbp', readCookie('_fbp'));
-    add('fbc', readCookie('_fbc'));
+    const rawCookie = (name) => {
+      const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+      return m ? m[1] : '';
+    };
+    add('fbp', rawCookie('_fbp'));
+    add('fbc', rawCookie('_fbc'));
     form.dataset.mktIds = '1';
   };
   document.querySelectorAll('form').forEach((form) => {

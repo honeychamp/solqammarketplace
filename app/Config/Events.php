@@ -57,6 +57,11 @@ Events::on('post_controller_constructor', static function (): void {
         log_message('error', 'SchemaHeal: ' . $e->getMessage());
     }
     try {
+        \App\Services\Catalog\StarterReviewService::ensure();
+    } catch (\Throwable $e) {
+        log_message('error', 'Starter reviews: ' . $e->getMessage());
+    }
+    try {
         if (class_exists(\App\Services\Marketing\MarketingService::class)) {
             \App\Services\Marketing\MarketingService::pageViewIfStorefront();
         }

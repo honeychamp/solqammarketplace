@@ -1,0 +1,22 @@
+{
+  "packageId": "com.solqam.marketplace",
+  "host": "solqam.com",
+  "name": "Solqam Marketplace",
+  "launcherName": "Solqam",
+  "display": "standalone",
+  "themeColor": "#0B30E6",
+  "themeColorDark": "#0722AB",
+  "navigationColor": "#0B30E6",
+  "navigationColorDark": "#0722AB",
+  "backgroundColor": "#0B30E6",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://solqam.com/assets/images/solqam-app-icon-1024.png",
+  "maskableIconUrl": "https://solqam.com/assets/images/solqam-app-icon-1024.png",
+  "appVersionName": "1",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "webManifestUrl": "https://solqam.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "orientation": "portrait"
+}

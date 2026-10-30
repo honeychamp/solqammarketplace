@@ -209,10 +209,7 @@ class CheckoutController extends BaseController
         }
 
         if ($addressId === 'new') {
-            $cityPost = (string) $this->request->getPost('city');
-            if ($cityPost === '__other') {
-                $cityPost = trim((string) $this->request->getPost('city_other'));
-            }
+            $cityPost = trim((string) $this->request->getPost('city'));
 
             $addressId = $this->addressModel->insert([
                 'user_id'        => $userId,
@@ -335,7 +332,6 @@ class CheckoutController extends BaseController
         $phone    = trim((string) $this->request->getPost('phone'));
         $street   = trim((string) $this->request->getPost('street_address'));
         $city     = trim((string) $this->request->getPost('city'));
-        $cityOther= trim((string) $this->request->getPost('city_other'));
         $province = trim((string) $this->request->getPost('province'));
         $postal   = trim((string) $this->request->getPost('postal_code'));
 
@@ -353,15 +349,14 @@ class CheckoutController extends BaseController
         if ($street === '' || strlen($street) < 8) {
             $errors['street_address'] = 'Street / house address is required.';
         }
-        $resolvedCity = $city === '__other' ? $cityOther : $city;
-        if ($resolvedCity === '') {
-            $errors['city'] = 'City is required so delivery charges can be applied.';
+        if ($city === '' || strlen($city) < 2) {
+            $errors['city'] = 'Type your city so delivery charges can be applied.';
         }
         if ($province === '') {
             $errors['province'] = 'Province is required.';
         }
-        if ($postal === '' || ! preg_match('/^[0-9]{4,6}$/', $postal)) {
-            $errors['postal_code'] = 'Postal code is required (4–6 digits).';
+        if ($postal !== '' && ! preg_match('/^[0-9]{4,6}$/', $postal)) {
+            $errors['postal_code'] = 'Postal code must be 4–6 digits, or leave it blank.';
         }
 
         return $errors === [] ? null : $this->checkoutReject($errors);

@@ -86,7 +86,7 @@ class ProductController extends BaseController
             $this->persistPostedCashback($productId);
             $this->savePrimaryImage($productId);
             $this->saveGalleryImages($productId, true);
-            $this->saveVariants($productId);
+            $this->saveVariants($productId, (float) ($payload['price'] ?? 0));
         } catch (\Throwable $e) {
             log_message('error', 'Seller add product: ' . $e->getMessage());
 
@@ -152,11 +152,7 @@ class ProductController extends BaseController
             if ((int) ($payload['category_id'] ?? 0) <= 0) {
                 return redirect()->back()->withInput()->with('error', 'Select a valid category.');
             }
-            $this->productModel->updateCatalog((int) $id, $payload);
-            $this->persistPostedCashback((int) $id);
-            $this->replacePrimaryImage((int) $id);
-            $this->saveGalleryImages((int) $id, true);
-            $this->replaceVariants((int) $id);
+            $this->persistCatalogUpdate((int) $id, $product, $payload);
         } catch (\Throwable $e) {
             log_message('error', 'Seller edit product: ' . $e->getMessage());
 

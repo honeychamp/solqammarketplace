@@ -89,7 +89,7 @@
                             </select>
                         </div>
                         <div class="col-4">
-                            <label class="form-label small fw-semibold text-muted">Postal Code</label>
+                            <label class="form-label small fw-semibold text-muted">Postal Code <span class="text-muted">(optional)</span></label>
                             <input type="text" name="postal_code" class="form-control form-control-sm">
                         </div>
                     </div>

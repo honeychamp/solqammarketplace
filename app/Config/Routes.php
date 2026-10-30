@@ -11,6 +11,7 @@ use CodeIgniter\Router\RouteCollection;
 // --------------------------------------------------------------------
 $routes->get('uploads/(:any)', 'MediaController::uploads/$1');
 $routes->get('sitemap.xml', 'SeoController::sitemap');
+$routes->get('.well-known/assetlinks.json', 'WellKnownController::assetlinks');
 $routes->get('feed/meta.csv', 'FeedController::metaCsv');
 $routes->get('compare', 'Customer\CatalogController::compare');
 $routes->get('compare/toggle/(:num)', 'Customer\CatalogController::compareToggle/$1');

@@ -34,10 +34,7 @@ if ($dealProducts === []): ?>
                     <a href="<?= site_url('product/' . $pid) ?>" class="product-title" title="<?= esc($product['name']) ?>">
                         <?= esc($product['name']) ?>
                     </a>
-                    <div class="star-rating">
-                        <i class="bi bi-star"></i><i class="bi bi-star"></i><i class="bi bi-star"></i><i class="bi bi-star"></i><i class="bi bi-star"></i>
-                        <span class="review-count">(0)</span>
-                    </div>
+                    <?= view('customer/_star_rating', ['product' => $product]) ?>
                     <div class="stock-progress-wrap mb-2">
                         <div class="d-flex justify-content-between">
                             <span><?= $soldCount ?> Sold</span>

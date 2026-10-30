@@ -92,11 +92,7 @@ class ProductController extends BaseController
             if ((int) ($payload['category_id'] ?? 0) <= 0) {
                 return redirect()->back()->withInput()->with('error', 'Select a valid category.');
             }
-            $this->productModel->updateCatalog((int) $id, $payload);
-            $this->persistPostedCashback((int) $id);
-            $this->replacePrimaryImage((int) $id);
-            $this->saveGalleryImages((int) $id, true);
-            $this->replaceVariants((int) $id);
+            $this->persistCatalogUpdate((int) $id, $product, $payload);
         } catch (\Throwable $e) {
             log_message('error', 'Admin catalog edit product: ' . $e->getMessage());
 
