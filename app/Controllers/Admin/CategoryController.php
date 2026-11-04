@@ -107,6 +107,10 @@ class CategoryController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Category could not be saved: ' . $e->getMessage());
         }
 
+        if (function_exists('storefront_forget')) {
+            storefront_forget(['sf_category_tree']);
+        }
+
         return redirect()->to(site_url('admin/categories'))->with('success', 'Category created.');
     }
 
@@ -179,6 +183,10 @@ class CategoryController extends BaseController
             return redirect()->back()->withInput()->with('error', 'Category could not be updated: ' . $e->getMessage());
         }
 
+        if (function_exists('storefront_forget')) {
+            storefront_forget(['sf_category_tree']);
+        }
+
         $msg = isset($payload['image']) ? 'Category image saved.' : 'Category updated.';
 
         return $this->redirectAfterHub('/admin/categories', 'success', $msg);
@@ -198,6 +206,9 @@ class CategoryController extends BaseController
         }
 
         $this->categoryModel->delete($id);
+        if (function_exists('storefront_forget')) {
+            storefront_forget(['sf_category_tree']);
+        }
 
         return redirect()->to('/admin/categories')->with('success', 'Category removed.');
     }

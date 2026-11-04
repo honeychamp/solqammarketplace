@@ -192,16 +192,43 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                     <div class="small text-muted mb-2" id="variantStockHint"></div>
                     <?php endif; ?>
 
+                    <?php
+                    $pdpGiftOn  = isset($giftWrapEnabled) ? (bool) $giftWrapEnabled : (function_exists('gift_wrap_enabled') ? gift_wrap_enabled() : false);
+                    $pdpGiftFee = isset($giftWrapFee) ? (float) $giftWrapFee : (function_exists('gift_wrap_fee') ? gift_wrap_fee() : 150);
+                    if ($pdpGiftOn):
+                    ?>
+                    <div class="gift-box mt-3" data-gift-box>
+                        <label class="gift-box-toggle">
+                            <input type="checkbox" name="gift_wrap" value="1" class="form-check-input gift-wrap-check" onchange="this.closest('[data-gift-box]').classList.toggle('is-on', this.checked);">
+                            <span class="gift-box-icon"><i class="bi bi-gift-fill"></i></span>
+                            <span>
+                                <strong>Gift wrap this item</strong>
+                                <span class="d-block small text-muted">Premium wrap<?= $pdpGiftFee > 0 ? ' · Rs. ' . number_format($pdpGiftFee, 0) . ' per item' : ' · free' ?></span>
+                            </span>
+                        </label>
+                        <div class="gift-box-extra">
+                            <label class="small fw-semibold mb-1">Gift message (optional)</label>
+                            <textarea name="gift_message" class="form-control form-control-sm" rows="2" maxlength="400" placeholder="Happy birthday — with love"></textarea>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" name="gift_hide_price" value="1" id="pdpGiftHide">
+                                <label class="form-check-label small" for="pdpGiftHide">Hide prices on the packing slip</label>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <div class="pdp-meta-row align-items-center">
                         <span class="pdp-meta-label">Quantity</span>
                         <div class="input-group" style="max-width: 160px;">
                             <button class="btn btn-outline-secondary" type="button" onclick="const q=document.getElementById('qtyInput'); if(q.value>1) q.value--;">-</button>
-                            <input type="number" id="qtyInput" name="quantity" class="form-control text-center fw-bold" value="1" min="1" max="<?= (int) $product['stock'] ?>">
+                            <input type="number" id="qtyInput" name="quantity" class="form-control text-center fw-bold" value="1" min="1" max="99">
                             <button class="btn btn-outline-secondary" type="button" onclick="const q=document.getElementById('qtyInput'); if(parseInt(q.value,10)<parseInt(q.max,10)) q.value++;">+</button>
                         </div>
                     </div>
 
-                    <?php if ((int) $product['stock'] > 0): ?>
+                    <?php if ((int) ($product['stock'] ?? 0) <= 0): ?>
+                    <div class="alert alert-warning small mt-3 mb-0">Out of stock — you can still Add to Cart or Buy Now. Seller will restock and deliver.</div>
+                    <?php endif; ?>
                     <div class="d-flex gap-2 mt-3 pdp-buybar">
                         <button type="submit" name="buy_now" value="1" id="pdpBuyNow" class="btn btn-solqam-accent flex-grow-1 py-2 fw-bold">Buy Now</button>
                         <button type="submit" id="pdpAddCart" class="btn btn-solqam flex-grow-1 py-2 fw-bold">Add to Cart</button>
@@ -209,9 +236,6 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
                             <i class="bi bi-heart<?= !empty($inWishlist) ? '-fill' : '' ?>"></i>
                         </button>
                     </div>
-                    <?php else: ?>
-                        <div class="alert alert-danger mt-3 mb-0">Sold Out</div>
-                    <?php endif; ?>
                 </form>
             </div>
         </div>
@@ -627,19 +651,21 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
             if (priceEl) priceEl.textContent = Math.round(p > 0 ? p : basePrice).toLocaleString();
             const st = parseInt(v.stock, 10) || 0;
             if (qty) {
-                qty.max = Math.max(1, st);
-                if (parseInt(qty.value, 10) > st) qty.value = st > 0 ? st : 1;
+                qty.max = 99;
+                if (parseInt(qty.value, 10) < 1) qty.value = 1;
             }
-            if (stockHint) stockHint.textContent = st > 0 ? (st + ' in stock for this option') : 'Out of stock for this color / size';
-            if (buyNowBtn) buyNowBtn.disabled = st < 1;
-            if (addCartBtn) addCartBtn.disabled = st < 1;
+            if (stockHint) stockHint.textContent = st > 0 ? (st + ' in stock for this option') : 'Out of stock — you can still order this option';
+            if (buyNowBtn) buyNowBtn.disabled = false;
+            if (addCartBtn) addCartBtn.disabled = false;
             if (v.image) setMainImage(v.image);
         } else if (!variants.length) {
-            if (qty) qty.max = baseStock;
-            if (stockHint) stockHint.textContent = '';
+            if (qty) qty.max = 99;
+            if (stockHint) stockHint.textContent = baseStock > 0 ? '' : 'Out of stock — you can still Add to Cart or Buy Now';
+            if (buyNowBtn) buyNowBtn.disabled = false;
+            if (addCartBtn) addCartBtn.disabled = false;
         } else {
             if (variantInput) variantInput.value = '';
-            if (stockHint) stockHint.textContent = 'Please choose an available color and size';
+            if (stockHint) stockHint.textContent = 'Please choose color and size first';
             if (buyNowBtn) buyNowBtn.disabled = true;
             if (addCartBtn) addCartBtn.disabled = true;
         }

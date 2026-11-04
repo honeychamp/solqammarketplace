@@ -13,6 +13,8 @@ class MarketingService
 {
     public const CURRENCY = 'PKR';
 
+    protected static ?string $pageViewEventId = null;
+
     public const GA4 = [
         'PageView'              => 'page_view',
         'ViewContent'           => 'view_item',
@@ -34,12 +36,18 @@ class MarketingService
     public static function settings(): array
     {
         static $cached;
-        if ($cached === null) {
-            try {
-                $cached = (new MarketingSettingModel())->current();
-            } catch (\Throwable $e) {
-                $cached = (new MarketingSettingModel())->defaults();
+        if ($cached !== null) {
+            return $cached;
+        }
+        try {
+            $hit = cache()->get('mkt_settings_row');
+            if (is_array($hit)) {
+                return $cached = $hit;
             }
+            $cached = (new MarketingSettingModel())->current();
+            cache()->save('mkt_settings_row', $cached, 120);
+        } catch (\Throwable $e) {
+            $cached = (new MarketingSettingModel())->defaults();
         }
 
         return $cached;
@@ -47,10 +55,22 @@ class MarketingService
 
     public static function publicConfig(): array
     {
+        static $pub;
+        if ($pub !== null) {
+            return $pub;
+        }
         try {
-            return (new MarketingSettingModel())->publicConfig();
+            $cache = cache();
+            $hit   = $cache->get('mkt_public_cfg');
+            if (is_array($hit)) {
+                return $pub = $hit;
+            }
+            $hit = (new MarketingSettingModel())->publicConfig();
+            $cache->save('mkt_public_cfg', $hit, 300);
+
+            return $pub = $hit;
         } catch (\Throwable $e) {
-            return ['enabled' => false];
+            return $pub = ['enabled' => false];
         }
     }
 
@@ -112,29 +132,21 @@ class MarketingService
             }
 
             $isPageView = $eventName === 'PageView';
-            if ($isPageView && (int) ($settings['server_pageview'] ?? 1) !== 1) {
+            if ($isPageView) {
                 return;
             }
             if (in_array($eventName, ['Purchase', 'Refund'], true) && (($payload['value'] ?? 0) <= 0)) {
                 return;
             }
-            if (! $isPageView) {
-                self::queueBrowser($eventName, $payload, $eventId);
-                (new MarketingEventLogModel())->record('browser', $eventName, $eventId, $payload, 'queued', 'queued');
-            }
-
-            $browserOnly = in_array($eventName, ['ViewContent', 'Search', 'ViewCart'], true);
-            if ($browserOnly) {
-                return;
-            }
+            self::queueBrowser($eventName, $payload, $eventId);
+            (new MarketingEventLogModel())->record('browser', $eventName, $eventId, $payload, 'queued', 'queued');
 
             $user    = self::userData($data);
-            $custom  = $eventName === 'PageView' ? [] : self::metaCustom($payload);
+            $custom  = self::metaCustom($payload);
             $url     = (string) ($data['event_source_url'] ?? self::sourceUrl());
             $tiktokU = self::tiktokUser($data);
 
-            (new MetaTrackingService())->sendCapi($settings, $eventName, $eventId, $custom, $user, $url);
-            (new TikTokTrackingService())->sendEventsApi($settings, $eventName, $eventId, $custom, $tiktokU, $url);
+            self::sendCapiAfterResponse($settings, $eventName, $eventId, $custom, $user, $tiktokU, $url);
         } catch (\Throwable $e) {
             log_message('error', 'Marketing track ' . $eventName . ': ' . $e->getMessage());
         }
@@ -218,27 +230,79 @@ class MarketingService
     public static function pageViewIfStorefront(): void
     {
         try {
-            if (! self::enabled() || is_cli() || self::isMachineTraffic()) {
+            if (is_cli() || self::isMachineTraffic()) {
+                return;
+            }
+            $path = ltrim((string) uri_string(), '/');
+            if (str_starts_with($path, 'admin') || str_starts_with($path, 'seller')) {
                 return;
             }
             self::captureClickIds();
-            $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
-            if ($method !== 'GET') {
-                return;
-            }
-            $uri = (string) uri_string();
-            if ($uri !== '' && (str_starts_with($uri, 'admin') || str_starts_with($uri, 'seller') || str_starts_with($uri, 'api') || str_starts_with($uri, 'feed'))) {
-                return;
-            }
-            $path = self::sourceUrl();
-            $last = session()->get('mkt_last_pv');
-            if (is_array($last) && ($last['u'] ?? '') === $path && (int) ($last['t'] ?? 0) > time() - 8) {
-                return;
-            }
-            session()->set('mkt_last_pv', ['u' => $path, 't' => time()]);
-            self::track('PageView', ['event_source_url' => $path]);
+            $eventId = self::pageViewEventId();
+            $url     = self::sourceUrl();
+            register_shutdown_function(static function () use ($eventId, $url): void {
+                try {
+                    if (function_exists('fastcgi_finish_request')) {
+                        @fastcgi_finish_request();
+                    }
+                    ignore_user_abort(true);
+                    if (! self::enabled()) {
+                        return;
+                    }
+                    $settings = self::settings();
+                    if ((int) ($settings['server_pageview'] ?? 1) !== 1) {
+                        return;
+                    }
+                    if ((int) ($settings['consent_required'] ?? 0) === 1 && ! self::hasConsent()) {
+                        return;
+                    }
+                    $user = self::userData([]);
+                    (new MetaTrackingService())->sendCapi($settings, 'PageView', $eventId, [], $user, $url);
+                    (new TikTokTrackingService())->sendEventsApi($settings, 'PageView', $eventId, [], self::tiktokUser([]), $url);
+                } catch (\Throwable $e) {
+                }
+            });
         } catch (\Throwable $e) {
         }
+    }
+
+    public static function pageViewEventId(): string
+    {
+        if (self::$pageViewEventId === null) {
+            self::$pageViewEventId = self::newEventId('PageView');
+        }
+
+        return self::$pageViewEventId;
+    }
+
+    /**
+     * @param array<string, mixed> $settings
+     * @param array<string, mixed> $custom
+     * @param array<string, mixed> $user
+     * @param array<string, mixed> $tiktokU
+     */
+    protected static function sendCapiAfterResponse(array $settings, string $eventName, string $eventId, array $custom, array $user, array $tiktokU, string $url): void
+    {
+        $send = static function () use ($settings, $eventName, $eventId, $custom, $user, $tiktokU, $url): void {
+            try {
+                (new MetaTrackingService())->sendCapi($settings, $eventName, $eventId, $custom, $user, $url);
+                (new TikTokTrackingService())->sendEventsApi($settings, $eventName, $eventId, $custom, $tiktokU, $url);
+            } catch (\Throwable $e) {
+                log_message('error', 'Marketing capi ' . $eventName . ': ' . $e->getMessage());
+            }
+        };
+        if (PHP_SAPI === 'cli') {
+            $send();
+
+            return;
+        }
+        register_shutdown_function(static function () use ($send): void {
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            }
+            ignore_user_abort(true);
+            $send();
+        });
     }
 
     public static function pullBrowserQueue(): array

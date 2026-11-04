@@ -25,6 +25,10 @@ class OrderItemModel extends Model
         'cashback_percent',
         'cashback_amount',
         'fulfillment_status',
+        'gift_wrap',
+        'gift_message',
+        'gift_hide_price',
+        'gift_wrap_fee',
     ];
 
     protected $useTimestamps = true;

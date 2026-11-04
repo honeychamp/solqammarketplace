@@ -122,7 +122,7 @@
             </div>
         <?php endif; ?>
 
-        <form action="<?= site_url('admin/login') ?>" method="POST">
+        <form action="<?= site_url('admin/login') ?>" method="POST" onsubmit="this.querySelector('.admin-login-btn').disabled=true;">
             <?= csrf_field() ?>
             <div class="mb-2">
                 <label class="form-label">Email or username</label>

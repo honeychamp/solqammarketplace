@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\AddressModel;
 use App\Models\CartItemModel;
 use App\Models\CartModel;
+use App\Services\Checkout\GiftWrapService;
 use App\Services\Checkout\GuestCheckoutService;
 use App\Services\Order\OrderService;
 use App\Services\Promotion\CouponService;
@@ -46,15 +47,13 @@ class CheckoutController extends BaseController
             return redirect()->to('/cart')->with('error', 'Your cart is empty.');
         }
 
-        $items = $this->cartItemModel->getItemsWithProducts($cart['id']);
+        $items = GiftWrapService::enrichItems($this->cartItemModel->getItemsWithProducts($cart['id']));
         if (empty($items)) {
             return redirect()->to('/cart')->with('error', 'Your cart is empty.');
         }
 
-        $subtotal = 0.0;
-        foreach ($items as $item) {
-            $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
-        }
+        $subtotal = GiftWrapService::goodsTotal($items);
+        $giftWrapTotal = GiftWrapService::wrapTotal($items);
 
         $addresses     = $userId > 0 ? $this->addressModel->getUserAddresses($userId) : [];
         $walletBalance = $guest ? 0.0 : $this->walletService->getBalance($userId);
@@ -88,7 +87,10 @@ class CheckoutController extends BaseController
 
         $couponCode = session()->get('checkout_coupon_code');
         $couponDiscount = 0.0;
-        if ($couponCode) {
+        if ($guest) {
+            session()->remove('checkout_coupon_code');
+            $couponCode = null;
+        } elseif ($couponCode) {
             try {
                 $applied = $this->couponService->apply($couponCode, max(0, $userId), $subtotal);
                 $couponDiscount = $applied['discount'];
@@ -98,25 +100,32 @@ class CheckoutController extends BaseController
             }
         }
 
-        \App\Services\Marketing\MarketingService::trackCartItems('InitiateCheckout', $items, [
-            'value'       => max(0, $subtotal - $couponDiscount),
-            'coupon'      => (string) $couponCode,
-            'phone'       => (string) (session()->get('user.phone') ?? ''),
-            'email'       => (string) (session()->get('user.email') ?? ''),
-            'external_id' => (string) $userId,
-        ]);
+        try {
+            \App\Services\Marketing\MarketingService::trackCartItems('InitiateCheckout', $items, [
+                'value'       => max(0, $subtotal - $couponDiscount),
+                'coupon'      => (string) $couponCode,
+                'phone'       => (string) (session()->get('user.phone') ?? ''),
+                'email'       => (string) (session()->get('user.email') ?? ''),
+                'external_id' => (string) $userId,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Checkout InitiateCheckout: ' . $e->getMessage());
+        }
 
         return view('customer/checkout', [
             'title'          => 'Checkout — Solqam Marketplace',
             'items'          => $items,
             'subtotal'       => $subtotal,
+            'giftWrapTotal'  => $giftWrapTotal,
+            'giftWrapEnabled'=> GiftWrapService::enabled(),
+            'giftWrapFee'    => GiftWrapService::unitFee(),
             'addresses'      => $addresses,
             'walletBalance'  => $walletBalance,
             'walletDebt'     => $walletDebt,
             'shippingQuote'  => $shippingQuote,
             'couponCode'     => $couponCode,
             'couponDiscount' => $couponDiscount,
-            'estimatedCashback' => cart_cashback_total($items),
+            'estimatedCashback' => $guest ? 0.0 : cart_cashback_total($items),
             'payfastReady'   => config('Payments')->payfastReady(),
             'shippingZones'  => $this->shippingService->cityList(),
             'isGuest'        => $guest,
@@ -139,11 +148,8 @@ class CheckoutController extends BaseController
         }
 
         $cart = $this->currentCart();
-        $items = $cart ? $this->cartItemModel->getItemsWithProducts((int) $cart['id']) : [];
-        $subtotal = 0.0;
-        foreach ($items as $item) {
-            $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
-        }
+        $items = $cart ? GiftWrapService::enrichItems($this->cartItemModel->getItemsWithProducts((int) $cart['id'])) : [];
+        $subtotal = GiftWrapService::goodsTotal($items);
 
         $quote = $this->shippingService->quote($city !== '' ? $city : null, $province !== '' ? $province : null, $subtotal);
 
@@ -153,13 +159,14 @@ class CheckoutController extends BaseController
     public function applyCoupon()
     {
         $userId = $this->sessionUserId();
+        if ($userId < 1 || session()->get('user.role') !== 'customer') {
+            session()->remove('checkout_coupon_code');
+            return redirect()->to('/checkout')->with('error', 'Sign in or register to use a voucher.');
+        }
         $code = (string) $this->request->getPost('coupon_code');
         $cart = $this->currentCart();
-        $items = $cart ? $this->cartItemModel->getItemsWithProducts($cart['id']) : [];
-        $subtotal = 0.0;
-        foreach ($items as $item) {
-            $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
-        }
+        $items = $cart ? GiftWrapService::enrichItems($this->cartItemModel->getItemsWithProducts($cart['id'])) : [];
+        $subtotal = GiftWrapService::goodsTotal($items);
 
         $this->rememberCheckoutDraft();
         try {
@@ -197,6 +204,7 @@ class CheckoutController extends BaseController
             return $this->checkoutReject([], 'Pay later needs a signed-in wallet. Use COD or Pay online, or Sign In.');
         }
 
+        try {
         $userId = $loggedIn;
         if ($guest) {
             $guestSvc = new GuestCheckoutService();
@@ -210,32 +218,41 @@ class CheckoutController extends BaseController
 
         if ($addressId === 'new') {
             $cityPost = trim((string) $this->request->getPost('city'));
+            $postal   = trim((string) $this->request->getPost('postal_code'));
 
-            $addressId = $this->addressModel->insert([
+            $payload = [
                 'user_id'        => $userId,
                 'recipient_name' => trim((string) $this->request->getPost('recipient_name')),
                 'phone'          => trim((string) $this->request->getPost('phone')),
                 'street_address' => trim((string) $this->request->getPost('street_address')),
                 'city'           => $cityPost,
                 'province'       => trim((string) $this->request->getPost('province')),
-                'postal_code'    => trim((string) $this->request->getPost('postal_code')),
+                'postal_code'    => $postal !== '' ? $postal : null,
+                'alternate_phone'=> trim((string) $this->request->getPost('alternate_phone')),
+                'area'           => trim((string) $this->request->getPost('area')),
+                'landmark'       => trim((string) $this->request->getPost('landmark')),
                 'is_default'     => 1,
-            ]);
+            ];
+            try {
+                $addressId = $this->addressModel->skipValidation(true)->insert($payload);
+            } catch (\Throwable $e) {
+                unset($payload['alternate_phone'], $payload['area'], $payload['landmark']);
+                $addressId = $this->addressModel->skipValidation(true)->insert($payload);
+            }
         }
 
         $addressId     = (int) $addressId;
         $notes         = $this->request->getPost('notes');
-        $couponCode    = session()->get('checkout_coupon_code');
+        $couponCode    = $guest ? null : session()->get('checkout_coupon_code');
 
         if (! $addressId) {
             return $this->checkoutReject(['address_id' => 'Please select or enter a shipping address.']);
         }
 
-        try {
             $payLater = [];
             if ($paymentMethod === 'pay_later') {
                 if (!$useWallet) {
-                    return $this->checkoutReject([], 'Pay later tab milta hai jab wallet use ho aur wallet mein paise kam hon.');
+                    return $this->checkoutReject([], 'Pay later is available when you use wallet and the wallet balance is less than the order total.');
                 }
                 $cnicFront = $this->storePayLaterFile($this->request->getFile('cnic_front'), 'cnic');
                 $cnicBack  = $this->storePayLaterFile($this->request->getFile('cnic_back'), 'cnic');
@@ -255,7 +272,10 @@ class CheckoutController extends BaseController
             }
 
             $cartSnap = $this->cartModel->where('user_id', $userId)->first() ?: $this->currentCart();
-            $snapItems = $cartSnap ? $this->cartItemModel->getItemsWithProducts((int) $cartSnap['id']) : [];
+            if ($cartSnap) {
+                GiftWrapService::applyCartPost((int) $cartSnap['id'], $this->request->getPost() ?? []);
+            }
+            $snapItems = $cartSnap ? GiftWrapService::enrichItems($this->cartItemModel->getItemsWithProducts((int) $cartSnap['id'])) : [];
             $addrRow = $this->addressModel->find($addressId);
             \App\Services\Marketing\MarketingService::trackCartItems('AddPaymentInfo', $snapItems, [
                 'payment_type' => (string) $paymentMethod,
@@ -297,7 +317,13 @@ class CheckoutController extends BaseController
 
             return redirect()->to(order_status_url((int) $result['order_id']))->with('success', $msg);
         } catch (Exception $e) {
-            return $this->checkoutReject([], $e->getMessage());
+            log_message('error', 'Checkout: ' . $e->getMessage());
+
+            return $this->checkoutReject([], $e->getMessage() !== '' ? $e->getMessage() : 'Order could not be placed. Please try again.');
+        } catch (\Throwable $e) {
+            log_message('error', 'Checkout fatal: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+
+            return $this->checkoutReject([], 'Order could not be placed. Please try again.');
         }
     }
 

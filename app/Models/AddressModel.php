@@ -19,6 +19,9 @@ class AddressModel extends Model
         'city',
         'province',
         'postal_code',
+        'alternate_phone',
+        'area',
+        'landmark',
         'is_default',
     ];
 

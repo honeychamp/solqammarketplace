@@ -1,0 +1,113 @@
+﻿usedCols=46 usedRows=84 firstCol=1
+r1 c1	ci=6 co=65535 theme=0 tint=0	
+r1 c2	ci=6 co=65535 theme=0 tint=0	Order Date
+r1 c3	ci=6 co=65535 theme=0 tint=0	Order #
+r1 c4	ci=6 co=65535 theme=0 tint=0	Customer Name
+r1 c5	ci=6 co=65535 theme=0 tint=0	Phone (Primary)
+r1 c6	ci=6 co=65535 theme=0 tint=0	Phone (Alternate / WhatsApp)
+r1 c7	ci=6 co=65535 theme=0 tint=0	Full Address
+r1 c8	ci=6 co=65535 theme=0 tint=0	Nearest Landmark
+r1 c9	ci=6 co=65535 theme=0 tint=0	Area / Locality
+r1 c10	ci=6 co=65535 theme=0 tint=0	City
+r1 c11	ci=6 co=65535 theme=0 tint=0	Province
+r1 c12	ci=6 co=65535 theme=0 tint=0	Address Status
+r1 c13	ci=6 co=65535 theme=0 tint=0	SKU
+r1 c14	ci=6 co=65535 theme=0 tint=0	Product Name
+r1 c15	ci=6 co=65535 theme=0 tint=0	Variant
+r1 c16	ci=6 co=65535 theme=0 tint=0	Quantity (Units)
+r1 c17	ci=6 co=65535 theme=0 tint=0	Unit Price (Rs)
+r1 c18	ci=6 co=65535 theme=0 tint=0	Shipping Charged to Customer (Rs)
+r1 c19	ci=6 co=65535 theme=0 tint=0	Grand Total (Rs)
+r1 c20	ci=-4142 co=16777215 theme=-4142 tint=0	Gift Message
+r1 c21	ci=-4142 co=16777215 theme=-4142 tint=0	Gift Wrap Charge (Rs)
+r1 c22	ci=-4142 co=16777215 theme=-4142 tint=0	Subtotal (Rs)
+r1 c23	ci=-4142 co=16777215 theme=-4142 tint=0	Cashback (Rs)
+r1 c24	ci=-4142 co=16777215 theme=-4142 tint=0	Commission (Rs)
+r1 c25	ci=-4142 co=16777215 theme=-4142 tint=0	Courier
+r1 c26	ci=-4142 co=16777215 theme=-4142 tint=0	Tracking Number
+r1 c27	ci=-4142 co=16777215 theme=-4142 tint=0	Shipping Method
+r1 c28	ci=-4142 co=16777215 theme=-4142 tint=0	Dispatch Date
+r1 c29	ci=-4142 co=16777215 theme=-4142 tint=0	Delivered Date
+r1 c30	ci=-4142 co=16777215 theme=-4142 tint=0	Seller Contact
+r1 c31	ci=-4142 co=16777215 theme=-4142 tint=0	Order Source
+r1 c32	ci=-4142 co=16777215 theme=-4142 tint=0	Order Type
+r1 c33	ci=-4142 co=16777215 theme=-4142 tint=0	Login Method
+r1 c34	ci=-4142 co=16777215 theme=-4142 tint=0	Total Products in Order
+r1 c35	ci=-4142 co=16777215 theme=-4142 tint=0	Total Pieces in Order
+r1 c36	ci=-4142 co=16777215 theme=-4142 tint=0	Packing Cost (Rs)
+r1 c37	ci=-4142 co=16777215 theme=-4142 tint=0	Package Weight (kg)
+r1 c38	ci=-4142 co=16777215 theme=-4142 tint=0	Actual Shipping Cost (Rs)
+r1 c39	ci=-4142 co=16777215 theme=-4142 tint=0	Product Cost (Rs)
+r1 c40	ci=-4142 co=16777215 theme=-4142 tint=0	Net Profit (Rs)
+r1 c41	ci=-4142 co=16777215 theme=-4142 tint=0	Supplier / Source
+r1 c42	ci=-4142 co=16777215 theme=-4142 tint=0	Customer Note / Instruction
+r1 c43	ci=-4142 co=16777215 theme=-4142 tint=0	Preferred Delivery Time
+r1 c44	ci=-4142 co=16777215 theme=-4142 tint=0	Internal Admin Note
+r1 c45	ci=-4142 co=16777215 theme=-4142 tint=0	Cancel / Return Reason
+r1 c46	ci=-4142 co=16777215 theme=-4142 tint=0	Last Updated
+r2 c1	ci=6 co=65535 theme=0 tint=0	
+r2 c2	ci=6 co=65535 theme=0 tint=0	03-Nov-2026
+r2 c3	ci=6 co=65535 theme=0 tint=0	S-100
+r2 c4	ci=6 co=65535 theme=0 tint=0	Summer Xatti
+r2 c5	ci=6 co=65535 theme=0 tint=0	03490758974
+r2 c6	ci=6 co=65535 theme=0 tint=0	03149368164
+r2 c7	ci=6 co=65535 theme=0 tint=0	Satellite up boys hostel Siddiqui Chowk saidpur road Rawalpindi
+r2 c8	ci=6 co=65535 theme=0 tint=0	Govt graduate college Rawalpindi
+r2 c9	ci=6 co=65535 theme=0 tint=0	Satellite town Rawalpindi
+r2 c10	ci=6 co=65535 theme=0 tint=0	Rawalpindi
+r2 c11	ci=6 co=65535 theme=0 tint=0	Punjab
+r2 c12	ci=6 co=65535 theme=0 tint=0	Complete
+r2 c13	ci=6 co=65535 theme=0 tint=0	ERGD
+r2 c14	ci=6 co=65535 theme=0 tint=0	Adjustable Hand Grip Strengthener 10–60KG with Counter | Hand Gripper, Forearm, Wrist & Finger Exerciser for Gym & Home Workout – Men & Women (No Color Choice)
+r2 c15	ci=6 co=65535 theme=0 tint=0	
+r2 c16	ci=6 co=65535 theme=0 tint=0	1.00
+r2 c17	ci=6 co=65535 theme=0 tint=0	445.00
+r2 c18	ci=6 co=65535 theme=0 tint=0	190.00
+r2 c19	ci=6 co=65535 theme=0 tint=0	635.00
+r2 c21	ci=-4142 co=16777215 theme=-4142 tint=0	0.00
+r2 c22	ci=-4142 co=16777215 theme=-4142 tint=0	255.00
+r2 c23	ci=-4142 co=16777215 theme=-4142 tint=0	0.00
+r2 c24	ci=-4142 co=16777215 theme=-4142 tint=0	44.50
+r2 c27	ci=-4142 co=16777215 theme=-4142 tint=0	Standard
+r2 c30	ci=-4142 co=16777215 theme=-4142 tint=0	03208653785
+r2 c31	ci=-4142 co=16777215 theme=-4142 tint=0	Website
+r2 c32	ci=-4142 co=16777215 theme=-4142 tint=0	Normal
+r2 c33	ci=-4142 co=16777215 theme=-4142 tint=0	Guest
+r2 c34	ci=-4142 co=16777215 theme=-4142 tint=0	1.00
+r2 c35	ci=-4142 co=16777215 theme=-4142 tint=0	1.00
+r2 c36	ci=-4142 co=16777215 theme=-4142 tint=0	0.00
+r2 c40	ci=-4142 co=16777215 theme=-4142 tint=0	590.50
+r2 c46	ci=-4142 co=16777215 theme=-4142 tint=0	03-Nov-2026 11:42 AM
+r3 c1	ci=6 co=65535 theme=0 tint=0	
+r3 c2	ci=6 co=65535 theme=0 tint=0	03-Nov-2026
+r3 c3	ci=6 co=65535 theme=0 tint=0	S-99
+r3 c4	ci=6 co=65535 theme=0 tint=0	Ghazi Khan
+r3 c5	ci=6 co=65535 theme=0 tint=0	03062610330
+r3 c6	ci=6 co=65535 theme=0 tint=0	03162474066
+r3 c7	ci=6 co=65535 theme=0 tint=0	Haji aslam hotel
+r3 c8	ci=6 co=65535 theme=0 tint=0	
+r3 c9	ci=6 co=65535 theme=0 tint=0	Chota geat Nair new airport
+r3 c10	ci=6 co=65535 theme=0 tint=0	Karachi
+r3 c11	ci=6 co=65535 theme=0 tint=0	Sindh
+r3 c12	ci=6 co=65535 theme=0 tint=0	Complete
+r3 c13	ci=6 co=65535 theme=0 tint=0	A58+
+r3 c14	ci=6 co=65535 theme=0 tint=0	A58 Plus Smart Watch Gift Set for Women | 2.02" HD Display | 7-in-1 Luxury Jewelry Combo | Smartwatch with Watch Strap, Necklace, Ring, Earrings & Charger
+r3 c15	ci=6 co=65535 theme=0 tint=0	Pink
+r3 c16	ci=6 co=65535 theme=0 tint=0	1.00
+r3 c17	ci=6 co=65535 theme=0 tint=0	2800.00
+r3 c18	ci=6 co=65535 theme=0 tint=0	190.00
+r3 c19	ci=6 co=65535 theme=0 tint=0	2990.00
+r3 c21	ci=-4142 co=16777215 theme=-4142 tint=0	0.00
+r3 c22	ci=-4142 co=16777215 theme=-4142 tint=0	2610.00
+r3 c23	ci=-4142 co=16777215 theme=-4142 tint=0	0.00
+r3 c24	ci=-4142 co=16777215 theme=-4142 tint=0	0.00
+r3 c27	ci=-4142 co=16777215 theme=-4142 tint=0	Standard
+r3 c30	ci=-4142 co=16777215 theme=-4142 tint=0	03111222333
+r3 c31	ci=-4142 co=16777215 theme=-4142 tint=0	Website
+r3 c32	ci=-4142 co=16777215 theme=-4142 tint=0	Normal
+r3 c33	ci=-4142 co=16777215 theme=-4142 tint=0	Guest
+r3 c34	ci=-4142 co=16777215 theme=-4142 tint=0	1.00
+r3 c35	ci=-4142 co=16777215 theme=-4142 tint=0	1.00
+r3 c36	ci=-4142 co=16777215 theme=-4142 tint=0	0.00
+r3 c40	ci=-4142 co=16777215 theme=-4142 tint=0	2990.00
+r3 c46	ci=-4142 co=16777215 theme=-4142 tint=0	03-Nov-2026 10:27 AM

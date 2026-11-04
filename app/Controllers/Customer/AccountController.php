@@ -8,6 +8,22 @@ use App\Models\WishlistModel;
 
 class AccountController extends BaseController
 {
+    public function index()
+    {
+        $userId = (int) session()->get('user.id');
+        $wallet = 0.0;
+        try {
+            $wallet = (new \App\Services\Wallet\WalletService())->getBalance($userId);
+        } catch (\Throwable $e) {
+            $wallet = 0.0;
+        }
+
+        return view('customer/account', [
+            'title'  => 'My Account — Solqam Marketplace',
+            'wallet' => $wallet,
+        ]);
+    }
+
     public function wallet()
     {
         $userId = (int) session()->get('user.id');
@@ -61,6 +77,9 @@ class AccountController extends BaseController
     public function wishlist()
     {
         $userId = (int) session()->get('user.id');
+        if ($userId < 1) {
+            return redirect()->to('/login')->with('error', 'Login to see your wishlist.');
+        }
         $items = (new WishlistModel())->getUserWishlist($userId);
 
         return view('customer/wishlist', [

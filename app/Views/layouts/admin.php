@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261017a">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261102a">
 </head>
 <body class="hub-app admin-hub">
 <div class="d-flex flex-column flex-lg-row">
@@ -70,8 +70,13 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="<?= site_url('admin/my-products') ?>" class="nav-link <?= strpos(uri_string(), 'admin/my-products') !== false ? 'active' : '' ?>">
+                <a href="<?= site_url('admin/my-products') ?>" class="nav-link <?= uri_string() === 'admin/my-products' || (strpos(uri_string(), 'admin/my-products/') === 0 && strpos(uri_string(), 'out-of-stock') === false) ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-box2-heart"></i></span><span class="label">My products</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('admin/my-products/out-of-stock') ?>" class="nav-link <?= strpos(uri_string(), 'admin/my-products/out-of-stock') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-exclamation-octagon"></i></span><span class="label">My out of stock</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -80,8 +85,18 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a href="<?= site_url('admin/products') ?>" class="nav-link <?= uri_string() === 'admin/products' || strpos(uri_string(), 'admin/products/') === 0 ? 'active' : '' ?>">
-                    <span class="nav-ico"><i class="bi bi-box-seam"></i></span><span class="label">Moderation</span>
+                <a href="<?= site_url('admin/products') ?>" class="nav-link <?= uri_string() === 'admin/products' || (strpos(uri_string(), 'admin/products/') === 0 && strpos(uri_string(), 'out-of-stock') === false) ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-box-seam"></i></span><span class="label">All products</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('admin/products/out-of-stock') ?>" class="nav-link <?= strpos(uri_string(), 'admin/products/out-of-stock') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-exclamation-octagon"></i></span><span class="label">Out of stock</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('admin/inventory') ?>" class="nav-link <?= strpos(uri_string(), 'admin/inventory') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-clipboard-data"></i></span><span class="label">Inventory</span>
                 </a>
             </li>
             <li class="hub-nav-label">Commerce</li>
@@ -178,6 +193,7 @@
             </ul>
         </div>
     </aside>
+    <?= view('partials/hub_sidebar_scroll') ?>
 
     <main class="hub-main content-area flex-grow-1 min-vh-100 d-flex flex-column">
         <header class="hub-topbar navbar navbar-expand px-4 py-3 sticky-top">
@@ -232,7 +248,7 @@
 </div>
 <?= $this->renderSection('modals') ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261019a"></script>
+<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261102a"></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>

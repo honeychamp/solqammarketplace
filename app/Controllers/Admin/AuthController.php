@@ -40,12 +40,8 @@ class AuthController extends BaseController
         }
 
         if ($this->request->is('post')) {
-            if ($this->authService->isLoggedIn()) {
-                $this->authService->logout();
-            }
-            if (! \App\Services\Auth\RateLimitService::hit('admin_login', 8)) {
-                return redirect()->back()->withInput()->with('error', 'Too many admin login attempts.');
-            }
+            session()->remove('user');
+
             $rules = [
                 'login'    => 'required',
                 'password' => 'required',
@@ -59,6 +55,10 @@ class AuthController extends BaseController
             $password = (string) $this->request->getPost('password');
 
             try {
+                if (! \App\Services\Auth\RateLimitService::hit('admin_login', 20)) {
+                    return redirect()->back()->withInput()->with('error', 'Too many admin login attempts. Wait 15 minutes, then try again.');
+                }
+
                 $user = $this->userModel->findByEmailOrPhone($login);
                 if (!$user || !password_verify($password, $user['password_hash'])) {
                     return redirect()->back()->withInput()->with('error', 'Invalid administrator credentials.');
@@ -73,7 +73,9 @@ class AuthController extends BaseController
                     return redirect()->back()->withInput()->with('error', 'Administrator account suspended. Contact system root.');
                 }
 
+                \App\Services\Auth\RateLimitService::clear('admin_login');
                 $this->authService->setSession($user);
+
                 return redirect()->to('/admin/dashboard')->with('success', 'Welcome to Solqam Admin.');
 
             } catch (\Throwable $e) {

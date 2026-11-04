@@ -8,10 +8,13 @@
     <?php $dueSummary = $dueSummary ?? []; if ((float) ($dueSummary['unpaid'] ?? 0) > 0): ?>
     <div class="col-12">
         <div class="alert alert-warning rounded-4 mb-0">
-            You collected COD cash. Pay Solqam <strong>Rs. <?= number_format((float) $dueSummary['unpaid'], 0) ?></strong>
+            Pay Solqam: commission after confirm, cashback after deliver.
+            Unpaid: <strong>Rs. <?= number_format((float) $dueSummary['unpaid'], 0) ?></strong>
             (commission Rs. <?= number_format((float) $dueSummary['commission'], 0) ?>
             + cashback Rs. <?= number_format((float) $dueSummary['cashback'], 0) ?>).
-            Online payouts auto-cut this first. Next Delivered stays locked until the leftover is paid.
+            Send JazzCash/bank, upload screenshot on
+            <a href="<?= site_url('seller/dues') ?>" class="alert-link">Pay Solqam</a>.
+            Next Delivered stays locked until admin marks it paid.
         </div>
     </div>
     <?php endif; ?>

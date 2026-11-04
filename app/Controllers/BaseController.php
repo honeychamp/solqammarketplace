@@ -38,12 +38,6 @@ abstract class BaseController extends Controller
 
         // Caution: Do not edit this line.
         parent::initController($request, $response, $logger);
-
-        try {
-            \App\Services\Catalog\StarterReviewService::ensure();
-        } catch (\Throwable $e) {
-            log_message('error', 'Starter reviews: ' . $e->getMessage());
-        }
     }
 
     protected function redirectAfterHub(string $default, string $type, string $message)

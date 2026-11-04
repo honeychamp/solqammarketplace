@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261017a">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261102a">
 </head>
 <body class="hub-app seller-hub">
 <div class="d-flex flex-column flex-lg-row">
@@ -47,8 +47,18 @@
             </li>
             <?php if ($sellerApproved): ?>
             <li class="nav-item">
-                <a href="<?= site_url('seller/products') ?>" class="nav-link <?= strpos(uri_string(), 'seller/products') !== false ? 'active' : '' ?>">
+                <a href="<?= site_url('seller/products') ?>" class="nav-link <?= uri_string() === 'seller/products' || (strpos(uri_string(), 'seller/products/') === 0 && strpos(uri_string(), 'out-of-stock') === false) ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-box-seam"></i></span><span class="label">Products</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('seller/products/out-of-stock') ?>" class="nav-link <?= strpos(uri_string(), 'seller/products/out-of-stock') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-exclamation-octagon"></i></span><span class="label">Out of stock</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('seller/inventory') ?>" class="nav-link <?= strpos(uri_string(), 'seller/inventory') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-clipboard-data"></i></span><span class="label">Inventory</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -68,6 +78,7 @@
             </li>
             <?php else: ?>
             <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-box-seam"></i></span><span class="label">Products</span></span></li>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-clipboard-data"></i></span><span class="label">Inventory</span></span></li>
             <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-bag-check"></i></span><span class="label">Orders</span></span></li>
             <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-people"></i></span><span class="label">Buyers 360</span></span></li>
             <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-graph-up-arrow"></i></span><span class="label">Performance</span></span></li>
@@ -108,6 +119,15 @@
             <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-lightning-charge"></i></span><span class="label">Campaigns</span></span></li>
             <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-wallet2"></i></span><span class="label">Payouts</span></span></li>
             <?php endif; ?>
+            <?php if ($sellerApproved || seller_approval_status() === 'suspended'): ?>
+            <li class="nav-item">
+                <a href="<?= site_url('seller/dues') ?>" class="nav-link <?= strpos(uri_string(), 'seller/dues') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-cash-stack"></i></span><span class="label">Pay Solqam</span>
+                </a>
+            </li>
+            <?php else: ?>
+            <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-cash-stack"></i></span><span class="label">Pay Solqam</span></span></li>
+            <?php endif; ?>
             <li class="nav-item mt-3">
                 <a href="<?= site_url('store/' . (int) session()->get('user.id')) ?>" target="_blank" class="nav-link">
                     <span class="nav-ico"><i class="bi bi-shop-window"></i></span><span class="label">View storefront</span>
@@ -133,6 +153,7 @@
             </ul>
         </div>
     </aside>
+    <?= view('partials/hub_sidebar_scroll') ?>
 
     <main class="hub-main content-area flex-grow-1 min-vh-100 d-flex flex-column">
         <header class="hub-topbar navbar navbar-expand px-4 py-3 sticky-top">
@@ -189,7 +210,7 @@
     </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261019a"></script>
+<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261102a"></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>

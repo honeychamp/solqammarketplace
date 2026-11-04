@@ -24,18 +24,34 @@ class ProductController extends BaseController
 
     public function index()
     {
+        return $this->listProducts(false);
+    }
+
+    public function outOfStock()
+    {
+        return $this->listProducts(true);
+    }
+
+    private function listProducts(bool $oosOnly)
+    {
         $sellerId = (int) session()->get('user.id');
-        $products = $this->productModel
+        $builder  = $this->productModel
             ->select('products.*, categories.name as category_name, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
             ->join('categories', 'categories.id = products.category_id', 'left')
-            ->where('products.seller_id', $sellerId)
+            ->where('products.seller_id', $sellerId);
+        if ($oosOnly) {
+            $builder->where('products.stock <=', 0);
+        }
+        $products = $builder
+            ->orderBy('products.stock', 'ASC')
             ->orderBy('products.id', 'DESC')
             ->paginate(50);
 
         return view('seller/products/index', [
-            'title'    => 'Manage Products — Solqam Seller Hub',
+            'title'    => $oosOnly ? 'Out of stock — Solqam Seller Hub' : 'Manage Products — Solqam Seller Hub',
             'products' => $products,
             'pager'    => $this->productModel->pager,
+            'oosOnly'  => $oosOnly,
         ]);
     }
 
@@ -218,7 +234,7 @@ class ProductController extends BaseController
         $header = fgetcsv($handle);
         if ($header === false) {
             fclose($handle);
-            return redirect()->back()->with('error', 'CSV empty hai.');
+            return redirect()->back()->with('error', 'The CSV file is empty.');
         }
         $header = array_map(static fn ($h) => strtolower(trim((string) $h)), $header);
         $imported = 0;

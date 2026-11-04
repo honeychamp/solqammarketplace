@@ -84,24 +84,40 @@
         </button>
     </div>
 </div>
-<div class="offcanvas offcanvas-start" tabindex="-1" id="solqamCatDrawer">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title fw-bold">Categories</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+<div class="offcanvas offcanvas-start" tabindex="-1" id="solqamCatDrawer" aria-labelledby="solqamCatLabel">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold" id="solqamCatLabel">Categories</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
-    <div class="offcanvas-body pt-0">
-        <a class="d-block py-2 fw-semibold text-solqam-accent text-decoration-none" href="<?= site_url('shop?sort=best_selling') ?>">Flash Deals</a>
-        <?php
-        $walkMobile = static function (array $nodes, int $depth) use (&$walkMobile): void {
-            foreach ($nodes as $n) {
-                $pad = 8 + $depth * 14;
-                echo '<a class="d-block py-2 text-decoration-none ' . ($depth === 0 ? 'fw-bold text-dark' : 'text-secondary small') . '" style="padding-left:' . $pad . 'px" href="' . site_url('shop?category=' . esc($n['slug'])) . '">' . esc($n['name']) . '</a>';
-                if (! empty($n['children'])) {
-                    $walkMobile($n['children'], $depth + 1);
-                }
-            }
-        };
-        $walkMobile($megaTree, 0);
-        ?>
+    <div class="offcanvas-body pt-2">
+        <a class="cat-m-link cat-m-flash" href="<?= site_url('shop?sort=best_selling') ?>"><i class="bi bi-lightning-charge-fill me-2"></i>Flash Deals</a>
+        <a class="cat-m-link fw-bold" href="<?= site_url('shop') ?>"><i class="bi bi-grid-3x3-gap-fill me-2"></i>All Categories</a>
+        <?php foreach ($megaTree as $i => $l1): ?>
+            <?php
+            $cid = 'catm_' . preg_replace('/[^a-z0-9]+/i', '_', (string) $l1['slug']) . '_' . $i;
+            $kids = $l1['children'] ?? [];
+            ?>
+            <?php if ($kids === []): ?>
+                <a class="cat-m-link" href="<?= site_url('shop?category=' . esc($l1['slug'])) ?>">
+                    <i class="bi <?= esc($l1['icon'] ?: 'bi-grid') ?> me-2"></i><?= esc($l1['name']) ?>
+                </a>
+            <?php else: ?>
+                <div class="cat-m-group">
+                    <button class="cat-m-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#<?= esc($cid, 'attr') ?>" aria-expanded="false">
+                        <span><i class="bi <?= esc($l1['icon'] ?: 'bi-grid') ?> me-2"></i><?= esc($l1['name']) ?></span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="collapse" id="<?= esc($cid, 'attr') ?>">
+                        <a class="cat-m-sub" href="<?= site_url('shop?category=' . esc($l1['slug'])) ?>">Shop all <?= esc($l1['name']) ?></a>
+                        <?php foreach ($kids as $l2): ?>
+                            <a class="cat-m-sub" href="<?= site_url('shop?category=' . esc($l2['slug'])) ?>"><?= esc($l2['name']) ?></a>
+                            <?php foreach ($l2['children'] ?? [] as $l3): ?>
+                                <a class="cat-m-sub is-l3" href="<?= site_url('shop?category=' . esc($l3['slug'])) ?>"><?= esc($l3['name']) ?></a>
+                            <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endforeach; ?>
     </div>
 </div>

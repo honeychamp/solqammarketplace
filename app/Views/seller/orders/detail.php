@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1">Order #<?= esc($order['order_number']) ?></h4>
-        <p class="text-secondary small mb-0">Customer order placed on <?= date('d M Y, h:i A', strtotime($order['created_at'])) ?></p>
+        <p class="text-secondary small mb-0">Order received <?= esc(pk_datetime($order['created_at'])) ?> PKT</p>
     </div>
     <a href="<?= site_url('seller/orders') ?>" class="btn btn-light btn-sm rounded-pill border px-3">
         <i class="bi bi-arrow-left me-1"></i> Back to Orders
@@ -18,7 +18,8 @@
         <!-- Status Action Box -->
         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
             <?php
-                $pkgStatus = $shipment['status'] ?? $order['status'];
+                $pkgStatus = (string) (($shipment['status'] ?? null) ?: ($order['status'] ?? 'placed'));
+                $fulfillBy = (string) (($shipment['fulfill_by'] ?? null) ?: 'seller');
                 $stages = ['placed' => 1, 'confirmed' => 2, 'shipped' => 3, 'delivered' => 4];
                 $currentStage = $stages[$pkgStatus] ?? 1;
             ?>
@@ -35,7 +36,6 @@
                     } ?> me-1"></i> Your package: <?= $pkgStatus === 'undelivered' ? 'Not received' : ucfirst($pkgStatus) ?>
                 </span>
             </div>
-            <?php $fulfillBy = $shipment['fulfill_by'] ?? 'seller'; ?>
             <div class="alert alert-light border small mb-3">
                 <strong>Who delivers:</strong>
                 <?= $fulfillBy === 'admin' ? 'Solqam (you send the parcel to admin). Delivery fee stays with Solqam. Category commission still goes to Solqam from product value only.' : 'You (self-courier). After delivery you keep the delivery fee. Category commission on product value goes to Solqam.' ?>
@@ -48,7 +48,10 @@
                 </form>
             <?php endif; ?>
             <?php if ($fulfillBy === 'admin'): ?>
-                <div class="alert alert-warning small">Handoff: <?= esc($shipment['handoff_status'] ?? 'pending_admin') ?>. Wait for admin to receive and deliver. You cannot mark shipped/delivered.</div>
+                <div class="alert alert-warning small">
+                    <strong>Send to Solqam:</strong> Admin will call, confirm, ship and deliver.
+                    You cannot set this status. Handoff: <?= esc($shipment['handoff_status'] ?? 'pending_admin') ?>.
+                </div>
             <?php endif; ?>
 
             <div class="position-relative m-4">
@@ -67,6 +70,10 @@
                 <div class="<?= $currentStage >= 4 ? 'fw-bold text-success' : '' ?>">Delivered</div>
             </div>
 
+            <?php $canSellerEdit = ($pkgStatus === 'placed' && $fulfillBy !== 'admin'); ?>
+            <?php if ($canSellerEdit): ?>
+                <div class="alert alert-info small mb-3">After the call, save qty / address first, then Confirm. Commission is not due until you confirm.</div>
+            <?php endif; ?>
             <?php if (in_array($pkgStatus, ['placed', 'confirmed', 'shipped'], true) && ($shipment['fulfill_by'] ?? 'seller') !== 'admin'): ?>
                 <div class="p-3 bg-light rounded-3 border">
                     <form action="<?= site_url('seller/orders/' . $order['id'] . '/status') ?>" method="POST" class="d-flex flex-wrap align-items-center gap-3">
@@ -104,13 +111,89 @@
                     </div>
                 </div>
             <?php elseif ($fulfillBy === 'admin'): ?>
-                <p class="small text-muted mb-0">Solqam will update shipped / delivered after the inbound parcel is received.</p>
+                <p class="small text-muted mb-0">Admin will call to confirm, then mark shipped and delivered.</p>
             <?php else: ?>
                 <div class="alert alert-danger-subtle border-0 text-danger small mb-0 rounded-3">
                     This order is <strong><?= ucfirst($order['status']) ?></strong>.
                 </div>
             <?php endif; ?>
         </div>
+
+        <?php if ($canSellerEdit): ?>
+        <form method="POST" action="<?= site_url('seller/orders/' . $order['id'] . '/edit') ?>" class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+            <?= csrf_field() ?>
+            <h5 class="fw-bold mb-3 border-bottom pb-2">Edit before confirm</h5>
+            <div class="table-responsive mb-3">
+                <table class="table align-middle">
+                    <thead class="table-light small">
+                        <tr>
+                            <th>Item</th>
+                            <th>Price</th>
+                            <th style="width:110px">Qty</th>
+                            <th>Line</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($sellerItems as $item): ?>
+                            <tr>
+                                <td class="fw-semibold"><?= esc($item['product_name']) ?><div class="small text-muted">0 = remove</div><?= view('partials/order_item_gift', ['item' => $item]) ?></td>
+                                <td>Rs. <?= number_format((float) $item['price'], 0) ?></td>
+                                <td>
+                                    <input type="number" class="form-control form-control-sm" name="qty[<?= (int) $item['id'] ?>]" value="<?= (int) $item['quantity'] ?>" min="0" max="99">
+                                </td>
+                                <td>Rs. <?= number_format((float) $item['subtotal'], 0) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <h6 class="fw-bold mb-2">Address (fix on the call)</h6>
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small mb-1">Name</label>
+                    <input class="form-control form-control-sm" name="recipient_name" value="<?= esc($order['recipient_name'] ?? '') ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-1">Phone</label>
+                    <input class="form-control form-control-sm" name="phone" value="<?= esc($order['recipient_phone'] ?? $order['customer_phone'] ?? '') ?>">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small mb-1">Street</label>
+                    <textarea class="form-control form-control-sm" name="street_address" rows="2"><?= esc($order['street_address'] ?? '') ?></textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">City</label>
+                    <input class="form-control form-control-sm" name="city" value="<?= esc($order['city'] ?? '') ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Province</label>
+                    <input class="form-control form-control-sm" name="province" value="<?= esc($order['province'] ?? '') ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Postal</label>
+                    <input class="form-control form-control-sm" name="postal_code" value="<?= esc($order['postal_code'] ?? '') ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-1">WhatsApp / alt</label>
+                    <input class="form-control form-control-sm" name="alternate_phone" value="<?= esc($order['alternate_phone'] ?? '') ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small mb-1">Area</label>
+                    <input class="form-control form-control-sm" name="area" value="<?= esc($order['area'] ?? '') ?>">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small mb-1">Landmark</label>
+                    <input class="form-control form-control-sm" name="landmark" value="<?= esc($order['landmark'] ?? '') ?>">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small mb-1">Customer note</label>
+                    <textarea class="form-control form-control-sm" name="notes" rows="2"><?= esc($order['notes'] ?? '') ?></textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-outline-dark rounded-pill px-4">Save changes</button>
+            <span class="small text-muted ms-2">Then tap Confirm (Accept Order) above.</span>
+        </form>
+        <?php endif; ?>
 
         <!-- Seller Items Table -->
         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
@@ -131,7 +214,13 @@
                     <tbody>
                         <?php foreach ($sellerItems as $item): ?>
                             <tr>
-                                <td class="fw-semibold text-dark"><?= esc($item['product_name']) ?></td>
+                                <td class="fw-semibold text-dark">
+                                    <?= esc($item['product_name']) ?>
+                                    <?php if (! empty($item['variant_label'])): ?>
+                                        <div class="small text-solqam fw-normal"><?= esc($item['variant_label']) ?></div>
+                                    <?php endif; ?>
+                                    <?= view('partials/order_item_gift', ['item' => $item]) ?>
+                                </td>
                                 <td>Rs. <?= number_format($item['price'], 0) ?></td>
                                 <td><?= $item['quantity'] ?></td>
                                 <td class="fw-bold">Rs. <?= number_format($item['subtotal'], 2) ?></td>
@@ -150,36 +239,14 @@
 
     <!-- Shipping & Buyer Details -->
     <div class="col-lg-4">
-        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
-            <h5 class="fw-bold mb-3 border-bottom pb-2"><i class="bi bi-geo-alt text-success me-1"></i> Delivery Destination</h5>
-            <div class="small">
-                <strong class="d-block text-dark mb-1"><?= esc($order['recipient_name']) ?></strong>
-                <div class="text-secondary mb-1"><?= esc($order['street_address']) ?></div>
-                <div class="text-secondary mb-2"><?= esc($order['city']) ?>, <?= esc($order['province']) ?> <?= esc($order['postal_code']) ?></div>
-                <div class="text-secondary"><i class="bi bi-telephone me-1"></i> <?= esc($order['recipient_phone']) ?></div>
-                <?php if (!empty($order['user_id'])): ?>
-                    <a class="btn btn-sm btn-outline-primary rounded-pill mt-3" href="<?= site_url('seller/customers/' . $order['user_id']) ?>">Buyer 360 — wallet &amp; commission</a>
-                <?php endif; ?>
-            </div>
-
-            <?php if (!empty($order['notes'])): ?>
-                <div class="alert alert-light border mt-3 mb-0 small">
-                    <strong>Buyer Note:</strong> <?= esc($order['notes']) ?>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-            <h6 class="fw-bold mb-3 border-bottom pb-2">Payment Details</h6>
-            <div class="small">
-                <div class="mb-1"><strong>Payment Method:</strong> <?= strtoupper($order['payment_method'] ?? 'COD') ?></div>
-                <div class="mb-1"><strong>Payment Status:</strong> <span class="badge bg-<?= ($order['payment_status'] === 'paid') ? 'success' : 'warning text-dark' ?>"><?= strtoupper($order['payment_status'] ?? 'PENDING') ?></span></div>
-                <?php if (!empty($order['transaction_ref'])): ?>
-                    <div class="text-muted">Ref: <code><?= esc($order['transaction_ref']) ?></code></div>
-                <?php endif; ?>
-                <p class="text-muted mt-2 mb-0">Net = goods − product cashback − platform commission. Online: net auto-credited. COD: collect cash, mark delivered — commission to admin, cashback to buyer.</p>
-            </div>
-        </div>
+        <?= view('partials/order_party_facts', [
+            'order'            => $order,
+            'showPayLaterDocs' => false,
+            'buyer360'         => ! empty($order['user_id'])
+                ? '<a class="btn btn-sm btn-outline-primary rounded-pill mt-3" href="' . site_url('seller/customers/' . $order['user_id']) . '">Buyer 360 — wallet &amp; commission</a>'
+                : '',
+            'payFootnote'      => '<p class="text-muted mt-2 mb-0">Net = goods − product cashback − platform commission. Online: net auto-credited. COD: collect cash, mark delivered — commission to admin, cashback to buyer.</p>',
+        ]) ?>
     </div>
 </div>
 <?= $this->endSection() ?>

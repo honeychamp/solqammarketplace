@@ -32,19 +32,51 @@ class MyProductController extends BaseController
 
     public function index()
     {
-        $adminId  = (int) session()->get('user.id');
-        $products = $this->productModel
+        return $this->listProducts(false);
+    }
+
+    public function outOfStock()
+    {
+        return $this->listProducts(true);
+    }
+
+    private function listProducts(bool $oosOnly)
+    {
+        $adminId = (int) session()->get('user.id');
+        $builder = $this->productModel
             ->select('products.*, categories.name as category_name, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
             ->join('categories', 'categories.id = products.category_id', 'left')
-            ->where('products.seller_id', $adminId)
+            ->where('products.seller_id', $adminId);
+        if ($oosOnly) {
+            $builder->where('products.stock <=', 0);
+        }
+        $products = $builder
+            ->orderBy('products.stock', 'ASC')
             ->orderBy('products.id', 'DESC')
             ->paginate(50);
 
         return view('admin/my-products/index', [
-            'title'    => 'My Products — Solqam Admin',
+            'title'    => $oosOnly ? 'Out of stock — Solqam Admin' : 'My Products — Solqam Admin',
             'products' => $products,
             'pager'    => $this->productModel->pager,
+            'oosOnly'  => $oosOnly,
         ]);
+    }
+
+    public function adjustPrices()
+    {
+        $amount = (float) $this->request->getPost('amount');
+        $dir    = (string) $this->request->getPost('direction');
+        $adminId = (int) session()->get('user.id');
+        try {
+            $done = (new \App\Services\Catalog\CatalogPriceAdjuster())->adjustByRupees($amount, $dir, $adminId);
+            $verb = $done['delta'] < 0 ? 'decreased' : 'increased';
+            $rs   = number_format(abs($done['delta']), 0);
+
+            return redirect()->to('/admin/my-products')->with('success', $done['count'] . ' of your products ' . $verb . ' by Rs. ' . $rs . '.');
+        } catch (\Throwable $e) {
+            return redirect()->to('/admin/my-products')->with('error', $e->getMessage());
+        }
     }
 
     public function create()

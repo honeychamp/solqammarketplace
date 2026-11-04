@@ -9,7 +9,7 @@ use RuntimeException;
 
 class SellerDueService
 {
-    public const SUSPEND_AT = 1000.0;
+    public const SUSPEND_AT = 5000.0;
 
     public function unpaidTotal(int $sellerId, ?int $exceptOrderId = null): float
     {
@@ -17,7 +17,7 @@ class SellerDueService
             return 0.0;
         }
         $model = new SellerCodDueModel();
-        $builder = $model->where('seller_id', $sellerId)->where('status', 'unpaid');
+        $builder = $model->where('seller_id', $sellerId)->whereIn('status', ['unpaid', 'processing']);
         if ($exceptOrderId) {
             $builder->where('order_id !=', $exceptOrderId);
         }
@@ -47,9 +47,107 @@ class SellerDueService
         $unpaid = $this->unpaidTotal($sellerId, $exceptOrderId);
         if ($unpaid > 0) {
             throw new RuntimeException(
-                'Pehle wale COD order ka commission + cashback (Rs. ' . number_format($unpaid, 0) . ') Solqam ko ada karein. Us ke baad hi naya order Delivered mark ho sakta hai.'
+                'Pay the previous COD amount due to Solqam first (Rs. ' . number_format($unpaid, 0) . '). After confirm, commission is due on Pay Solqam even if you do not deliver.'
             );
         }
+    }
+
+    /**
+     * COD self-ship: commission bill on Confirm. Must be paid even if never delivered.
+     */
+    public function recordSellerCodCommission(
+        int $sellerId,
+        int $orderId,
+        int $shipmentId,
+        array $totals,
+        float $shipAmt,
+        string $method,
+        bool $notify = true
+    ): void {
+        $commission = round((float) ($totals['commission'] ?? 0), 2);
+        $goods      = round((float) ($totals['goods'] ?? 0), 2);
+        if ($commission <= 0 || ! $this->ready()) {
+            return;
+        }
+
+        $model    = new SellerCodDueModel();
+        $existing = $model->where('seller_id', $sellerId)->where('order_id', $orderId)->first();
+        $cashback = round((float) ($existing['cashback_amount'] ?? 0), 2);
+        $due      = round($commission + $cashback, 2);
+        $payload  = [
+            'seller_id'         => $sellerId,
+            'order_id'          => $orderId,
+            'shipment_id'       => $shipmentId ?: null,
+            'goods_amount'      => $goods,
+            'shipping_amount'   => round($shipAmt, 2),
+            'commission_amount' => $commission,
+            'due_amount'        => $due,
+            'collected_cash'    => round($goods + $shipAmt, 2),
+            'payment_method'    => $method,
+            'fulfill_by'        => 'seller',
+        ];
+        if ($existing) {
+            $st = (string) ($existing['status'] ?? '');
+            if (in_array($st, ['paid', 'waived'], true)) {
+                $model->update((int) $existing['id'], [
+                    'shipment_id'       => $shipmentId ?: ($existing['shipment_id'] ?? null),
+                    'goods_amount'      => $goods,
+                    'shipping_amount'   => round($shipAmt, 2),
+                    'commission_amount' => $commission,
+                ]);
+
+                return;
+            }
+            $model->update((int) $existing['id'], $payload);
+        } else {
+            $payload['cashback_amount'] = 0;
+            $payload['status']          = 'unpaid';
+            $payload['paid_amount']     = 0;
+            $payload['created_at']      = date('Y-m-d H:i:s');
+            $model->insert($payload);
+            if ($notify) {
+                $this->notifySeller(
+                    $sellerId,
+                    'Solqam: order confirmed. Pay commission Rs. ' . number_format($commission, 0) . ' on Pay Solqam (due even if you do not deliver).',
+                    'cod_due'
+                );
+            }
+        }
+        $this->tryOffsetFromWallet($sellerId);
+        $this->applyHoldRules($sellerId);
+    }
+
+    /** Cashback is added to the same Solqam Pay bill only after Delivered. */
+    public function addSellerCodCashback(int $sellerId, int $orderId, float $cashback): void
+    {
+        $cashback = round($cashback, 2);
+        if ($cashback <= 0 || ! $this->ready()) {
+            return;
+        }
+        $model = new SellerCodDueModel();
+        $row   = $model->where('seller_id', $sellerId)->where('order_id', $orderId)->first();
+        if (! $row || ($row['status'] ?? '') === 'waived') {
+            return;
+        }
+        $already = round((float) ($row['cashback_amount'] ?? 0), 2);
+        if ($cashback <= $already) {
+            return;
+        }
+        $commission = round((float) ($row['commission_amount'] ?? 0), 2);
+        $due        = round($commission + $cashback, 2);
+        $paid       = round((float) ($row['paid_amount'] ?? 0), 2);
+        $open       = $paid + 0.009 < $due;
+        $st         = (string) ($row['status'] ?? 'unpaid');
+        if ($open && $st === 'paid') {
+            $st = 'unpaid';
+        }
+        $model->update((int) $row['id'], [
+            'cashback_amount' => $cashback,
+            'due_amount'      => $due,
+            'status'          => $open ? $st : 'paid',
+        ]);
+        $this->tryOffsetFromWallet($sellerId);
+        $this->applyHoldRules($sellerId);
     }
 
     public function recordSellerCodDelivery(
@@ -61,63 +159,31 @@ class SellerDueService
         string $method,
         bool $notify = true
     ): void {
-        $commission = round((float) ($totals['commission'] ?? 0), 2);
-        $cashback   = round((float) ($totals['cashback'] ?? 0), 2);
-        $goods      = round((float) ($totals['goods'] ?? 0), 2);
-        $due        = round($commission + $cashback, 2);
-        if ($due <= 0 || ! $this->ready()) {
-            return;
-        }
-
-        $model = new SellerCodDueModel();
-        $existing = $model->where('seller_id', $sellerId)->where('order_id', $orderId)->first();
-        $payload  = [
-            'seller_id'          => $sellerId,
-            'order_id'           => $orderId,
-            'shipment_id'        => $shipmentId ?: null,
-            'goods_amount'       => $goods,
-            'shipping_amount'    => round($shipAmt, 2),
-            'commission_amount'  => $commission,
-            'cashback_amount'    => $cashback,
-            'due_amount'         => $due,
-            'collected_cash'     => round($goods + $shipAmt, 2),
-            'payment_method'     => $method,
-            'fulfill_by'         => 'seller',
-            'status'             => 'unpaid',
-        ];
-        if ($existing) {
-            if (($existing['status'] ?? '') === 'paid') {
-                return;
-            }
-            $model->update((int) $existing['id'], $payload);
-        } else {
-            $payload['created_at'] = date('Y-m-d H:i:s');
-            $payload['paid_amount'] = 0;
-            $model->insert($payload);
-            if ($notify) {
-                $this->notifySeller(
-                    $sellerId,
-                    'Solqam: COD order #' . $orderId . ' delivered. Pay commission+cashback Rs. ' . number_format($due, 0) . ' before next Delivered.',
-                    'cod_due'
-                );
-            }
-        }
-        $this->tryOffsetFromWallet($sellerId);
-        $this->applyHoldRules($sellerId);
+        $this->recordSellerCodCommission($sellerId, $orderId, $shipmentId, $totals, $shipAmt, $method, $notify);
+        $this->addSellerCodCashback($sellerId, $orderId, (float) ($totals['cashback'] ?? 0));
     }
 
+    /** Keep commission due if the parcel never went out. Drop cashback that was not earned. */
     public function waiveForOrder(int $orderId): void
     {
         if (! $this->ready()) {
             return;
         }
         $model = new SellerCodDueModel();
-        $rows  = $model->where('order_id', $orderId)->where('status', 'unpaid')->findAll();
+        $rows  = $model->where('order_id', $orderId)->findAll();
         foreach ($rows as $row) {
+            $st = (string) ($row['status'] ?? '');
+            if ($st === 'waived') {
+                continue;
+            }
+            $commission = round((float) ($row['commission_amount'] ?? 0), 2);
+            $paid       = round((float) ($row['paid_amount'] ?? 0), 2);
+            $done       = $paid + 0.009 >= $commission;
             $model->update((int) $row['id'], [
-                'status'    => 'waived',
-                'paid_note' => 'Waived on return/void',
-                'paid_at'   => date('Y-m-d H:i:s'),
+                'cashback_amount' => 0,
+                'due_amount'      => $commission,
+                'status'          => $done ? 'paid' : ($st === 'processing' ? 'processing' : 'unpaid'),
+                'paid_note'       => substr(trim(($row['paid_note'] ?? '') . ' Cashback dropped on void; commission still due.'), -240),
             ]);
             $this->liftHoldIfCleared((int) $row['seller_id']);
         }
@@ -129,6 +195,9 @@ class SellerDueService
         $row   = $model->find($dueId);
         if (! $row) {
             throw new RuntimeException('Due record not found.');
+        }
+        if (in_array((string) ($row['status'] ?? ''), ['paid', 'waived'], true) && self::remaining($row) <= 0) {
+            return;
         }
         $remain = self::remaining($row);
         if ($remain <= 0) {
@@ -149,6 +218,136 @@ class SellerDueService
         $this->liftHoldIfCleared((int) $row['seller_id']);
     }
 
+    public static function isOpen(?string $status): bool
+    {
+        return in_array((string) $status, ['unpaid', 'processing'], true);
+    }
+
+    public function submitProof(int $sellerId, int $dueId, string $proofPath, string $note = '', bool $notify = true): void
+    {
+        $model = new SellerCodDueModel();
+        $row   = $model->find($dueId);
+        if (! $row || (int) ($row['seller_id'] ?? 0) !== $sellerId) {
+            throw new RuntimeException('Due record not found.');
+        }
+        if (! self::isOpen($row['status'] ?? '') || self::remaining($row) <= 0) {
+            throw new RuntimeException('This due is already cleared.');
+        }
+        $path = trim($proofPath);
+        if ($path === '') {
+            throw new RuntimeException('Upload a screenshot of the payment.');
+        }
+        $model->update($dueId, [
+            'status'       => 'processing',
+            'proof_path'   => $path,
+            'proof_note'   => substr(trim($note), 0, 240),
+            'submitted_at' => date('Y-m-d H:i:s'),
+        ]);
+        if ($notify) {
+            $this->notifySeller(
+                $sellerId,
+                'Solqam: payment screenshot received. COD due #' . $dueId . ' is processing until admin confirms.',
+                'cod_due_proof'
+            );
+        }
+    }
+
+    /** One screenshot covers every open COD due for this seller (full total payment). */
+    public function submitProofForOpenDues(int $sellerId, string $proofPath, string $note = ''): int
+    {
+        $path = trim($proofPath);
+        if ($path === '') {
+            throw new RuntimeException('Upload a screenshot of the payment.');
+        }
+        $rows = (new SellerCodDueModel())
+            ->where('seller_id', $sellerId)
+            ->whereIn('status', ['unpaid', 'processing'])
+            ->orderBy('id', 'ASC')
+            ->findAll();
+        $n = 0;
+        $total = 0.0;
+        foreach ($rows as $row) {
+            if (self::remaining($row) <= 0) {
+                continue;
+            }
+            $total += self::remaining($row);
+            $this->submitProof($sellerId, (int) $row['id'], $path, $note !== '' ? $note : 'Bulk total payment', false);
+            $n++;
+        }
+        if ($n < 1) {
+            throw new RuntimeException('No unpaid Solqam dues to cover.');
+        }
+        $this->notifySeller(
+            $sellerId,
+            'Solqam: total payment screenshot received for Rs. ' . number_format($total, 0) . ' across ' . $n . ' dues. Processing until admin confirms.',
+            'cod_due_proof_bulk'
+        );
+
+        return $n;
+    }
+
+    /** Admin confirms money received — apply across all open dues (FIFO), or full remaining if amount is empty. */
+    public function markPaidOpenForSeller(int $sellerId, string $note = '', ?float $amount = null, bool $processingOnly = true): float
+    {
+        $model = new SellerCodDueModel();
+        $model->where('seller_id', $sellerId);
+        if ($processingOnly) {
+            $model->where('status', 'processing');
+        } else {
+            $model->whereIn('status', ['unpaid', 'processing']);
+        }
+        $rows = $model->orderBy('id', 'ASC')->findAll();
+        $left    = $amount === null || $amount <= 0 ? null : round($amount, 2);
+        $cleared = 0.0;
+        foreach ($rows as $row) {
+            $remain = self::remaining($row);
+            if ($remain <= 0) {
+                continue;
+            }
+            if ($left === null) {
+                $this->markPaid((int) $row['id'], $note !== '' ? $note : 'Bulk payment confirmed', $remain);
+                $cleared += $remain;
+                continue;
+            }
+            if ($left <= 0) {
+                break;
+            }
+            $take = min($remain, $left);
+            $this->markPaid((int) $row['id'], $note !== '' ? $note : 'Bulk payment confirmed', $take);
+            $left    -= $take;
+            $cleared += $take;
+        }
+        if ($cleared <= 0) {
+            throw new RuntimeException('No open dues to mark paid.');
+        }
+
+        return round($cleared, 2);
+    }
+
+    public function processingLines(): array
+    {
+        if (! $this->ready()) {
+            return [];
+        }
+        $rows = (new SellerCodDueModel())
+            ->select('seller_cod_dues.*, orders.order_number')
+            ->join('orders', 'orders.id = seller_cod_dues.order_id', 'left')
+            ->where('seller_cod_dues.status', 'processing')
+            ->orderBy('seller_cod_dues.submitted_at', 'DESC')
+            ->orderBy('seller_cod_dues.id', 'DESC')
+            ->findAll();
+        foreach ($rows as &$row) {
+            $p = (new SellerProfileModel())->getByUserId((int) $row['seller_id']);
+            $u = (new UserModel())->find((int) $row['seller_id']);
+            $row['store_name']  = $p['store_name'] ?? 'Seller';
+            $row['profile_id']  = (int) ($p['id'] ?? 0);
+            $row['seller_name'] = $u['name'] ?? '';
+        }
+        unset($row);
+
+        return $rows;
+    }
+
     /** Use seller online-payout wallet to clear COD dues automatically. */
     public function tryOffsetFromWallet(int $sellerId): float
     {
@@ -163,7 +362,7 @@ class SellerDueService
         $cleared = 0.0;
         $rows    = (new SellerCodDueModel())
             ->where('seller_id', $sellerId)
-            ->where('status', 'unpaid')
+            ->whereIn('status', ['unpaid', 'processing'])
             ->orderBy('id', 'ASC')
             ->findAll();
         foreach ($rows as $row) {
@@ -212,10 +411,10 @@ class SellerDueService
         }
         $created = 0;
         $rows    = $db->table('shipments s')
-            ->select('s.id as shipment_id, s.seller_id, s.order_id, s.shipping_amount, p.payment_method')
+            ->select('s.id as shipment_id, s.seller_id, s.order_id, s.shipping_amount, s.status, p.payment_method')
             ->join('payments p', 'p.order_id = s.order_id', 'left')
             ->where('s.fulfill_by', 'seller')
-            ->where('s.status', 'delivered')
+            ->whereIn('s.status', ['confirmed', 'shipped', 'delivered'])
             ->whereIn('p.payment_method', ['cod', 'pay_later'])
             ->get()
             ->getResultArray();
@@ -232,11 +431,12 @@ class SellerDueService
             $items  = $db->table('order_items')->where('order_id', $oid)->where('seller_id', $sid)->get()->getResultArray();
             $totals = ['goods' => 0.0, 'commission' => 0.0, 'cashback' => 0.0];
             foreach ($items as $item) {
-                $totals['goods'] += (float) ($item['subtotal'] ?? 0);
+                $totals['goods'] += (float) ($item['subtotal'] ?? 0) + (float) ($item['gift_wrap_fee'] ?? 0);
                 $totals['commission'] += (float) ($item['commission_amount'] ?? 0);
                 $totals['cashback'] += function_exists('item_cashback') ? item_cashback($item) : (float) ($item['cashback_amount'] ?? 0);
             }
-            $this->recordSellerCodDelivery(
+            $shipStatus = (string) ($row['status'] ?? '');
+            $this->recordSellerCodCommission(
                 $sid,
                 $oid,
                 (int) $row['shipment_id'],
@@ -245,6 +445,9 @@ class SellerDueService
                 (string) ($row['payment_method'] ?? 'cod'),
                 false
             );
+            if ($shipStatus === 'delivered') {
+                $this->addSellerCodCashback($sid, $oid, (float) $totals['cashback']);
+            }
             $created++;
         }
 
@@ -333,7 +536,7 @@ class SellerDueService
         foreach ($rows as $row) {
             $st = $row['status'] ?? 'unpaid';
             $due = (float) $row['due_amount'];
-            if ($st === 'unpaid') {
+            if (self::isOpen($st)) {
                 $out['unpaid'] += self::remaining($row);
                 $out['paid'] += (float) ($row['paid_amount'] ?? 0);
             } elseif ($st === 'paid') {
@@ -392,7 +595,7 @@ class SellerDueService
             $map[$sid]['commission'] += (float) $row['commission_amount'];
             $map[$sid]['cashback'] += (float) $row['cashback_amount'];
             $map[$sid]['collected'] += (float) $row['collected_cash'];
-            if (($row['status'] ?? '') === 'unpaid') {
+            if (self::isOpen($row['status'] ?? '')) {
                 $map[$sid]['unpaid'] += self::remaining($row);
             }
         }
@@ -414,13 +617,26 @@ class SellerDueService
 
     public function unpaidSnapshot(): array
     {
-        $sellers = $this->unpaidSellers();
-        $amount  = 0.0;
-        foreach ($sellers as $s) {
-            $amount += (float) $s['unpaid'];
+        if (! $this->ready()) {
+            return ['amount' => 0.0, 'sellers' => 0];
         }
 
-        return ['amount' => round($amount, 2), 'sellers' => count($sellers)];
+        try {
+            $row = \Config\Database::connect()->query(
+                "SELECT COALESCE(SUM(GREATEST(due_amount - paid_amount, 0)), 0) AS amount,
+                        COUNT(DISTINCT seller_id) AS sellers
+                 FROM seller_cod_dues
+                 WHERE status IN ('unpaid', 'processing')
+                   AND due_amount > paid_amount"
+            )->getRowArray();
+
+            return [
+                'amount'  => round((float) ($row['amount'] ?? 0), 2),
+                'sellers' => (int) ($row['sellers'] ?? 0),
+            ];
+        } catch (\Throwable $e) {
+            return ['amount' => 0.0, 'sellers' => 0];
+        }
     }
 
     protected function ready(): bool

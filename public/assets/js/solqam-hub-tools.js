@@ -1,3 +1,27 @@
+(function persistHubSidebarScroll() {
+    var el = document.querySelector('.hub-app .sidebar-scroll');
+    if (!el) {
+        return;
+    }
+    var key = 'solqam.sidebarScroll.' + (document.body.classList.contains('admin-hub') ? 'admin' : 'seller');
+    var save = function () {
+        try {
+            sessionStorage.setItem(key, String(el.scrollTop));
+        } catch (e) {}
+    };
+    try {
+        var saved = sessionStorage.getItem(key);
+        if (saved !== null) {
+            el.scrollTop = parseInt(saved, 10) || 0;
+        }
+    } catch (e) {}
+    el.addEventListener('scroll', save, { passive: true });
+    document.querySelectorAll('.solqam-sidebar a[href]').forEach(function (a) {
+        a.addEventListener('click', save);
+    });
+    window.addEventListener('pagehide', save);
+})();
+
 (function () {
     const search = document.getElementById('hubPageSearch');
     const exportBtn = document.getElementById('hubExcelExport');

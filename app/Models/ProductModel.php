@@ -43,13 +43,7 @@ class ProductModel extends Model
 
     protected function initialize()
     {
-        try {
-            if (! $this->db->fieldExists('deleted_at', $this->table)) {
-                $this->useSoftDeletes = false;
-            }
-        } catch (\Throwable $e) {
-            $this->useSoftDeletes = false;
-        }
+        // Soft-deletes stay on. DESCRIBE on every ProductModel construct was extra DB.
     }
 
     protected function productsHas(string $field): bool
@@ -91,15 +85,19 @@ class ProductModel extends Model
 
     protected function catalogImageSelect(): string
     {
+        static $sql = null;
+        if ($sql !== null) {
+            return $sql;
+        }
         try {
             if ($this->db->tableExists('product_images')) {
-                return '(SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image';
+                return $sql = '(SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image';
             }
         } catch (\Throwable $e) {
             // ignore
         }
 
-        return 'NULL as primary_image';
+        return $sql = 'NULL as primary_image';
     }
 
     public function getDetailedProduct(int $id): ?array
@@ -154,14 +152,12 @@ class ProductModel extends Model
 
     protected function buildCatalogQuery(array $filters, bool $countOnly)
     {
-        $ratingSql = '';
-        if (! $countOnly && $this->db->tableExists('reviews')) {
-            $ratingSql = ', (SELECT AVG(rating) FROM reviews WHERE reviews.product_id = products.id AND reviews.is_approved = 1) AS avg_rating'
-                . ', (SELECT COUNT(*) FROM reviews WHERE reviews.product_id = products.id AND reviews.is_approved = 1) AS review_count';
+        $needCategoryJoin = ! $countOnly || (! empty($filters['category_slug']) && empty($filters['category_ids']));
+        $builder = $this->select($countOnly ? 'products.id' : ('products.*, categories.name as category_name, categories.slug as category_slug, seller_profiles.store_name, ' . $this->catalogImageSelect()), false);
+        if ($needCategoryJoin) {
+            $builder->join('categories', 'categories.id = products.category_id', 'left');
         }
-        $builder = $this->select($countOnly ? 'products.id' : ('products.*, categories.name as category_name, categories.slug as category_slug, seller_profiles.store_name, ' . $this->catalogImageSelect() . $ratingSql))
-            ->join('categories', 'categories.id = products.category_id', 'left')
-            ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
+        $builder->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
             ->where('products.status', 'active');
         $this->applyPublicSellerScope($builder);
 
@@ -241,11 +237,7 @@ class ProductModel extends Model
                     }
                     break;
                 case 'rating':
-                    if ($this->db->tableExists('reviews')) {
-                        $builder->orderBy('(SELECT AVG(rating) FROM reviews WHERE reviews.product_id = products.id)', 'DESC');
-                    } else {
-                        $builder->orderBy('products.id', 'DESC');
-                    }
+                    $builder->orderBy('products.id', 'DESC');
                     break;
                 default:
                     if ($this->productsHas('is_sponsored')) {
@@ -260,7 +252,55 @@ class ProductModel extends Model
         $page = $filters['page'] ?? 1;
         $offset = ($page - 1) * $limit;
 
-        return $builder->findAll($limit, $offset);
+        $rows = $builder->findAll($limit, $offset);
+
+        return $this->attachListingRatings($rows);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function attachListingRatings(array $rows): array
+    {
+        if ($rows === []) {
+            return $rows;
+        }
+        try {
+            if (! $this->db->tableExists('reviews')) {
+                return $rows;
+            }
+            $ids = [];
+            foreach ($rows as $row) {
+                $id = (int) ($row['id'] ?? 0);
+                if ($id > 0) {
+                    $ids[] = $id;
+                }
+            }
+            if ($ids === []) {
+                return $rows;
+            }
+            $stats = $this->db->table('reviews')
+                ->select('product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count')
+                ->whereIn('product_id', $ids)
+                ->where('is_approved', 1)
+                ->groupBy('product_id')
+                ->get()
+                ->getResultArray();
+            $map = [];
+            foreach ($stats as $stat) {
+                $map[(int) $stat['product_id']] = $stat;
+            }
+            foreach ($rows as &$row) {
+                $id = (int) ($row['id'] ?? 0);
+                $row['avg_rating'] = isset($map[$id]) ? (float) $map[$id]['avg_rating'] : null;
+                $row['review_count'] = isset($map[$id]) ? (int) $map[$id]['review_count'] : 0;
+            }
+            unset($row);
+        } catch (\Throwable $e) {
+        }
+
+        return $rows;
     }
 
     public function insertCatalog(array $data): int
@@ -299,11 +339,15 @@ class ProductModel extends Model
 
     protected function applyPublicSellerScope($builder): void
     {
-        try {
-            if (! $this->db->fieldExists('approval_status', 'seller_profiles')) {
-                return;
+        static $hasApproval = null;
+        if ($hasApproval === null) {
+            try {
+                $hasApproval = $this->db->fieldExists('approval_status', 'seller_profiles');
+            } catch (\Throwable $e) {
+                $hasApproval = false;
             }
-        } catch (\Throwable $e) {
+        }
+        if (! $hasApproval) {
             return;
         }
 

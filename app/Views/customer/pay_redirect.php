@@ -9,7 +9,7 @@
 
                 <?php if (empty($pay['configured'])): ?>
                     <div class="alert alert-warning text-start">
-                        Merchant API keys are not in <code>.env</code> yet. Add PayFast merchant ID + secured key, then open this page again. Paid tabhi jab PayFast success/IPN aaye.
+                        Merchant API keys are not in <code>.env</code> yet. Add PayFast merchant ID + secured key, then open this page again. It is marked paid only after PayFast success/IPN.
                     </div>
                     <a class="btn btn-solqam rounded-pill" href="<?= order_status_url((int) $orderId) ?>">View order</a>
                 <?php else: ?>

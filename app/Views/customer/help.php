@@ -22,7 +22,7 @@
             <a href="<?= site_url('account/wallet') ?>" class="card border-0 shadow-sm rounded-4 p-4 text-decoration-none text-dark h-100">
                 <i class="bi bi-wallet2 fs-3 text-solqam"></i>
                 <h6 class="fw-bold mt-2">Wallet cashback</h6>
-                <p class="small text-muted mb-0">Cashback % is set on each product. Prepaid instantly; COD after delivery.</p>
+                <p class="small text-muted mb-0">Cashback % is set on each product and credited after delivery.</p>
             </a>
         </div>
     </div>

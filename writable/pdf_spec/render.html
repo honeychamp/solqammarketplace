@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>spec text</title></head>
+<body>
+<pre id="out">loading…</pre>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+(async () => {
+  const out = document.getElementById('out');
+  try {
+    const pdf = await pdfjsLib.getDocument('spec.pdf').promise;
+    let all = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const text = await page.getTextContent();
+      const lines = [];
+      let lastY = null;
+      let buf = '';
+      for (const item of text.items) {
+        const y = Math.round(item.transform[5]);
+        if (lastY !== null && Math.abs(y - lastY) > 4) {
+          lines.push(buf.trim());
+          buf = '';
+        }
+        buf += item.str + (item.hasEOL ? '\n' : '');
+        lastY = y;
+      }
+      if (buf.trim()) lines.push(buf.trim());
+      all += '\n\n===== PAGE ' + i + ' =====\n' + lines.join('\n');
+    }
+    out.textContent = all;
+  } catch (e) {
+    out.textContent = String(e);
+  }
+})();
+</script>
+</body>
+</html>

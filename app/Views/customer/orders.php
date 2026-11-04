@@ -18,7 +18,7 @@
                 <i class="bi bi-bag-x fs-1"></i>
             </div>
             <h4 class="fw-bold text-dark mb-1">No orders placed yet</h4>
-            <p class="text-secondary small mb-4">Prepaid orders earn the cashback listed on each product instantly; COD after delivery.</p>
+            <p class="text-secondary small mb-4">Cashback listed on each product is credited after delivery.</p>
             <div>
                 <a href="<?= site_url('shop') ?>" class="btn btn-sol-primary px-4 py-2 rounded-pill fw-bold shadow-sm">
                     Explore Marketplace <i class="bi bi-arrow-right ms-1"></i>
@@ -51,7 +51,7 @@
                                 </span>
                             </div>
                             <div class="text-muted small">
-                                <i class="bi bi-clock me-1"></i> Placed on <?= date('d M Y, h:i A', strtotime($o['created_at'])) ?>
+                                <i class="bi bi-clock me-1"></i> Placed <?= esc(pk_datetime($o['created_at'])) ?> PKT
                             </div>
                         </div>
 
@@ -67,7 +67,7 @@
                                 <div class="small text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Delivery Tracker</div>
                                 <div class="fw-semibold text-dark">
                                     <?php if ($o['status'] === 'delivered'): ?>
-                                        <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i> Delivered on <?= date('d M Y', strtotime($o['delivery_date'] ?? $o['updated_at'])) ?></span>
+                                        <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i> Delivered <?= esc(pk_datetime($o['delivery_date'] ?? $o['updated_at'], 'd M Y, h:i A')) ?> PKT</span>
                                     <?php elseif ($o['status'] === 'shipped'): ?>
                                         <span class="text-primary"><i class="bi bi-truck me-1"></i> Dispatched &amp; In Transit</span>
                                     <?php elseif ($o['status'] === 'confirmed'): ?>

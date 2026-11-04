@@ -1,19 +1,29 @@
 <?= $this->extend('layouts/seller') ?>
+<?php $oosOnly = ! empty($oosOnly); ?>
 
 <?= $this->section('content') ?>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-1">My Store Products</h4>
-        <p class="text-secondary small mb-0">Manage pricing, inventory stock, and product visibility</p>
+        <h4 class="fw-bold mb-1"><?= $oosOnly ? 'Out of stock' : 'My Store Products' ?></h4>
+        <p class="text-secondary small mb-0"><?= $oosOnly
+            ? 'Only products with 0 stock. Restock from Edit so you can deliver pending orders. Customers can still buy these.'
+            : 'Out of stock listings stay on the shop so customers can still order. Restock to deliver those orders. Red rows need stock.' ?></p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a href="<?= site_url('seller/products/csv-template') ?>" class="btn btn-outline-secondary rounded-pill px-3">CSV template</a>
+        <?php if ($oosOnly): ?>
+            <a href="<?= site_url('seller/products') ?>" class="btn btn-outline-secondary rounded-pill px-3">All products</a>
+        <?php else: ?>
+            <a href="<?= site_url('seller/inventory') ?>" class="btn btn-outline-primary rounded-pill px-3">Inventory</a>
+            <a href="<?= site_url('seller/products/out-of-stock') ?>" class="btn btn-outline-danger rounded-pill px-3">Out of stock</a>
+            <a href="<?= site_url('seller/products/csv-template') ?>" class="btn btn-outline-secondary rounded-pill px-3">CSV template</a>
+        <?php endif; ?>
         <a href="<?= site_url('seller/products/create') ?>" class="btn btn-success rounded-pill px-4">
             <i class="bi bi-plus-lg me-1"></i> Add New Product
         </a>
     </div>
 </div>
 
+<?php if (! $oosOnly): ?>
 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-3">
     <form action="<?= site_url('seller/products/import') ?>" method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
         <?= csrf_field() ?>
@@ -26,14 +36,19 @@
         </div>
     </form>
 </div>
+<?php endif; ?>
 
 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
     <?php if (empty($products)): ?>
         <div class="text-center py-5">
             <i class="bi bi-box-seam fs-1 text-muted mb-2 d-block"></i>
-            <h5 class="fw-bold">No products in your catalog yet</h5>
-            <p class="text-secondary small mb-3">Add your first item to begin receiving customer orders.</p>
+            <h5 class="fw-bold"><?= $oosOnly ? 'No out of stock products' : 'No products in your catalog yet' ?></h5>
+            <p class="text-secondary small mb-3"><?= $oosOnly ? 'Every listing currently has stock.' : 'Add your first item to begin receiving customer orders.' ?></p>
+            <?php if ($oosOnly): ?>
+            <a href="<?= site_url('seller/products') ?>" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Back to products</a>
+            <?php else: ?>
             <a href="<?= site_url('seller/products/create') ?>" class="btn btn-success btn-sm rounded-pill px-3">Add Product Now</a>
+            <?php endif; ?>
         </div>
     <?php else: ?>
         <div class="table-responsive">
@@ -51,7 +66,7 @@
                 </thead>
                 <tbody>
                     <?php foreach ($products as $p): ?>
-                        <tr data-product-url="<?= esc(site_url('product/' . $p['id'])) ?>" data-product-image="<?= esc(function_exists('media_url') ? media_url($p['primary_image'] ?? '') : ($p['primary_image'] ?? '')) ?>">
+                        <tr class="<?= (int) ($p['stock'] ?? 0) <= 0 ? 'table-danger' : '' ?>" data-product-url="<?= esc(site_url('product/' . $p['id'])) ?>" data-product-image="<?= esc(function_exists('media_url') ? media_url($p['primary_image'] ?? '') : ($p['primary_image'] ?? '')) ?>">
                             <td>
                                 <div class="d-flex align-items-center">
                                     <img src="<?= esc($p['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" class="rounded-3 me-3" style="width: 50px; height: 50px; object-fit: cover;">
@@ -63,13 +78,7 @@
                             </td>
                             <td><span class="badge bg-light text-dark border"><?= esc($p['category_name'] ?? 'General') ?></span></td>
                             <td class="fw-bold text-dark">Rs. <?= number_format($p['price'], 0) ?></td>
-                            <td>
-                                <?php if ($p['stock'] <= 5): ?>
-                                    <span class="badge bg-danger"><?= $p['stock'] ?> (Low)</span>
-                                <?php else: ?>
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle"><?= $p['stock'] ?> units</span>
-                                <?php endif; ?>
-                            </td>
+                            <td><?= hub_stock_cell($p['stock'] ?? 0) ?></td>
                             <td><code><?= esc($p['sku'] ?? 'N/A') ?></code></td>
                             <td>
                                 <span class="badge bg-<?= ($p['status'] === 'active') ? 'success' : 'secondary' ?>">

@@ -169,7 +169,7 @@ $pipeTotal = max(1, array_sum($statusCounts ?? []));
     <div class="col-lg-7" id="hub-orders">
         <div class="command-panel p-4 mb-4">
             <h5 class="fw-bold mb-1">First-party fulfillment</h5>
-            <p class="small text-muted">Seller cut follows the product category. Admin SKUs skip commission. Prepaid cashback is instant; COD after delivery.</p>
+            <p class="small text-muted">Seller cut follows the product category. Admin SKUs skip commission. Buyer cashback is credited after delivery.</p>
             <?php if (empty($openOrders)): ?>
                 <p class="text-muted mb-0">No open admin packages.</p>
             <?php else: ?>
@@ -178,6 +178,7 @@ $pipeTotal = max(1, array_sum($statusCounts ?? []));
                         <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
                             <div>
                                 <strong><?= esc($o['order_number']) ?></strong>
+                                <div class="small text-muted"><?= esc(pk_datetime($o['created_at'] ?? '')) ?> PKT</div>
                                 <div class="small"><a href="<?= site_url('admin/customers/' . $o['user_id']) ?>"><?= esc($o['customer_name']) ?></a> · <?= esc($o['customer_phone'] ?? '') ?></div>
                             </div>
                             <div class="fw-bold">Rs. <?= number_format((float) $o['final_payable'] ?: $o['total_amount'], 0) ?></div>

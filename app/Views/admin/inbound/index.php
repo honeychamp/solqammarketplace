@@ -33,15 +33,17 @@
                         <td><?= esc(ucfirst((string) $p['status'])) ?></td>
                         <td>Rs. <?= number_format((float) $p['shipping_amount'], 0) ?></td>
                         <td class="text-end">
+                            <div class="d-flex flex-wrap justify-content-end gap-1">
                             <?php if (($p['handoff_status'] ?? '') !== 'received'): ?>
                                 <form action="<?= site_url('admin/inbound/' . $p['id'] . '/receive') ?>" method="POST" class="d-inline">
                                     <?= csrf_field() ?>
-                                    <button class="btn btn-sm btn-success rounded-pill">Mark received</button>
+                                    <button class="btn btn-sm btn-outline-success rounded-pill">Parcel received</button>
                                 </form>
-                            <?php else: ?>
+                            <?php endif; ?>
                                 <form action="<?= site_url('admin/inbound/' . $p['id'] . '/status') ?>" method="POST" class="d-flex flex-wrap justify-content-end gap-1">
                                     <?= csrf_field() ?>
                                     <select name="status" class="form-select form-select-sm" style="width:130px">
+                                        <option value="confirmed">Confirmed</option>
                                         <option value="shipped">Shipped</option>
                                         <option value="delivered">Delivered</option>
                                         <option value="undelivered">Not received</option>
@@ -50,7 +52,7 @@
                                     <input type="text" name="tracking_number" class="form-control form-control-sm" placeholder="Tracking" style="width:110px">
                                     <button class="btn btn-sm btn-primary">Update</button>
                                 </form>
-                            <?php endif; ?>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>

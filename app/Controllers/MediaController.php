@@ -14,7 +14,7 @@ class MediaController extends BaseController
     {
         $path = str_replace(['\\', "\0"], '/', $path);
         $path = ltrim($path, '/');
-        if ($path === '' || str_contains($path, '..') || ! preg_match('#^(products|categories|banners|reviews|returns|pay-later)/[A-Za-z0-9][A-Za-z0-9._-]*$#', $path)) {
+        if ($path === '' || str_contains($path, '..') || ! preg_match('#^(products|categories|banners|reviews|returns|pay-later|dues)/[A-Za-z0-9][A-Za-z0-9._-]*$#', $path)) {
             throw PageNotFoundException::forPageNotFound();
         }
 

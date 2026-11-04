@@ -35,6 +35,9 @@ class MetaTrackingService
 
         $url = 'https://graph.facebook.com/v21.0/' . rawurlencode($pixel) . '/events?access_token=' . rawurlencode($token);
         $res = MarketingHttp::postJson($url, $payload);
+        if ($eventName === 'PageView') {
+            return;
+        }
         (new MarketingEventLogModel())->record(
             'meta_capi',
             $eventName,

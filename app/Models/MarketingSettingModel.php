@@ -77,17 +77,29 @@ class MarketingSettingModel extends Model
         } else {
             $this->insert($payload);
         }
+        try {
+            cache()->delete('mkt_settings_row');
+            cache()->delete('mkt_public_cfg');
+        } catch (\Throwable $e) {
+        }
     }
 
     public function publicConfig(): array
     {
-        $s = $this->current();
+        try {
+            $s = $this->select('enabled, test_mode, consent_required, currency, meta_pixel_id, tiktok_pixel_id, gtm_id, ga4_id, google_ads_id, google_ads_label')
+                ->orderBy('id', 'DESC')
+                ->first();
+        } catch (\Throwable $e) {
+            $s = [];
+        }
+        $s = is_array($s) ? $s : [];
 
         return [
             'enabled'          => (int) ($s['enabled'] ?? 0) === 1,
             'test_mode'        => (int) ($s['test_mode'] ?? 0) === 1,
             'consent_required' => (int) ($s['consent_required'] ?? 0) === 1,
-            'currency'         => $s['currency'] ?: 'PKR',
+            'currency'         => ($s['currency'] ?? '') !== '' ? (string) $s['currency'] : 'PKR',
             'meta_pixel_id'    => (string) ($s['meta_pixel_id'] ?? ''),
             'tiktok_pixel_id'  => (string) ($s['tiktok_pixel_id'] ?? ''),
             'gtm_id'           => (string) ($s['gtm_id'] ?? ''),

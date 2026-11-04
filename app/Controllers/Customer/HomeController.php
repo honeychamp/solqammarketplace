@@ -17,67 +17,86 @@ class HomeController extends BaseController
         $pricing       = new PricingService();
         $bannerModel   = new BannerModel();
 
-        $categories = [];
-        try {
-            $categories = $categoryModel->where('is_active', 1)
-                ->groupStart()
-                    ->where('parent_id', null)
-                    ->orWhere('parent_id', 0)
-                ->groupEnd()
-                ->orderBy('sort_order', 'ASC')
-                ->findAll();
-        } catch (\Throwable $e) {
+        $perPage = 30;
+        $page    = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $pack    = storefront_remember('sf_home_' . $page, 180, static function () use ($page, $perPage, $productModel, $pricing, $bannerModel, $categoryModel): array {
             $categories = [];
-        }
-        if (empty($categories)) {
             try {
-                $categories = $categoryModel->getActiveCategories();
+                $categories = category_tree();
+                if ($categories === []) {
+                    $categories = $categoryModel->where('is_active', 1)
+                        ->groupStart()
+                            ->where('parent_id', null)
+                            ->orWhere('parent_id', 0)
+                        ->groupEnd()
+                        ->orderBy('sort_order', 'ASC')
+                        ->findAll();
+                }
             } catch (\Throwable $e) {
                 $categories = [];
             }
-        }
 
-        $perPage = 30;
-        $page    = max(1, (int) ($this->request->getGet('page') ?? 1));
-        $filters = ['limit' => $perPage, 'page' => $page, 'sort' => 'latest'];
-        $homeTotal = 0;
-        $homeProducts = [];
-        try {
-            $homeTotal = $productModel->countCatalog($filters);
-            $homePages = max(1, (int) ceil($homeTotal / $perPage));
-            if ($page > $homePages) {
-                $page = $homePages;
-                $filters['page'] = $page;
-            }
-            $homeProducts = $productModel->getCatalog($filters);
-        } catch (\Throwable $e) {
-            log_message('error', 'Homepage catalog: ' . $e->getMessage());
+            $filters = ['limit' => $perPage, 'page' => $page, 'sort' => 'latest'];
+            $homeTotal = 0;
+            $homeProducts = [];
             $homePages = 1;
-        }
-        $homePages = $homePages ?? max(1, (int) ceil($homeTotal / $perPage));
-        $flashSale = null;
-        $flashProducts = [];
-        $megaSale = null;
-        $megaProducts = [];
-        $heroBanners = [];
-        $sideBanners = [];
-        try {
-            $flashSale     = $pricing->getActiveSale('flash');
-            $flashProducts = $pricing->getCampaignProducts('flash', 12);
-            $megaSale      = $pricing->getActiveSale('mega');
-            $megaProducts  = $pricing->getCampaignProducts('mega', 8);
-            $heroBanners   = $bannerModel->forPlacement('hero');
-            $sideBanners   = $bannerModel->forPlacement('side');
-            $flashMap      = $pricing->getFlashPriceMap();
-            foreach ($homeProducts as &$p) {
-                if (isset($flashMap[(int) $p['id']])) {
-                    $p['flash_price'] = $flashMap[(int) $p['id']];
-                }
+            try {
+                $homeTotal = $productModel->countCatalog($filters);
+                $homePages = max(1, (int) ceil($homeTotal / $perPage));
+                $usePage = min($page, $homePages);
+                $filters['page'] = $usePage;
+                $homeProducts = $productModel->getCatalog($filters);
+            } catch (\Throwable $e) {
+                log_message('error', 'Homepage catalog: ' . $e->getMessage());
             }
-            unset($p);
-        } catch (\Throwable $e) {
-            // Tables not migrated yet
-        }
+
+            $flashSale = null;
+            $flashProducts = [];
+            $megaSale = null;
+            $megaProducts = [];
+            $heroBanners = [];
+            $sideBanners = [];
+            try {
+                $flashSale     = $pricing->getActiveSale('flash');
+                $flashProducts = $pricing->getCampaignProducts('flash', 12);
+                $megaSale      = $pricing->getActiveSale('mega');
+                $megaProducts  = $pricing->getCampaignProducts('mega', 8);
+                $heroBanners   = $bannerModel->forPlacement('hero');
+                $sideBanners   = $bannerModel->forPlacement('side');
+                $flashMap      = $pricing->getFlashPriceMap();
+                foreach ($homeProducts as &$p) {
+                    if (isset($flashMap[(int) $p['id']])) {
+                        $p['flash_price'] = $flashMap[(int) $p['id']];
+                    }
+                }
+                unset($p);
+            } catch (\Throwable $e) {
+            }
+
+            return [
+                'categories'    => is_array($categories) ? $categories : [],
+                'homeTotal'     => $homeTotal,
+                'homePages'     => $homePages,
+                'homeProducts'  => is_array($homeProducts) ? $homeProducts : [],
+                'flashSale'     => $flashSale,
+                'flashProducts' => is_array($flashProducts) ? $flashProducts : [],
+                'megaSale'      => $megaSale,
+                'megaProducts'  => is_array($megaProducts) ? $megaProducts : [],
+                'heroBanners'   => is_array($heroBanners) ? $heroBanners : [],
+                'sideBanners'   => is_array($sideBanners) ? $sideBanners : [],
+            ];
+        });
+
+        $categories    = $pack['categories'] ?? [];
+        $homeTotal     = (int) ($pack['homeTotal'] ?? 0);
+        $homePages     = (int) ($pack['homePages'] ?? 1);
+        $homeProducts  = $pack['homeProducts'] ?? [];
+        $flashSale     = $pack['flashSale'] ?? null;
+        $flashProducts = $pack['flashProducts'] ?? [];
+        $megaSale      = $pack['megaSale'] ?? null;
+        $megaProducts  = $pack['megaProducts'] ?? [];
+        $heroBanners   = $pack['heroBanners'] ?? [];
+        $sideBanners   = $pack['sideBanners'] ?? [];
 
         $hasFlashDeal = ! empty($flashSale) && ! empty($flashProducts);
 

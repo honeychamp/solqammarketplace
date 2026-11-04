@@ -226,13 +226,13 @@ class AuthService
 
         $userId = (int) $this->session->get('user.id');
         if ($userId <= 0) {
-            $this->logout();
+            $this->session->remove('user');
             return false;
         }
 
-        $dbUser = $this->userModel->find($userId);
+        $dbUser = $this->userModel->findAliveById($userId);
         if (!$dbUser) {
-            $this->logout();
+            $this->session->remove('user');
             return false;
         }
 
@@ -246,8 +246,9 @@ class AuthService
 
     public function logout(): void
     {
+        // Never session()->destroy() here: CI4 cannot persist a new login
+        // in the same request after destroy(), and CSRF cookies break.
         $this->session->remove('user');
-        $this->session->destroy();
     }
 
     public function startPasswordReset(string $login): array

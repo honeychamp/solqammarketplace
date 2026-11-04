@@ -8,15 +8,20 @@
     <?= view('partials/pwa') ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261019b">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261030j">
     <?php if (is_file(APPPATH . 'Views/partials/marketing_tags.php')): ?>
         <?= view('partials/marketing_tags') ?>
     <?php endif; ?>
 </head>
-<body class="d-flex flex-column min-vh-100">
+<?php
+$tabUriEarly = trim((string) uri_string(), '/');
+$showMobileTab = $tabUriEarly !== 'checkout' && ! str_starts_with($tabUriEarly, 'checkout');
+?>
+<body class="d-flex flex-column min-vh-100<?= $showMobileTab ? ' has-m-tab' : '' ?>">
     <?php if (is_file(APPPATH . 'Views/partials/marketing_noscript.php')): ?>
         <?= view('partials/marketing_noscript') ?>
     <?php endif; ?>
@@ -24,12 +29,12 @@
     <!-- Top Announcement Bar (Daraz Style) -->
     <div class="solqam-topbar py-2 px-3">
         <div class="container d-flex justify-content-between align-items-center flex-wrap">
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-none d-md-flex align-items-center gap-3">
                 <span><i class="bi bi-truck text-warning me-1"></i> Express Delivery to 150+ Cities in Pakistan</span>
-                <span class="d-none d-md-inline text-white-50">|</span>
-                <span class="d-none d-md-inline"><i class="bi bi-shield-check text-success me-1"></i> 100% Genuine Products &amp; Doorstep COD</span>
+                <span class="d-none d-lg-inline text-white-50">|</span>
+                <span class="d-none d-lg-inline"><i class="bi bi-shield-check text-success me-1"></i> 100% Genuine Products &amp; Doorstep COD</span>
             </div>
-            <div class="d-flex align-items-center gap-3 mt-1 mt-sm-0">
+            <div class="d-flex align-items-center gap-3 mt-0">
                 <a href="<?= site_url('register?role=seller') ?>" class="text-warning fw-semibold">
                     <i class="bi bi-shop me-1"></i> Become a Seller
                 </a>
@@ -79,52 +84,29 @@
                 <!-- User Actions & Cart -->
                 <div class="flex-shrink-0">
                     <?php
-                    $session = session();
-                    $user = $session->get('user');
-                    $cartCount = 0;
-                    $cartModel = new \App\Models\CartModel();
-                    $cartItemModel = new \App\Models\CartItemModel();
-                    if ($user) {
-                        $userModel = new \App\Models\UserModel();
-                        $dbUser = !empty($user['id']) ? $userModel->find($user['id']) : null;
-                        if (!$dbUser) {
-                            $session->remove('user');
-                            $user = null;
-                        } else {
-                            $c = $cartModel->where('user_id', $user['id'])->first();
-                            if ($c) {
-                                $cartCount = $cartItemModel->where('cart_id', $c['id'])->countAllResults();
-                            }
-                        }
-                    }
-                    if (! $user) {
-                        $c = $cartModel->where('session_id', session_id())->first();
-                        if ($c) {
-                            $cartCount = $cartItemModel->where('cart_id', $c['id'])->countAllResults();
-                        }
-                    }
+                    $nav = header_nav_state();
+                    $user = $nav['user'];
+                    $cartCount = (int) $nav['cartCount'];
+                    $walletBalance = $nav['walletBalance'];
+                    $wl = (int) $nav['wishlistCount'];
                     ?>
 
                     <div class="d-flex align-items-center gap-2">
                         <!-- Wallet Pill for Logged-in Users -->
                         <?php if ($user): ?>
-                            <?php
-                            $walletService = new \App\Services\Wallet\WalletService();
-                            $walletBalance = $walletService->getBalance((int) $user['id']);
-                            ?>
                             <a href="<?= site_url('account/wallet') ?>" class="wallet-badge-pill d-none d-md-inline-flex" title="Solqam Instant Cashback Wallet">
                                 <i class="bi bi-coin text-warning fs-6"></i>
-                                <span>Rs. <?= $walletBalance < 0 ? '−' : '' ?><?= number_format(abs($walletBalance), 0) ?></span>
+                                <span>Rs. <?= ((float) $walletBalance) < 0 ? '−' : '' ?><?= number_format(abs((float) $walletBalance), 0) ?></span>
                             </a>
                         <?php endif; ?>
 
-                        <a href="<?= site_url('compare') ?>" class="header-action-btn d-none d-md-inline-flex" title="Compare">
+                        <a href="<?= site_url('compare') ?>" class="header-action-btn d-none d-lg-inline-flex" title="Compare">
                             <i class="bi bi-sliders2-vertical fs-5 text-solqam"></i>
                             <span class="d-none d-xxl-inline fw-bold">Compare</span>
                         </a>
                         <a href="<?= site_url('account/wishlist') ?>" class="header-action-btn position-relative" title="Wishlist">
                             <i class="bi bi-heart fs-5 text-solqam"></i>
-                            <?php $wl = wishlist_count(); if ($wl > 0): ?>
+                            <?php if ($wl > 0): ?>
                                 <span class="cart-badge-counter"><?= $wl ?></span>
                             <?php endif; ?>
                             <span class="d-none d-xxl-inline fw-bold">Wishlist</span>
@@ -175,9 +157,9 @@
                                 </ul>
                             </div>
                         <?php else: ?>
-                            <a href="<?= site_url('login') ?>" class="btn btn-solqam-outline btn-sm px-3 d-none d-sm-inline-flex">Sign In</a>
-                            <a href="<?= site_url('register') ?>" class="btn btn-solqam btn-sm px-3">Join Solqam</a>
-                            <a href="<?= site_url('guest') ?>" class="btn btn-light border btn-sm px-3">Guest</a>
+                            <a href="<?= site_url('login') ?>" class="btn btn-solqam-outline btn-sm px-3 d-none d-md-inline-flex">Sign In</a>
+                            <a href="<?= site_url('register') ?>" class="btn btn-solqam btn-sm px-3 d-none d-md-inline-flex">Join Solqam</a>
+                            <a href="<?= site_url('guest') ?>" class="btn btn-light border btn-sm px-3 d-none d-xl-inline-flex">Guest</a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -292,6 +274,7 @@
     </footer>
 
     <?= $this->renderSection('modals') ?>
+    <?= view('partials/mobile_tabbar') ?>
 
     <div id="solqam-pwa-install" role="dialog" aria-label="Install Solqam app">
         <img src="<?= base_url('assets/images/solqam-pwa-192.png') ?>" alt="">

@@ -21,7 +21,9 @@ if ($img === '') {
     <div class="solqam-product-card">
         <div class="card-media">
             <img src="<?= esc($img) ?>" alt="<?= esc($product['name'] ?? '') ?>" loading="lazy">
-            <?php if (!empty($product['is_mall'])): ?>
+            <?php if ((int) ($product['stock'] ?? 1) <= 0): ?>
+                <span class="solqam-mall-badge" style="background:#DC2626;">Out of stock</span>
+            <?php elseif (!empty($product['is_mall'])): ?>
                 <span class="solqam-mall-badge">Mall</span>
             <?php endif; ?>
             <?= cashback_chip($product) ?>

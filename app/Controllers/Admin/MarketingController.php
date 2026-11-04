@@ -30,6 +30,10 @@ class MarketingController extends BaseController
                 return redirect()->back()->withInput()->with('error', 'TikTok/Meta keys could not be saved. Hosting security (ModSecurity) sometimes blocks long API tokens, or the token column is too short. Try again after the latest update. If it still fails, paste Pixel ID first, save, then paste the token alone.');
             }
             AuditService::log('marketing_settings', 'platform');
+            try {
+                cache()->delete('mkt_public_cfg');
+            } catch (\Throwable $e) {
+            }
 
             return redirect()->to('/admin/marketing')->with('success', 'Marketing tracking saved. Tokens stay on the server and are never printed in the storefront.');
         }

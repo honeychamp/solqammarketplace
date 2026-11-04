@@ -554,6 +554,9 @@ class AuthController extends BaseController
         if ($role === '') {
             $role = (string) $this->request->getGet('role');
         }
+        if ($role === '' && str_contains((string) uri_string(), 'seller/register')) {
+            $role = 'seller';
+        }
 
         return $role === 'seller' ? 'seller' : 'customer';
     }

@@ -11,6 +11,7 @@
                 </ol>
             </nav>
             <h3 class="fw-bold mb-0" style="color: #0F172A;">Order #<?= esc($order['order_number']) ?></h3>
+            <p class="text-secondary small mb-0">Placed <?= esc(pk_datetime($order['created_at'])) ?> PKT</p>
         </div>
         <div>
             <a href="<?= site_url('account/orders/' . $order['id'] . '/invoice') ?>" class="btn btn-outline-primary btn-sm rounded-pill px-3 me-2">Invoice</a>
@@ -60,7 +61,7 @@
                         <i class="bi bi-cart-check fs-5"></i>
                     </div>
                     <div class="small fw-bold <?= $currentStep >= 1 ? 'text-primary' : 'text-muted' ?>">Placed</div>
-                    <div class="text-muted" style="font-size: 0.7rem;"><?= date('d M, h:i A', strtotime($order['created_at'])) ?></div>
+                    <div class="text-muted" style="font-size: 0.7rem;"><?= esc(pk_datetime($order['created_at'], 'd M, h:i A')) ?> PKT</div>
                 </div>
                 <div class="col-3">
                     <div class="p-2 rounded-circle mx-auto mb-2 <?= $currentStep >= 2 ? 'text-white' : 'bg-light text-muted' ?>" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background-color: <?= $currentStep >= 2 ? 'var(--sol-primary)' : '#F1F5F9' ?>;">
@@ -88,7 +89,7 @@
                     </div>
                     <div class="small fw-bold <?= $currentStep >= 4 ? 'text-success' : 'text-muted' ?>">Delivered</div>
                     <div class="text-muted" style="font-size: 0.7rem;">
-                        <?= $order['delivery_date'] ? date('d M, h:i A', strtotime($order['delivery_date'])) : 'Pending Arrival' ?>
+                        <?= $order['delivery_date'] ? esc(pk_datetime($order['delivery_date'], 'd M, h:i A')) . ' PKT' : 'Pending Arrival' ?>
                     </div>
                 </div>
             </div>
@@ -147,6 +148,12 @@
                                                     <div class="small text-solqam"><?= esc($item['variant_label']) ?></div>
                                                 <?php endif; ?>
                                                 <small class="text-muted"><i class="bi bi-shop me-1 text-primary"></i> <?= esc($item['store_name'] ?? 'Verified Vendor') ?></small>
+                                                <?php if (! empty($item['gift_wrap'])): ?>
+                                                    <div class="small text-danger mt-1"><i class="bi bi-gift-fill me-1"></i> Gift wrap<?= (float) ($item['gift_wrap_fee'] ?? 0) > 0 ? ' · Rs. ' . number_format((float) $item['gift_wrap_fee'], 0) : '' ?></div>
+                                                    <?php if (! empty($item['gift_message'])): ?>
+                                                        <div class="small text-muted">“<?= esc($item['gift_message']) ?>”</div>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     </td>
@@ -178,6 +185,12 @@
                     <span class="text-secondary">Subtotal</span>
                     <span class="fw-bold text-dark">Rs. <?= number_format($order['total_amount'], 2) ?></span>
                 </div>
+                <?php if ((float) ($order['gift_wrap_amount'] ?? 0) > 0): ?>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary"><i class="bi bi-gift me-1"></i> Gift wrap</span>
+                    <span class="fw-bold text-dark">Rs. <?= number_format((float) $order['gift_wrap_amount'], 2) ?></span>
+                </div>
+                <?php endif; ?>
 
                 <?php if ($order['wallet_amount_used'] > 0): ?>
                     <div class="d-flex justify-content-between mb-2 text-success">
@@ -218,7 +231,7 @@
                 </div>
                 <?php if (is_online_gateway($order['payment_method'] ?? '') && ($order['payment_status'] ?? '') !== 'paid'): ?>
                     <a href="<?= site_url('checkout/pay/' . $order['id']) ?>" class="btn btn-solqam w-100 rounded-pill mt-3">Complete PayFast payment</a>
-                    <p class="small text-muted mt-2 mb-0">Paid tabhi hoga jab PayFast confirm kare.</p>
+                    <p class="small text-muted mt-2 mb-0">It is marked paid only after PayFast confirms.</p>
                 <?php endif; ?>
                 <?php if (!empty($order['pay_later'])): ?>
                     <div class="mt-3 p-3 border rounded-3 small">

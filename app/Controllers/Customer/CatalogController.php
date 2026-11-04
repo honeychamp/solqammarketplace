@@ -57,13 +57,31 @@ class CatalogController extends BaseController
             'page'          => max(1, (int) ($this->request->getGet('page') ?? 1)),
         ];
 
-        $total      = $this->productModel->countCatalog($filters);
-        $pageCount  = max(1, (int) ceil($total / (int) $filters['limit']));
-        if ($filters['page'] > $pageCount) {
-            $filters['page'] = $pageCount;
-        }
+        $shopKey = 'sf_shop_' . md5(json_encode([
+            $filters['category_ids'], $filters['category_slug'], $filters['search'],
+            $filters['brand'], $filters['mall'], $filters['sponsored'],
+            $filters['min_price'], $filters['max_price'], $filters['sort'],
+            $filters['flash'], $filters['page'],
+        ]));
+        $shopPack = storefront_remember($shopKey, 90, function () use ($filters): array {
+            $total = $this->productModel->countCatalog($filters);
+            $pageCount = max(1, (int) ceil($total / (int) $filters['limit']));
+            $use = $filters;
+            if ($use['page'] > $pageCount) {
+                $use['page'] = $pageCount;
+            }
 
-        $products   = $this->productModel->getCatalog($filters);
+            return [
+                'total'     => $total,
+                'pageCount' => $pageCount,
+                'page'      => $use['page'],
+                'products'  => $this->productModel->getCatalog($use),
+            ];
+        });
+        $total     = (int) ($shopPack['total'] ?? 0);
+        $pageCount = (int) ($shopPack['pageCount'] ?? 1);
+        $filters['page'] = (int) ($shopPack['page'] ?? $filters['page']);
+        $products  = $shopPack['products'] ?? [];
         $searchHint = null;
         if ($products === [] && ! empty($filters['search']) && strlen((string) $filters['search']) > 3) {
             $short = substr((string) $filters['search'], 0, 4);
@@ -86,23 +104,19 @@ class CatalogController extends BaseController
         }
         unset($p);
 
-        $categories = [];
-        try {
-            $categories = $this->categoryModel->getTree();
-        } catch (\Throwable $e) {
-            $categories = [];
-        }
-        $brands = [];
-        try {
-            $brands = $this->productModel->select('brand')
-                ->where('status', 'active')
-                ->where('brand !=', '')
-                ->groupBy('brand')
-                ->orderBy('brand', 'ASC')
-                ->findAll();
-        } catch (\Throwable $e) {
-            $brands = [];
-        }
+        $categories = category_tree();
+        $brands = storefront_remember('sf_brands', 300, function (): array {
+            try {
+                return $this->productModel->select('brand')
+                    ->where('status', 'active')
+                    ->where('brand !=', '')
+                    ->groupBy('brand')
+                    ->orderBy('brand', 'ASC')
+                    ->findAll();
+            } catch (\Throwable $e) {
+                return [];
+            }
+        });
 
         if (! empty($filters['search'])) {
             $searchIds = [];
@@ -205,7 +219,9 @@ class CatalogController extends BaseController
         $relatedProducts = array_slice($relatedProducts, 0, 4);
 
         $followerCount = (new StoreFollowModel())->followerCount((int) $product['seller_id']);
-        $shippingZones = (new ShippingZoneModel())->orderBy('city', 'ASC')->findAll();
+        $shippingZones = storefront_remember('sf_shipping_zones', 300, static function (): array {
+            return (new ShippingZoneModel())->orderBy('city', 'ASC')->findAll();
+        });
 
         $colorFamily = [];
         $colorImages = [];
@@ -286,6 +302,8 @@ class CatalogController extends BaseController
             'sizeOptions'      => array_values($sizeOptions),
             'specs'            => $specs,
             'highlights'       => $highlights,
+            'giftWrapEnabled'  => function_exists('gift_wrap_enabled') ? gift_wrap_enabled() : false,
+            'giftWrapFee'      => function_exists('gift_wrap_fee') ? gift_wrap_fee() : 150.0,
         ]);
     }
 
@@ -341,18 +359,28 @@ class CatalogController extends BaseController
 
     protected function recentProducts(): array
     {
-        $ids = session()->get('recently_viewed') ?? [];
+        $ids = array_values(array_filter(array_map('intval', session()->get('recently_viewed') ?? [])));
+        $ids = array_slice($ids, 0, 6);
         if ($ids === []) {
             return [];
         }
-        $out = [];
-        foreach (array_slice($ids, 0, 6) as $id) {
-            $p = $this->productModel->select('id, name, price, slug')->find((int) $id);
-            if ($p) {
-                $out[] = $p;
+        try {
+            $rows = $this->productModel->select('id, name, price, slug')->whereIn('id', $ids)->findAll();
+            $byId = [];
+            foreach ($rows as $row) {
+                $byId[(int) $row['id']] = $row;
             }
+            $out = [];
+            foreach ($ids as $id) {
+                if (isset($byId[$id])) {
+                    $out[] = $byId[$id];
+                }
+            }
+
+            return $out;
+        } catch (\Throwable $e) {
+            return [];
         }
-        return $out;
     }
 
     protected function parseSpecifications(?string $raw): array

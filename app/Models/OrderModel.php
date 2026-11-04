@@ -34,6 +34,8 @@ class OrderModel extends Model
         'notes',
         'tracking_number',
         'courier',
+        'gift_wrap_amount',
+        'gift_hide_price',
     ];
 
     protected $useTimestamps = true;
@@ -50,7 +52,31 @@ class OrderModel extends Model
 
     public function getOrderDetail(int $id): ?array
     {
-        $order = $this->select('orders.*, users.name as customer_name, users.email as customer_email, users.phone as customer_phone, addresses.recipient_name, addresses.phone as recipient_phone, addresses.street_address, addresses.city, addresses.province, addresses.postal_code, payments.payment_method, payments.status as payment_status, payments.transaction_ref')
+        $addrCols = 'addresses.recipient_name, addresses.phone as recipient_phone, addresses.street_address, addresses.city, addresses.province, addresses.postal_code';
+        try {
+            $names = $this->db->getFieldNames('addresses');
+            foreach (['alternate_phone', 'area', 'landmark'] as $col) {
+                if (in_array($col, $names, true)) {
+                    $addrCols .= ', addresses.' . $col;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Live DB without extra address columns still loads the order.
+        }
+
+        $payCols = 'payments.payment_method, payments.status as payment_status, payments.transaction_ref';
+        try {
+            $pnames = $this->db->getFieldNames('payments');
+            if (in_array('amount', $pnames, true)) {
+                $payCols .= ', payments.amount as payment_amount';
+            }
+            if (in_array('paid_at', $pnames, true)) {
+                $payCols .= ', payments.paid_at';
+            }
+        } catch (\Throwable $e) {
+        }
+
+        $order = $this->select('orders.*, users.name as customer_name, users.email as customer_email, users.phone as customer_phone, ' . $addrCols . ', ' . $payCols)
             ->join('users', 'users.id = orders.user_id')
             ->join('addresses', 'addresses.id = orders.address_id', 'left')
             ->join('payments', 'payments.order_id = orders.id', 'left')

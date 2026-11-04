@@ -38,17 +38,23 @@ class DashboardController extends BaseController
         $myProductCount = $productModel->where('seller_id', $adminId)->countAllResults();
         $totalProducts  = $productModel->countAllResults();
 
-        $allOrders             = $orderModel->findAll();
+        $orderCount            = 0;
         $totalGmv              = 0.0;
         $totalCommissionEarned = 0.0;
         $totalCashback         = 0.0;
-        foreach ($allOrders as $ord) {
-            if (in_array($ord['status'] ?? '', ['cancelled', 'returned'], true)) {
-                continue;
-            }
-            $totalGmv              += (float) $ord['total_amount'];
-            $totalCommissionEarned += (float) $ord['commission_amount'];
-            $totalCashback         += (float) ($ord['cashback_amount'] ?? 0);
+        try {
+            $agg = $db->query("SELECT
+                    COUNT(*) AS cnt,
+                    COALESCE(SUM(CASE WHEN status NOT IN ('cancelled','returned') THEN total_amount ELSE 0 END), 0) AS gmv,
+                    COALESCE(SUM(CASE WHEN status NOT IN ('cancelled','returned') THEN commission_amount ELSE 0 END), 0) AS comm,
+                    COALESCE(SUM(CASE WHEN status NOT IN ('cancelled','returned') THEN cashback_amount ELSE 0 END), 0) AS cb
+                FROM orders")->getRowArray();
+            $orderCount            = (int) ($agg['cnt'] ?? 0);
+            $totalGmv              = (float) ($agg['gmv'] ?? 0);
+            $totalCommissionEarned = (float) ($agg['comm'] ?? 0);
+            $totalCashback         = (float) ($agg['cb'] ?? 0);
+        } catch (\Throwable $e) {
+            $orderCount = $orderModel->countAllResults();
         }
 
         $recentOrders = $orderModel
@@ -134,7 +140,7 @@ class DashboardController extends BaseController
         $pulse = $analytics->pulse();
         $payMix = $analytics->paymentMix();
         $topSkus = $analytics->topProducts(6);
-        $aov = count($allOrders) > 0 ? round($totalGmv / count($allOrders), 0) : 0;
+        $aov = $orderCount > 0 ? round($totalGmv / $orderCount, 0) : 0;
 
         $dueSnap = ['amount' => 0.0, 'sellers' => 0];
         try {
@@ -162,7 +168,7 @@ class DashboardController extends BaseController
             'pendingSellerCount'    => $pendingSellerCount,
             'totalProducts'         => $totalProducts,
             'myProductCount'        => $myProductCount,
-            'orderCount'            => count($allOrders),
+            'orderCount'            => $orderCount,
             'totalGmv'              => $totalGmv,
             'totalCommissionEarned' => $totalCommissionEarned,
             'totalCashback'         => $totalCashback,

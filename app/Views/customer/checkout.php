@@ -13,8 +13,9 @@ $invalid = static function (string $key) use ($fieldErrors): string {
     return isset($fieldErrors[$key]) ? ' is-invalid' : '';
 };
 ?>
-<div class="container py-4">
-    <div class="ck-hero">
+<div class="ck-backdrop d-md-none" onclick="history.back()"></div>
+<div class="container py-4 ck-page">
+    <div class="ck-hero d-none d-md-flex">
         <div>
             <div class="sf-eyebrow mb-1">Secure checkout</div>
             <h3 class="fw-bold mb-1 text-dark"><?= ! empty($isGuest) ? 'Guest checkout' : 'Delivery &amp; payment' ?></h3>
@@ -35,7 +36,13 @@ $invalid = static function (string $key) use ($fieldErrors): string {
         </div>
     </div>
 
-    <form action="<?= site_url('checkout') ?>" method="POST" id="checkoutForm" enctype="multipart/form-data" onsubmit="return validateCheckoutForm(event)" novalidate>
+    <form action="<?= site_url('checkout') ?>" method="POST" id="checkoutForm" class="ck-sheet" enctype="multipart/form-data" onsubmit="return validateCheckoutForm(event)" novalidate>
+        <div class="ck-sheet-handle d-md-none"></div>
+        <div class="ck-mhead d-md-none">
+            <button type="button" class="btn-close-ck" onclick="history.back()" aria-label="Close">&times;</button>
+            <strong>Checkout</strong>
+            <span class="badge text-bg-light border">COD</span>
+        </div>
         <?= csrf_field() ?>
 
         <div id="checkoutAlert" class="alert alert-danger border-0 shadow-sm rounded-3 mb-4 <?= ($fieldErrors === [] && ! $formError) ? 'd-none' : '' ?>">
@@ -103,8 +110,12 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                                 <label class="form-label small fw-semibold text-muted">Mobile Number (Active) <span class="text-danger">*</span></label>
                                 <input type="text" name="phone" id="ck_phone" class="form-control<?= $invalid('phone') ?>" placeholder="03XXXXXXXXX" value="<?= checkout_keep('phone') ?>" required>
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-muted">WhatsApp / Alternate phone</label>
+                                <input type="text" name="alternate_phone" class="form-control" placeholder="03XXXXXXXXX" value="<?= checkout_keep('alternate_phone') ?>">
+                            </div>
                             <?php if (! empty($isGuest)): ?>
-                            <div class="col-12 d-none d-md-block ">
+                            <div class="col-12 d-none d-md-block">
                                 <label class="form-label small fw-semibold text-muted">Email (optional)</label>
                                 <input type="email" name="guest_email" class="form-control<?= $invalid('guest_email') ?>" placeholder="For order updates" value="<?= checkout_keep('guest_email') ?>">
                             </div>
@@ -113,6 +124,16 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                         <div class="mb-2">
                             <label class="form-label small fw-semibold text-muted">Street / House / Apartment / Sector <span class="text-danger">*</span></label>
                             <textarea name="street_address" id="ck_street" class="form-control<?= $invalid('street_address') ?>" rows="2" placeholder="Full residential or office address" required><?= checkout_keep('street_address') ?></textarea>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-muted">Area / Locality</label>
+                                <input type="text" name="area" class="form-control" placeholder="e.g. Gulshan-e-Iqbal" value="<?= checkout_keep('area') ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-muted">Nearest landmark</label>
+                                <input type="text" name="landmark" class="form-control" placeholder="e.g. Near Imtiaz" value="<?= checkout_keep('landmark') ?>">
+                            </div>
                         </div>
                         <div class="row g-2">
                             <div class="col-md-4">
@@ -143,7 +164,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4 d-none d-md-block ">
+                            <div class="col-md-4 d-none d-md-block">
                                 <label class="form-label small fw-semibold text-muted">Postal Code <span class="text-muted fw-normal">(optional)</span></label>
                                 <input type="text" name="postal_code" id="ck_postal" class="form-control<?= $invalid('postal_code') ?>" placeholder="e.g. 54000" value="<?= checkout_keep('postal_code') ?>" inputmode="numeric">
                             </div>
@@ -158,8 +179,10 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                         Payment Method
                     </h5>
 
-                    <div class="small fw-bold text-muted text-uppercase mb-2 d-none d-md-block" style="letter-spacing:.08em;">Accepted methods</div>
-                    <div class="mb-3 d-none d-md-block"><?= view('customer/_payment_methods') ?></div>
+                    <div class="d-none d-md-block">
+                    <div class="small fw-bold text-muted text-uppercase mb-2" style="letter-spacing:.08em;">Accepted methods</div>
+                    <div class="mb-3"><?= view('customer/_payment_methods') ?></div>
+                    </div>
 
                     <div id="walletCoversBox" class="alert alert-success d-none mb-0">
                         <i class="bi bi-check-circle-fill me-1"></i>
@@ -167,7 +190,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                     </div>
 
                     <div id="remainderPayBox">
-                        <p class="small text-muted mb-3 d-none d-md-block" id="remainderHint">Select how you want to pay.</p>
+                        <p class="small text-muted mb-3" id="remainderHint">Select how you want to pay.</p>
                         <div class="row g-3" id="standardPayOptions">
                             <div class="col-12">
                                 <div class="form-check pay-tile">
@@ -194,7 +217,7 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                                     <input class="form-check-input ms-0 me-2" type="radio" name="payment_method" id="pay_later" value="pay_later" <?= $keepPay === 'pay_later' ? 'checked' : '' ?> <?= ! empty($isGuest) ? 'disabled' : '' ?>>
                                     <label class="form-check-label w-100 ps-1" for="pay_later">
                                         <div class="fw-bold text-dark"><i class="bi bi-calendar2-week text-warning fs-5"></i> Pay later (wallet shortfall)</div>
-                                        <small class="text-secondary d-block mt-1">Wallet shortfall wallet mein minus dikhega jab tak baad mein pay na ho.</small>
+                                        <small class="text-secondary d-block mt-1">Any wallet shortfall shows as a minus balance until you pay it later.</small>
                                     </label>
                                 </div>
                             </div>
@@ -250,17 +273,41 @@ $invalid = static function (string $key) use ($fieldErrors): string {
 
                     <!-- Items Preview -->
                     <div class="mb-3" style="max-height: 220px; overflow-y: auto;">
+                        <?php if (! empty($giftWrapEnabled)): ?>
+                            <input type="hidden" name="gift_sync" value="1">
+                        <?php endif; ?>
                         <?php foreach ($items as $item): ?>
-                            <div class="d-flex justify-content-between align-items-center mb-2.5 small">
-                                <div class="text-truncate me-2" style="max-width: 220px;">
+                            <div class="d-flex justify-content-between align-items-start mb-2.5 small">
+                                <div class="me-2" style="max-width: 240px;">
                                     <strong><?= $item['quantity'] ?>x</strong> <span class="text-dark"><?= esc($item['product_name']) ?></span>
                                     <?php if (! empty($item['variant_label'])): ?>
                                         <div class="text-solqam" style="font-size: 0.72rem;"><?= esc($item['variant_label']) ?></div>
                                     <?php endif; ?>
                                     <div class="text-muted" style="font-size: 0.72rem;"><i class="bi bi-shop me-1 text-primary"></i> <?= esc($item['store_name'] ?? 'Vendor') ?></div>
+                                    <?php if (function_exists('session_gets_cashback') && session_gets_cashback()): ?>
                                     <div class="text-success" style="font-size: 0.72rem;"><?= esc(cashback_percent_label($item)) ?> cashback</div>
+                                    <?php endif; ?>
+                                    <?php if (! empty($giftWrapEnabled)): ?>
+                                        <div class="gift-box gift-box-compact mt-2 <?= ! empty($item['gift_wrap']) ? 'is-on' : '' ?>" data-gift-box data-qty="<?= (int) $item['quantity'] ?>">
+                                            <label class="gift-box-toggle mb-0">
+                                                <input type="checkbox" class="form-check-input gift-wrap-check" name="gift_item[<?= (int) $item['id'] ?>]" value="1" <?= ! empty($item['gift_wrap']) ? 'checked' : '' ?> onchange="this.closest('[data-gift-box]').classList.toggle('is-on', this.checked); if (typeof calculatePayable === 'function') calculatePayable();">
+                                                <span class="gift-box-icon"><i class="bi bi-gift-fill"></i></span>
+                                                <span>
+                                                    <strong>Gift wrap</strong>
+                                                    <span class="d-block text-muted" style="font-size:0.72rem;">Rs. <?= number_format((float) ($giftWrapFee ?? 150), 0) ?> × <?= (int) $item['quantity'] ?></span>
+                                                </span>
+                                            </label>
+                                            <div class="gift-box-extra">
+                                                <textarea name="gift_message[<?= (int) $item['id'] ?>]" class="form-control form-control-sm mt-1" rows="2" maxlength="400" placeholder="Gift message"><?= esc($item['gift_message'] ?? '') ?></textarea>
+                                                <div class="form-check mt-1">
+                                                    <input class="form-check-input" type="checkbox" name="gift_hide[<?= (int) $item['id'] ?>]" value="1" id="ckGiftHide_<?= (int) $item['id'] ?>" <?= ! empty($item['gift_hide_price']) ? 'checked' : '' ?>>
+                                                    <label class="form-check-label" for="ckGiftHide_<?= (int) $item['id'] ?>" style="font-size:0.72rem;">Hide prices on packing slip</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
-                                <div class="fw-bold text-dark font-monospace">
+                                <div class="fw-bold text-dark font-monospace text-nowrap">
                                     Rs. <?= number_format($item['unit_price'] * $item['quantity'], 0) ?>
                                 </div>
                             </div>
@@ -298,21 +345,29 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                             </div>
                             <small class="text-muted d-block mt-1" id="walletSplitHint"></small>
                         <?php else: ?>
-                            <small class="text-muted d-block">No wallet balance yet. Prepaid orders get listed product cashback instantly; COD after delivery.</small>
+                            <small class="text-muted d-block">No wallet balance yet. Cashback is credited after delivery.</small>
                         <?php endif; ?>
                     </div>
 
                     <!-- Totals Breakdown -->
+                    <?php if (empty($isGuest) && function_exists('session_gets_cashback') && session_gets_cashback()): ?>
                     <label class="form-label small fw-bold">Voucher / Promo Code</label>
                     <div class="input-group mb-3">
                         <input type="text" name="coupon_code" class="form-control" placeholder="WELCOME10" value="<?= checkout_keep('coupon_code') !== '' ? checkout_keep('coupon_code') : esc($couponCode ?? '') ?>">
                         <button class="btn btn-outline-primary" type="submit" formaction="<?= site_url('checkout/coupon') ?>">Apply</button>
                     </div>
+                    <?php endif; ?>
 
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-secondary">Subtotal</span>
                         <span class="fw-bold text-dark font-monospace">Rs. <?= number_format($subtotal, 2) ?></span>
                     </div>
+                    <?php if (! empty($giftWrapEnabled)): ?>
+                    <div class="d-flex justify-content-between mb-2" id="giftWrapRow">
+                        <span class="text-secondary"><i class="bi bi-gift me-1"></i> Gift wrap</span>
+                        <span class="fw-bold font-monospace">Rs. <span id="giftWrapAmount"><?= number_format((float) ($giftWrapTotal ?? 0), 2) ?></span></span>
+                    </div>
+                    <?php endif; ?>
                     <?php if (!empty($couponDiscount)): ?>
                     <div class="d-flex justify-content-between mb-2 text-success">
                         <span>Voucher <?= esc($couponCode) ?></span>
@@ -360,10 +415,14 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                         ?></span>
                     </div>
 
+                    <?php if (function_exists('session_gets_cashback') && session_gets_cashback()): ?>
                     <div class="d-flex justify-content-between mb-3">
                         <span class="text-secondary">Estimated cashback</span>
                         <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-monospace">+ Rs. <?= number_format($estimatedCashback ?? cart_cashback_total($items ?? []), 0) ?></span>
                     </div>
+                    <?php else: ?>
+                    <div class="small text-muted mb-3">Sign in or register to get wallet cashback on this order.</div>
+                    <?php endif; ?>
 
                     <hr>
 
@@ -373,15 +432,22 @@ $invalid = static function (string $key) use ($fieldErrors): string {
                     </div>
                     <p class="small text-muted mb-4" id="remainingPayNote"></p>
 
-                    <button type="submit" class="btn btn-sol-primary btn-lg w-100 rounded-pill py-2.5 fw-bold shadow-sm">
+                    <button type="submit" class="btn btn-sol-primary btn-lg w-100 rounded-pill py-2.5 fw-bold shadow-sm ck-desktop-submit">
                         Confirm &amp; Place Order <i class="bi bi-shield-check ms-1"></i>
                     </button>
 
-                    <div class="text-center mt-3 text-muted small" style="font-size: 0.74rem;">
+                    <div class="text-center mt-3 text-muted small d-none d-md-block" style="font-size: 0.74rem;">
                         <i class="bi bi-shield-lock me-1"></i> 7-Day Free Returns &bull; 100% Genuine Products
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="ck-buybar d-md-none">
+            <div class="ck-buy-total">
+                <span>To pay</span>
+                <strong>Rs. <span id="finalPayableMobile"><?= number_format($subtotal, 0) ?></span></strong>
+            </div>
+            <button type="submit" class="btn btn-sol-primary">Place order</button>
         </div>
     </form>
 </div>
@@ -400,10 +466,22 @@ $invalid = static function (string $key) use ($fieldErrors): string {
     }
 
     const subtotal = <?= (float) $subtotal ?>;
+    const giftWrapUnit = <?= (float) ($giftWrapFee ?? 0) ?>;
     const walletBalance = <?= (float) $walletBalance ?>;
     const walletDebt = <?= (float) ($walletDebt ?? 0) ?>;
     let shipping = <?= !empty($shippingQuote['needs_city']) ? 0 : (float) ($shippingQuote['amount'] ?? 0) ?>;
     const couponDiscount = <?= (float) ($couponDiscount ?? 0) ?>;
+
+    function currentGiftWrap() {
+        let total = 0;
+        document.querySelectorAll('[data-gift-box]').forEach(function (box) {
+            const chk = box.querySelector('.gift-wrap-check');
+            if (chk && chk.checked) {
+                total += giftWrapUnit * (parseInt(box.getAttribute('data-qty') || '1', 10) || 1);
+            }
+        });
+        return total;
+    }
     const quoteUrl = <?= json_encode(site_url('checkout/shipping-quote')) ?>;
 
     function currentCity() {
@@ -485,7 +563,10 @@ $invalid = static function (string $key) use ($fieldErrors): string {
         const deductionRow = document.getElementById('walletDeductionRow');
         const discountAmountSpan = document.getElementById('walletDiscountAmount');
         const payableDisplay = document.getElementById('finalPayableDisplay');
-        const afterCoupon = Math.max(0, subtotal - couponDiscount) + shipping;
+        const giftWrap = currentGiftWrap();
+        const giftAmt = document.getElementById('giftWrapAmount');
+        if (giftAmt) giftAmt.textContent = giftWrap.toFixed(2);
+        const afterCoupon = Math.max(0, subtotal - couponDiscount) + shipping + giftWrap;
         const remainderBox = document.getElementById('remainderPayBox');
         const coversBox = document.getElementById('walletCoversBox');
         const hint = document.getElementById('walletSplitHint');
@@ -512,7 +593,9 @@ $invalid = static function (string $key) use ($fieldErrors): string {
             if (hint) hint.textContent = '';
         }
 
-        payableDisplay.textContent = payable.toFixed(2);
+        if (payableDisplay) payableDisplay.textContent = payable.toFixed(2);
+        const mobilePay = document.getElementById('finalPayableMobile');
+        if (mobilePay) mobilePay.textContent = Math.round(payable).toLocaleString();
         if (remainingNote) {
             remainingNote.textContent = walletDebt > 0
                 ? ('Remaining to pay: Rs. ' + payable.toFixed(2) + ' (this order + unpaid courier Rs. ' + walletDebt.toFixed(2) + ').')
@@ -625,6 +708,9 @@ $invalid = static function (string $key) use ($fieldErrors): string {
     if (cityInput) {
         cityInput.addEventListener('input', refreshShippingDebounced);
         cityInput.addEventListener('change', refreshShipping);
+    }
+    if (window.matchMedia('(max-width: 575.98px)').matches) {
+        document.body.classList.add('ck-mobile');
     }
     calculatePayable();
     togglePayLater();

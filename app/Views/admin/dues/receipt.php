@@ -29,6 +29,9 @@ $remain = (float) ($remain ?? 0);
         <tr><th>Still unpaid</th><td>Rs. <?= number_format($remain, 2) ?></td></tr>
         <tr><th>Status</th><td><?= esc($due['status'] ?? '') ?></td></tr>
         <tr><th>Note</th><td><?= esc($due['paid_note'] ?? '') ?></td></tr>
+        <?php if (! empty($due['proof_path'])): ?>
+        <tr><th>Seller screenshot</th><td><a href="<?= esc(media_url($due['proof_path'])) ?>" target="_blank">Open image</a><?php if (! empty($due['proof_note'])): ?><div class="small text-muted"><?= esc($due['proof_note']) ?></div><?php endif; ?></td></tr>
+        <?php endif; ?>
     </table>
     <p class="small text-muted mb-0">Seller keeps goods cash. This receipt is only for commission + cashback owed to Solqam.</p>
 </body>

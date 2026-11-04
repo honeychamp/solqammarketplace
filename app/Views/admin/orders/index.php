@@ -19,6 +19,8 @@
     </div>
 </div>
 
+<?= view('partials/order_export_bar', ['exportBase' => $mineOnly ? 'admin/my-orders/export' : 'admin/orders/export']) ?>
+
 <div class="card-custom p-4">
     <div class="table-responsive">
         <table class="table align-middle">
@@ -27,7 +29,7 @@
                     <th>Order #</th>
                     <th>Customer (Buyer)</th>
                     <th>Seller / Store</th>
-                    <th>Date Placed</th>
+                    <th>Date &amp; time (PKT)</th>
                     <th>Total Value</th>
                     <th>Cashback</th>
                     <th>Commission</th>
@@ -76,8 +78,8 @@
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <div class="small text-dark"><?= date('d M Y', strtotime($o['created_at'])) ?></div>
-                                <small class="text-muted"><?= date('h:i A', strtotime($o['created_at'])) ?></small>
+                                <div class="small text-dark"><?= esc(pk_datetime($o['created_at'], 'd M Y')) ?></div>
+                                <small class="text-muted"><?= esc(pk_datetime($o['created_at'], 'h:i A')) ?> PKT</small>
                             </td>
                             <td class="fw-bold text-dark">Rs. <?= number_format($o['total_amount'], 2) ?></td>
                             <td class="text-success small">Rs. <?= number_format((float) ($o['cashback_amount'] ?? 0), 2) ?></td>

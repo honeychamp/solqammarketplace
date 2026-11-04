@@ -38,13 +38,7 @@ class UserModel extends Model
 
     protected function initialize()
     {
-        try {
-            if (! $this->db->fieldExists('deleted_at', $this->table)) {
-                $this->useSoftDeletes = false;
-            }
-        } catch (\Throwable $e) {
-            $this->useSoftDeletes = false;
-        }
+        // Soft-deletes stay on. Skip per-request DESCRIBE.
     }
 
     // Validation
@@ -61,7 +55,7 @@ class UserModel extends Model
     public function findByEmailOrPhone(string $login): ?array
     {
         $login = trim($login);
-        $builder = $this->groupStart()
+        $builder = $this->withDeleted(true)->groupStart()
             ->where('email', $login)
             ->orWhere('phone', $login);
 
@@ -74,6 +68,44 @@ class UserModel extends Model
                     ->orWhere('phone', '92' . $tenDigits);
         }
 
-        return $builder->groupEnd()->first();
+        $user = $builder->groupEnd()->first();
+        if (! $user || $this->isEffectivelyDeleted($user)) {
+            return null;
+        }
+
+        return $user;
+    }
+
+    /**
+     * Session checks must ignore MySQL zero-dates in deleted_at
+     * (CI4 soft-delete WHERE deleted_at IS NULL would miss the admin row).
+     */
+    public function findAliveById(int $id): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
+        try {
+            $row = $this->db->table($this->table)->where('id', $id)->get()->getRowArray();
+        } catch (\Throwable $e) {
+            $row = $this->withDeleted(true)->find($id);
+        }
+
+        if (! $row || $this->isEffectivelyDeleted($row)) {
+            return null;
+        }
+
+        return $row;
+    }
+
+    public function isEffectivelyDeleted(array $user): bool
+    {
+        $deleted = $user['deleted_at'] ?? null;
+        if ($deleted === null || $deleted === '' || $deleted === '0000-00-00 00:00:00' || $deleted === '0000-00-00') {
+            return false;
+        }
+
+        return true;
     }
 }

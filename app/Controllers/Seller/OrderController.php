@@ -33,6 +33,35 @@ class OrderController extends BaseController
         ]);
     }
 
+    public function export()
+    {
+        try {
+            @ini_set('max_execution_time', '180');
+            @ini_set('memory_limit', '512M');
+            $sellerId = (int) session()->get('user.id');
+            $svc = new \App\Services\Export\OrderExportService();
+            $filters = $svc->filtersFromRequest($this->request, $sellerId);
+            $stamp = date('Ymd_His');
+            $name = 'Solqam_Store_Orders_';
+
+            if (($filters['format'] ?? 'xlsx') === 'csv') {
+                return $svc->download(array_merge($filters, ['format' => 'csv']), $sellerId, $name . $stamp);
+            }
+
+            $pack = $svc->build($filters, $sellerId);
+            return (new \App\Controllers\Admin\OrderController())->sendOrderSpreadsheet(
+                $pack,
+                $name . $stamp,
+                \App\Services\Export\OrderExportService::HEADERS,
+                \App\Services\Export\OrderExportService::GROUPS
+            );
+        } catch (\Throwable $e) {
+            log_message('error', 'Seller order export: ' . $e->getMessage());
+
+            return redirect()->to(site_url('seller/orders'))->with('error', 'Export failed: ' . $e->getMessage());
+        }
+    }
+
     public function show($orderId)
     {
         $sellerId = (int) session()->get('user.id');
@@ -62,6 +91,61 @@ class OrderController extends BaseController
             'sellerItems' => $sellerItems,
             'shipment'    => $shipment,
         ]);
+    }
+
+    public function editPlaced($orderId)
+    {
+        $sellerId = (int) session()->get('user.id');
+        $order = $this->orderModel->getOrderDetail((int) $orderId);
+        if (! $order) {
+            return redirect()->to('/seller/orders')->with('error', 'Order not found.');
+        }
+        $mine = array_filter($order['items'] ?? [], static fn ($it) => (int) ($it['seller_id'] ?? 0) === $sellerId);
+        if ($mine === []) {
+            return redirect()->to('/seller/orders')->with('error', 'Access denied.');
+        }
+        $pkgStatus = 'placed';
+        $fulfillBy = 'seller';
+        foreach ($order['shipments'] ?? [] as $pkg) {
+            if ((int) ($pkg['seller_id'] ?? 0) === $sellerId) {
+                $pkgStatus = (string) ($pkg['status'] ?? 'placed');
+                $fulfillBy = (string) ($pkg['fulfill_by'] ?? 'seller');
+                break;
+            }
+        }
+        if ($pkgStatus !== 'placed') {
+            return $this->redirectAfterHub('/seller/orders/' . $orderId, 'error', 'You can edit only a placed package, before confirm.');
+        }
+        if ($fulfillBy === 'admin') {
+            return $this->redirectAfterHub('/seller/orders/' . $orderId, 'error', 'Solqam will deliver this package. Admin will edit and confirm it.');
+        }
+
+        $qty = $this->request->getPost('qty') ?? [];
+        $quantities = [];
+        if (is_array($qty)) {
+            foreach ($qty as $itemId => $n) {
+                $quantities[(int) $itemId] = (int) $n;
+            }
+        }
+        $address = [
+            'recipient_name'  => (string) $this->request->getPost('recipient_name'),
+            'phone'           => (string) $this->request->getPost('phone'),
+            'street_address'  => (string) $this->request->getPost('street_address'),
+            'city'            => (string) $this->request->getPost('city'),
+            'province'        => (string) $this->request->getPost('province'),
+            'postal_code'     => (string) $this->request->getPost('postal_code'),
+            'alternate_phone' => (string) $this->request->getPost('alternate_phone'),
+            'area'            => (string) $this->request->getPost('area'),
+            'landmark'        => (string) $this->request->getPost('landmark'),
+        ];
+        $notes = (string) $this->request->getPost('notes');
+        try {
+            $this->orderService->editPlacedOrder((int) $orderId, $quantities, $address, $notes, [$sellerId]);
+
+            return $this->redirectAfterHub('/seller/orders/' . $orderId, 'success', 'Order updated. Now tap Confirm (Accept Order). Commission is not due until you confirm.');
+        } catch (\Throwable $e) {
+            return $this->redirectAfterHub('/seller/orders/' . $orderId, 'error', $e->getMessage());
+        }
     }
 
     public function updateStatus($orderId)

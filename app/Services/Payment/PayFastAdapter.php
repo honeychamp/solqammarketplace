@@ -65,7 +65,7 @@ class PayFastAdapter implements PaymentGatewayInterface
             'redirect_url'          => $this->config->payfastCheckoutUrl(),
             'http_method'           => 'POST',
             'fields'                => $fields,
-            'message'               => 'Customer PayFast par JazzCash / EasyPaisa / card se pay karega. Paid tabhi jab IPN/return confirm ho.',
+            'message'               => 'Customer will pay with JazzCash / EasyPaisa / card on PayFast. Marked paid only after PayFast confirms.',
             'payload'               => $fields + ['order_id' => $orderData['order_id'] ?? null],
             'configured'            => $configured,
         ];

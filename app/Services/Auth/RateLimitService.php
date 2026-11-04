@@ -37,4 +37,16 @@ class RateLimitService
             return true;
         }
     }
+
+    public static function clear(string $action): void
+    {
+        try {
+            $ip = service('request')->getIPAddress();
+            Database::connect()->table('auth_attempts')
+                ->where('ip_address', $ip)
+                ->where('action', $action)
+                ->delete();
+        } catch (\Throwable $e) {
+        }
+    }
 }

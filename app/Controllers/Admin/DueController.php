@@ -25,9 +25,10 @@ class DueController extends BaseController
         }
 
         return view('admin/dues/index', [
-            'title'   => 'COD seller dues — Solqam Admin',
-            'sellers' => $dues->unpaidSellers(),
-            'limit'   => SellerDueService::SUSPEND_AT,
+            'title'      => 'COD seller dues — Solqam Admin',
+            'sellers'    => $dues->unpaidSellers(),
+            'processing' => $dues->processingLines(),
+            'limit'      => SellerDueService::SUSPEND_AT,
         ]);
     }
 
@@ -43,6 +44,20 @@ class DueController extends BaseController
         }
 
         return redirect()->back()->with('success', 'COD commission/cashback receipt saved.');
+    }
+
+    public function markPaidSeller($sellerId)
+    {
+        try {
+            $note   = trim((string) $this->request->getPost('paid_note'));
+            $amount = $this->request->getPost('amount');
+            $amt    = $amount === null || $amount === '' ? null : (float) $amount;
+            $cut    = (new SellerDueService())->markPaidOpenForSeller((int) $sellerId, $note, $amt);
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Total payment confirm: Rs. ' . number_format($cut, 0) . ' marked paid.');
     }
 
     public function offsetWallet($sellerId)

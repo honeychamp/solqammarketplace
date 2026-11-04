@@ -1,29 +1,128 @@
 <?php
 
+if (! function_exists('storefront_remember')) {
+    /**
+     * @template T
+     * @param callable(): T $maker
+     * @return T
+     */
+    function storefront_remember(string $key, int $ttl, callable $maker)
+    {
+        try {
+            $cache = cache();
+            $hit   = $cache->get($key);
+            if ($hit !== null) {
+                return $hit;
+            }
+            $value = $maker();
+            $cache->save($key, $value, $ttl);
+
+            return $value;
+        } catch (\Throwable $e) {
+            return $maker();
+        }
+    }
+}
+
+if (! function_exists('storefront_forget')) {
+    function storefront_forget($keys): void
+    {
+        try {
+            $cache = cache();
+            foreach ((array) $keys as $key) {
+                $cache->delete((string) $key);
+            }
+        } catch (\Throwable $e) {
+        }
+    }
+}
+
 if (!function_exists('category_tree')) {
     function category_tree(): array
     {
-        try {
-            $model = new \App\Models\CategoryModel();
-            return $model->getTree();
-        } catch (\Throwable $e) {
-            return [];
+        return storefront_remember('sf_category_tree', 600, static function (): array {
+            try {
+                return (new \App\Models\CategoryModel())->getTree();
+            } catch (\Throwable $e) {
+                return [];
+            }
+        });
+    }
+}
+
+if (! function_exists('header_nav_state')) {
+    /**
+     * @return array{user:?array, cartCount:int, wishlistCount:int, walletBalance:?float}
+     */
+    function header_nav_state(): array
+    {
+        $session = session();
+        $user    = $session->get('user');
+        if (! is_array($user) || empty($user['id'])) {
+            $user = null;
         }
+        $uid = (int) ($user['id'] ?? 0);
+        $now = time();
+        $cached = $session->get('nav_state');
+        if (
+            is_array($cached)
+            && (int) ($cached['t'] ?? 0) > $now - 45
+            && (int) ($cached['uid'] ?? -1) === $uid
+            && ($cached['sid'] ?? '') === session_id()
+        ) {
+            return [
+                'user'          => $user,
+                'cartCount'     => (int) ($cached['cart'] ?? 0),
+                'wishlistCount' => (int) ($cached['wl'] ?? 0),
+                'walletBalance' => array_key_exists('wallet', $cached) ? $cached['wallet'] : null,
+            ];
+        }
+
+        $cartCount = 0;
+        $wishlist  = 0;
+        $wallet    = null;
+        try {
+            $cartModel = new \App\Models\CartModel();
+            $itemModel = new \App\Models\CartItemModel();
+            $cart      = $uid > 0
+                ? $cartModel->where('user_id', $uid)->first()
+                : $cartModel->where('session_id', session_id())->first();
+            if ($cart) {
+                $cartCount = (int) $itemModel->where('cart_id', $cart['id'])->countAllResults();
+            }
+            if ($uid > 0) {
+                $wishlist = (int) (new \App\Models\WishlistModel())->where('user_id', $uid)->countAllResults();
+                try {
+                    $wallet = (new \App\Services\Wallet\WalletService())->getBalance($uid);
+                } catch (\Throwable $e) {
+                    $wallet = 0.0;
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        $session->set('nav_state', [
+            't'      => $now,
+            'uid'    => $uid,
+            'sid'    => session_id(),
+            'cart'   => $cartCount,
+            'wl'     => $wishlist,
+            'wallet' => $wallet,
+        ]);
+
+        return [
+            'user'          => $user,
+            'cartCount'     => $cartCount,
+            'wishlistCount' => $wishlist,
+            'walletBalance' => $wallet,
+        ];
     }
 }
 
 if (!function_exists('wishlist_count')) {
     function wishlist_count(): int
     {
-        $userId = (int) (session()->get('user.id') ?? 0);
-        if ($userId <= 0) {
-            return 0;
-        }
-        try {
-            return (new \App\Models\WishlistModel())->where('user_id', $userId)->countAllResults();
-        } catch (\Throwable $e) {
-            return 0;
-        }
+        return (int) (header_nav_state()['wishlistCount'] ?? 0);
     }
 }
 
@@ -55,11 +154,13 @@ if (!function_exists('cashback_percent_label')) {
 if (!function_exists('delivery_hint')) {
     function delivery_hint(): array
     {
-        try {
-            return (new \App\Services\Shipping\ShippingService())->publicHint();
-        } catch (\Throwable $e) {
-            return ['has_rates' => false, 'min_rate' => 0.0, 'max_rate' => 0.0, 'label' => 'At checkout'];
-        }
+        return storefront_remember('sf_delivery_hint', 300, static function (): array {
+            try {
+                return (new \App\Services\Shipping\ShippingService())->publicHint();
+            } catch (\Throwable $e) {
+                return ['has_rates' => false, 'min_rate' => 0.0, 'max_rate' => 0.0, 'label' => 'At checkout'];
+            }
+        });
     }
 }
 
@@ -79,6 +180,18 @@ if (!function_exists('cashback_chip')) {
     function cashback_chip($source = null): string
     {
         return '<span class="cashback-chip">' . htmlspecialchars(cashback_percent_label($source), ENT_QUOTES, 'UTF-8') . ' Cashback</span>';
+    }
+}
+
+if (!function_exists('session_gets_cashback')) {
+    function session_gets_cashback(): bool
+    {
+        try {
+            return (bool) session()->get('user.isLoggedIn')
+                && (string) session()->get('user.role') === 'customer';
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 }
 
@@ -146,10 +259,25 @@ if (!function_exists('item_cashback')) {
 if (!function_exists('item_seller_net')) {
     function item_seller_net(array $item): float
     {
-        $goods = (float) ($item['subtotal'] ?? 0);
+        $goods = (float) ($item['subtotal'] ?? 0) + (float) ($item['gift_wrap_fee'] ?? 0);
         $commission = (float) ($item['commission_amount'] ?? 0);
 
         return round(max(0.0, $goods - $commission - item_cashback($item)), 2);
+    }
+}
+
+if (! function_exists('hub_stock_cell')) {
+    function hub_stock_cell($stock): string
+    {
+        $n = (int) $stock;
+        if ($n <= 0) {
+            return '<span class="badge bg-danger">Out of stock</span><div class="small text-danger mt-1">Add stock so you can deliver pending orders</div>';
+        }
+        if ($n <= 5) {
+            return '<span class="badge bg-warning text-dark">' . $n . ' low</span>';
+        }
+
+        return '<span class="badge bg-success-subtle text-success border border-success-subtle">' . $n . ' units</span>';
     }
 }
 
@@ -157,6 +285,19 @@ if (!function_exists('is_online_gateway')) {
     function is_online_gateway(?string $method): bool
     {
         return in_array((string) $method, ['payfast', 'jazzcash', 'easypaisa', 'card'], true);
+    }
+}
+
+if (! function_exists('payment_method_label')) {
+    function payment_method_label(?string $method): string
+    {
+        return match ((string) $method) {
+            'cod' => 'Cash on Delivery',
+            'payfast', 'jazzcash', 'easypaisa', 'card' => 'Pay online (PayFast)',
+            'wallet' => 'Wallet',
+            'pay_later' => 'Pay later',
+            default => $method !== '' ? strtoupper($method) : 'Cash on Delivery',
+        };
     }
 }
 
@@ -292,6 +433,31 @@ if (!function_exists('media_url')) {
     }
 }
 
+if (!function_exists('pk_datetime')) {
+    /**
+     * Order / ledger clock in Pakistan Standard Time.
+     */
+    function pk_datetime($value, string $format = 'd M Y, h:i A'): string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return (new \DateTimeImmutable($value->format('Y-m-d H:i:s'), $value->getTimezone()))
+                ->setTimezone(new \DateTimeZone('Asia/Karachi'))
+                ->format($format);
+        }
+        $raw = trim((string) $value);
+        if ($raw === '' || str_starts_with($raw, '0000-00-00')) {
+            return '';
+        }
+        try {
+            $dt = new \DateTimeImmutable($raw);
+
+            return $dt->setTimezone(new \DateTimeZone('Asia/Karachi'))->format($format);
+        } catch (\Throwable $e) {
+            return $raw;
+        }
+    }
+}
+
 if (!function_exists('dash_delta')) {
     function dash_delta(float $now, float $prev): array
     {
@@ -360,6 +526,7 @@ if (!function_exists('nav_forget')) {
             foreach ($keys as $k) {
                 $session->remove('nav_' . $k);
             }
+            $session->remove('nav_state');
         } catch (\Throwable $e) {
             // session may be unavailable in CLI
         }
@@ -390,6 +557,34 @@ if (! function_exists('guest_can_see_order')) {
     function guest_can_see_order(int $orderId): bool
     {
         return in_array($orderId, array_map('intval', session()->get('guest_order_ids') ?? []), true);
+    }
+}
+
+if (! function_exists('gift_wrap_enabled')) {
+    function gift_wrap_enabled(): bool
+    {
+        if (! class_exists(\App\Services\Checkout\GiftWrapService::class)) {
+            return false;
+        }
+        try {
+            return \App\Services\Checkout\GiftWrapService::enabled();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+}
+
+if (! function_exists('gift_wrap_fee')) {
+    function gift_wrap_fee(): float
+    {
+        if (! class_exists(\App\Services\Checkout\GiftWrapService::class)) {
+            return 150.0;
+        }
+        try {
+            return \App\Services\Checkout\GiftWrapService::unitFee();
+        } catch (\Throwable $e) {
+            return 150.0;
+        }
     }
 }
 

@@ -77,7 +77,7 @@ $p = static fn (string $key, $default = '') => old($key, $product[$key] ?? $defa
         <label class="form-label fw-bold small mb-0">Color, size &amp; price (Daraz-style SKUs)</label>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addVariantRow">+ Row</button>
     </div>
-    <p class="small text-muted mb-2">Har row ek SKU hai: e.g. Red + M. SKU price khali chhoro ya main Price jaisi rakho — storefront main Price follow karegi. Alag SKU price sirf tab likho jab us color/size ki price different ho.</p>
+    <p class="small text-muted mb-2">Each row is one SKU, e.g. Red + M. Leave SKU price empty or the same as the main Price — the shop uses the main Price. Enter a SKU price only when that color/size has a different price.</p>
     <?php
     $rows = $variants;
     if ($rows === []) {

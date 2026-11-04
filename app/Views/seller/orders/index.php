@@ -8,6 +8,8 @@
     </div>
 </div>
 
+<?= view('partials/order_export_bar', ['exportBase' => 'seller/orders/export']) ?>
+
 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
     <?php if (empty($items)): ?>
         <div class="text-center py-5 text-secondary">
@@ -21,6 +23,7 @@
                 <thead class="table-light small">
                     <tr>
                         <th>Order #</th>
+                        <th>Date &amp; time (PKT)</th>
                         <th>Ordered Item</th>
                         <th>Customer</th>
                         <th>Subtotal</th>
@@ -35,8 +38,15 @@
                         <tr>
                             <td><strong><?= esc($item['order_number']) ?></strong></td>
                             <td>
+                                <div class="fw-semibold text-dark"><?= esc(pk_datetime($item['order_date'] ?? $item['created_at'] ?? '', 'd M Y')) ?></div>
+                                <small class="text-muted"><?= esc(pk_datetime($item['order_date'] ?? $item['created_at'] ?? '', 'h:i A')) ?> PKT</small>
+                            </td>
+                            <td>
                                 <div class="fw-semibold text-dark"><?= esc($item['product_name']) ?></div>
                                 <small class="text-muted">Qty: <?= $item['quantity'] ?> &times; Rs. <?= number_format($item['price'], 0) ?></small>
+                                <?php if (! empty($item['gift_wrap'])): ?>
+                                    <div class="small text-danger"><i class="bi bi-gift-fill"></i> Gift wrap</div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <div><?= esc($item['customer_name']) ?></div>

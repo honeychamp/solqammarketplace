@@ -5,7 +5,7 @@
     <form class="card border-0 shadow-sm rounded-4 p-4 mb-4" method="GET" action="<?= site_url('track') ?>">
         <label class="form-label fw-bold">Order number</label>
         <div class="input-group">
-            <input type="text" name="order" class="form-control" placeholder="Order number" value="<?= esc($query) ?>">
+            <input type="text" name="order" class="form-control" placeholder="e.g. S-82" value="<?= esc($query) ?>">
             <button class="btn btn-solqam" type="submit">Track</button>
         </div>
     </form>

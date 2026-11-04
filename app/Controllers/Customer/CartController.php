@@ -8,6 +8,7 @@ use App\Models\CartModel;
 use App\Models\ProductModel;
 use App\Models\ProductVariantModel;
 use App\Services\Catalog\PricingService;
+use App\Services\Checkout\GiftWrapService;
 
 class CartController extends BaseController
 {
@@ -36,16 +37,17 @@ class CartController extends BaseController
     public function index()
     {
         $cart = $this->getOrCreateUserCart();
-        $items = $this->cartItemModel->getItemsWithProducts((int) $cart['id']);
-
+        $rawItems = $this->cartItemModel->getItemsWithProducts((int) $cart['id']);
+        $items = class_exists(GiftWrapService::class) ? GiftWrapService::enrichItems($rawItems) : $rawItems;
         $subtotal = 0.0;
         foreach ($items as $item) {
-            $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
+            $subtotal += ((float) ($item['unit_price'] ?? 0) * (int) ($item['quantity'] ?? 1));
         }
+        $giftWrapTotal = class_exists(GiftWrapService::class) ? GiftWrapService::wrapTotal($items) : 0.0;
 
         $estimatedCashback = 0.0;
         try {
-            $estimatedCashback = cart_cashback_total($items);
+            $estimatedCashback = session_gets_cashback() ? cart_cashback_total($items) : 0.0;
         } catch (\Throwable $e) {
             $estimatedCashback = 0.0;
         }
@@ -56,7 +58,10 @@ class CartController extends BaseController
             'title'           => 'Shopping Cart — Solqam Marketplace',
             'cart'            => $cart,
             'items'           => $items,
-            'subtotal'        => $subtotal,
+            'subtotal'          => $subtotal,
+            'giftWrapTotal'     => $giftWrapTotal,
+            'giftWrapEnabled'   => class_exists(GiftWrapService::class) && GiftWrapService::enabled(),
+            'giftWrapFee'       => class_exists(GiftWrapService::class) ? GiftWrapService::unitFee() : 150.0,
             'estimatedCashback' => $estimatedCashback,
         ]);
     }
@@ -89,14 +94,13 @@ class CartController extends BaseController
             return redirect()->back()->with('error', 'Please select a valid color / size.');
         }
 
-        $stock = $variant ? (int) $variant['stock'] : (int) $product['stock'];
-        if ($stock < $quantity) {
-            return redirect()->back()->with('error', "Only {$stock} units available in stock.");
-        }
-
         $unitPrice = $this->pricingService->resolveUnitPrice($product, $variant);
         $cart = $this->getOrCreateUserCart();
         $cartId = (int) $cart['id'];
+        $giftReady = class_exists(GiftWrapService::class) && GiftWrapService::cartReady();
+        $wantGift = $giftReady && GiftWrapService::enabled() && (string) $this->request->getPost('gift_wrap') === '1';
+        $giftMessage = $wantGift ? GiftWrapService::sanitizeMessage((string) $this->request->getPost('gift_message')) : null;
+        $giftHide = $wantGift && (string) $this->request->getPost('gift_hide_price') === '1';
 
         $existingQuery = $this->cartItemModel
             ->where('cart_id', $cartId)
@@ -110,21 +114,35 @@ class CartController extends BaseController
 
         if ($existing) {
             $newQty = $existing['quantity'] + $quantity;
-            if ($newQty > $stock) {
-                $newQty = $stock;
-            }
-            $this->cartItemModel->update($existing['id'], [
+            $payload = [
                 'quantity'   => $newQty,
                 'unit_price' => $unitPrice,
-            ]);
+            ];
+            if ($wantGift && $giftReady) {
+                $payload['gift_wrap'] = 1;
+                $payload['gift_message'] = $giftMessage ?: ($existing['gift_message'] ?? null);
+                $payload['gift_hide_price'] = $giftHide ? 1 : (int) ($existing['gift_hide_price'] ?? 0);
+            }
+            $this->cartItemModel->update($existing['id'], $payload);
         } else {
-            $this->cartItemModel->insert([
+            $row = [
                 'cart_id'    => $cartId,
                 'product_id' => $productId,
                 'variant_id' => $variantId,
                 'quantity'   => $quantity,
                 'unit_price' => $unitPrice,
-            ]);
+            ];
+            if ($giftReady) {
+                $row['gift_wrap'] = $wantGift ? 1 : 0;
+                $row['gift_message'] = $giftMessage;
+                $row['gift_hide_price'] = $giftHide ? 1 : 0;
+            }
+            try {
+                $this->cartItemModel->insert($row);
+            } catch (\Throwable $e) {
+                unset($row['gift_wrap'], $row['gift_message'], $row['gift_hide_price']);
+                $this->cartItemModel->insert($row);
+            }
         }
 
         if (function_exists('nav_forget')) {
@@ -171,15 +189,7 @@ class CartController extends BaseController
                 }
                 $this->cartItemModel->delete($itemId);
             } else {
-                $stock = (int) $this->productModel->find($item['product_id'])['stock'];
-                if (!empty($item['variant_id'])) {
-                    $variant = $this->variantModel->find($item['variant_id']);
-                    $stock = (int) ($variant['stock'] ?? 0);
-                }
-                if ($quantity > $stock) {
-                    $quantity = $stock;
-                }
-                $this->cartItemModel->update($itemId, ['quantity' => $quantity]);
+                $this->cartItemModel->update($itemId, ['quantity' => max(1, min(99, $quantity))]);
             }
         }
 
@@ -213,5 +223,20 @@ class CartController extends BaseController
         }
 
         return redirect()->to('/cart')->with('success', 'Item removed.');
+    }
+
+    public function gift()
+    {
+        $cart = $this->getOrCreateUserCart();
+        if (class_exists(GiftWrapService::class) && GiftWrapService::cartReady()) {
+            GiftWrapService::applyCartPost((int) $cart['id'], $this->request->getPost() ?? []);
+        }
+
+        $back = (string) $this->request->getPost('redirect');
+        if ($back === 'checkout') {
+            return redirect()->to('/checkout')->with('success', 'Gift options saved.');
+        }
+
+        return redirect()->to('/cart')->with('success', 'Gift options saved.');
     }
 }

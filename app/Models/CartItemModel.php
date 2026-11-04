@@ -17,6 +17,9 @@ class CartItemModel extends Model
         'variant_id',
         'quantity',
         'unit_price',
+        'gift_wrap',
+        'gift_message',
+        'gift_hide_price',
     ];
 
     protected $useTimestamps = true;

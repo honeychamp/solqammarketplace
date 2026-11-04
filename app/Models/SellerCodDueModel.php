@@ -26,5 +26,8 @@ class SellerCodDueModel extends Model
         'status',
         'paid_at',
         'paid_note',
+        'proof_path',
+        'proof_note',
+        'submitted_at',
     ];
 }

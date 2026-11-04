@@ -8,7 +8,30 @@ namespace App\Services\Platform;
  */
 class SchemaHeal
 {
-    public const VERSION = 18;
+    public const VERSION = 22;
+
+    /**
+     * Extra order-export columns. Safe on HTTP — runs once, then a cache marker.
+     */
+    public static function ensureExportColumns(): void
+    {
+        $cacheDir = rtrim(WRITEPATH, '/\\') . DIRECTORY_SEPARATOR . 'cache';
+        if (! is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+        $marker = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_order_export';
+        if (is_file($marker)) {
+            return;
+        }
+        try {
+            $db    = \Config\Database::connect();
+            $forge = \Config\Database::forge();
+            self::healOrderExport($db, $forge);
+            @file_put_contents($marker, (string) time());
+        } catch (\Throwable $e) {
+            log_message('error', 'SchemaHeal order export: ' . $e->getMessage());
+        }
+    }
 
     public static function run(): void
     {
@@ -18,7 +41,33 @@ class SchemaHeal
         }
         $ran = true;
 
-        $marker = WRITEPATH . 'cache/schema_heal_v' . self::VERSION;
+        // Web requests must not ALTER/DESCRIBE tables. That blocked every page.
+        if (! is_cli()) {
+            return;
+        }
+
+        $cacheDir = rtrim(WRITEPATH, '/\\') . DIRECTORY_SEPARATOR . 'cache';
+        if (! is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+        $giftMarker = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_gift_wrap';
+        $marker     = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_v' . self::VERSION;
+        if (is_file($giftMarker) && is_file($marker)) {
+            return;
+        }
+        if (! is_file($giftMarker)) {
+            try {
+                $db    = \Config\Database::connect();
+                $forge = \Config\Database::forge();
+                self::healGiftWrap($db, $forge);
+                if (self::giftWrapReady($db)) {
+                    @file_put_contents($giftMarker, (string) time());
+                }
+            } catch (\Throwable $e) {
+                log_message('error', 'SchemaHeal gift wrap: ' . $e->getMessage());
+            }
+        }
+
         if (is_file($marker)) {
             return;
         }
@@ -194,6 +243,14 @@ class SchemaHeal
             self::ensureSpeedIndexes($db);
             self::ensureMarketingTables($db, $forge);
             self::widenMarketingSecrets($db);
+            if ($db->tableExists('addresses')) {
+                try {
+                    $db->query('ALTER TABLE `addresses` MODIFY `postal_code` VARCHAR(20) NULL');
+                } catch (\Throwable $e) {
+                    // already nullable varchar
+                }
+            }
+
             self::ensureSellerCodDues($db, $forge);
             self::addColumn($db, $forge, 'seller_cod_dues', 'paid_amount', [
                 'type'       => 'DECIMAL',
@@ -201,6 +258,22 @@ class SchemaHeal
                 'default'    => '0.00',
                 'null'       => false,
             ]);
+            self::addColumn($db, $forge, 'seller_cod_dues', 'proof_path', [
+                'type'       => 'VARCHAR',
+                'constraint' => 255,
+                'null'       => true,
+            ]);
+            self::addColumn($db, $forge, 'seller_cod_dues', 'proof_note', [
+                'type'       => 'VARCHAR',
+                'constraint' => 255,
+                'null'       => true,
+            ]);
+            self::addColumn($db, $forge, 'seller_cod_dues', 'submitted_at', [
+                'type' => 'DATETIME',
+                'null' => true,
+            ]);
+
+            self::healOrderExport($db, $forge);
 
             if (! is_dir(WRITEPATH . 'cache')) {
                 @mkdir(WRITEPATH . 'cache', 0755, true);
@@ -305,6 +378,9 @@ class SchemaHeal
             'status' => ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'unpaid'],
             'paid_at' => ['type' => 'DATETIME', 'null' => true],
             'paid_note' => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+            'proof_path' => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+            'proof_note' => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+            'submitted_at' => ['type' => 'DATETIME', 'null' => true],
             'created_at' => ['type' => 'DATETIME', 'null' => true],
             'updated_at' => ['type' => 'DATETIME', 'null' => true],
         ]);
@@ -313,6 +389,98 @@ class SchemaHeal
         $forge->addKey('order_id');
         $forge->addKey('status');
         $forge->createTable('seller_cod_dues', true);
+    }
+
+    public static function giftWrapMarkerPath(): string
+    {
+        return rtrim(WRITEPATH, '/\\') . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'schema_heal_gift_wrap';
+    }
+
+    public static function giftWrapReady($db = null): bool
+    {
+        try {
+            $db = $db ?? \Config\Database::connect();
+
+            return $db->tableExists('cart_items')
+                && $db->fieldExists('gift_wrap', 'cart_items')
+                && $db->tableExists('order_items')
+                && $db->fieldExists('gift_wrap_fee', 'order_items')
+                && $db->tableExists('orders')
+                && $db->fieldExists('gift_wrap_amount', 'orders');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    protected static function healGiftWrap($db, $forge): void
+    {
+        foreach (['cart_items', 'order_items'] as $table) {
+            self::addColumn($db, $forge, $table, 'gift_wrap', [
+                'type'       => 'TINYINT',
+                'constraint' => 1,
+                'default'    => 0,
+                'null'       => false,
+            ]);
+            self::addColumn($db, $forge, $table, 'gift_message', [
+                'type'       => 'VARCHAR',
+                'constraint' => 400,
+                'null'       => true,
+            ]);
+            self::addColumn($db, $forge, $table, 'gift_hide_price', [
+                'type'       => 'TINYINT',
+                'constraint' => 1,
+                'default'    => 0,
+                'null'       => false,
+            ]);
+        }
+        self::addColumn($db, $forge, 'order_items', 'gift_wrap_fee', [
+            'type'       => 'DECIMAL',
+            'constraint' => '12,2',
+            'default'    => '0.00',
+            'null'       => false,
+        ]);
+        self::addColumn($db, $forge, 'orders', 'gift_wrap_amount', [
+            'type'       => 'DECIMAL',
+            'constraint' => '12,2',
+            'default'    => '0.00',
+            'null'       => false,
+        ]);
+        self::addColumn($db, $forge, 'orders', 'gift_hide_price', [
+            'type'       => 'TINYINT',
+            'constraint' => 1,
+            'default'    => 0,
+            'null'       => false,
+        ]);
+    }
+
+    protected static function healOrderExport($db, $forge): void
+    {
+        $varchar = static fn (int $n) => ['type' => 'VARCHAR', 'constraint' => $n, 'null' => true];
+        $dec = ['type' => 'DECIMAL', 'constraint' => '12,2', 'null' => true];
+        foreach ([
+            ['orders', 'order_source', $varchar(30)],
+            ['orders', 'order_type', $varchar(20)],
+            ['orders', 'confirmation_status', $varchar(40)],
+            ['orders', 'internal_note', ['type' => 'TEXT', 'null' => true]],
+            ['orders', 'cancel_reason', $varchar(190)],
+            ['orders', 'actual_shipping_cost', $dec],
+            ['orders', 'packing_type', $varchar(40)],
+            ['orders', 'packing_cost', $dec],
+            ['orders', 'package_weight', $dec],
+            ['orders', 'shipping_method', $varchar(40)],
+            ['orders', 'dispatch_date', ['type' => 'DATETIME', 'null' => true]],
+            ['orders', 'preferred_delivery_time', $varchar(40)],
+            ['addresses', 'alternate_phone', $varchar(20)],
+            ['addresses', 'area', $varchar(120)],
+            ['addresses', 'landmark', $varchar(190)],
+            ['products', 'supplier', $varchar(150)],
+            ['products', 'product_cost', $dec],
+            ['products', 'packing_type', $varchar(40)],
+            ['products', 'packing_cost', $dec],
+            ['products', 'weight', $dec],
+        ] as $col) {
+            self::addColumn($db, $forge, $col[0], $col[1], $col[2]);
+        }
     }
 
     protected static function addColumn($db, $forge, string $table, string $column, array $def): void

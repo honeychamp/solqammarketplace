@@ -54,9 +54,26 @@
                                                         </a>
                                                     </h6>
                                                     <small class="text-muted"><i class="bi bi-shop text-solqam me-1"></i> <?= esc($item['store_name'] ?? 'Vendor') ?></small>
+                                                    <?php if (function_exists('session_gets_cashback') && session_gets_cashback()): ?>
                                                     <div class="mt-1"><span class="cashback-inline"><?= esc(cashback_percent_label($item)) ?> Cashback</span></div>
+                                                    <?php endif; ?>
                                                     <?php if (!empty($item['variant_label'])): ?>
                                                         <div class="small text-solqam"><?= esc($item['variant_label']) ?></div>
+                                                    <?php endif; ?>
+                                                    <?php if (! empty($giftWrapEnabled)): ?>
+                                                        <form action="<?= site_url('cart/gift') ?>" method="POST" class="mt-2">
+                                                            <?= csrf_field() ?>
+                                                            <?= view('partials/gift_wrap', [
+                                                                'giftWrapEnabled'  => true,
+                                                                'giftWrapFee'      => $giftWrapFee ?? 150,
+                                                                'giftItemId'       => (int) $item['id'],
+                                                                'giftChecked'      => ! empty($item['gift_wrap']),
+                                                                'giftMessage'      => $item['gift_message'] ?? '',
+                                                                'giftHideChecked'  => ! empty($item['gift_hide_price']),
+                                                                'giftCompact'      => true,
+                                                            ]) ?>
+                                                            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill mt-1">Save gift options</button>
+                                                        </form>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
@@ -68,7 +85,10 @@
                                             <form action="<?= site_url('cart/update') ?>" method="POST" class="d-flex align-items-center gap-1">
                                                 <?= csrf_field() ?>
                                                 <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
-                                                <input type="number" name="quantity" class="form-control form-control-sm text-center fw-bold rounded-2" value="<?= $item['quantity'] ?>" min="1" max="<?= $item['stock_available'] ?>" style="width: 65px;">
+                                                <input type="number" name="quantity" class="form-control form-control-sm text-center fw-bold rounded-2" value="<?= $item['quantity'] ?>" min="1" max="99" style="width: 65px;">
+                                                <?php if ((int) ($item['stock_available'] ?? 0) <= 0): ?>
+                                                    <span class="badge bg-warning text-dark">Out of stock</span>
+                                                <?php endif; ?>
                                                 <button type="submit" class="btn btn-outline-secondary btn-sm" title="Update"><i class="bi bi-arrow-repeat"></i></button>
                                             </form>
                                         </td>
@@ -103,6 +123,12 @@
                         <span class="text-secondary">Subtotal (<?= count($items) ?> items)</span>
                         <span class="fw-bold text-dark">Rs. <?= number_format($subtotal, 2) ?></span>
                     </div>
+                    <?php if ((float) ($giftWrapTotal ?? 0) > 0): ?>
+                    <div class="d-flex justify-content-between mb-2 small">
+                        <span class="text-secondary"><i class="bi bi-gift me-1"></i> Gift wrap</span>
+                        <span class="fw-bold text-dark">Rs. <?= number_format((float) $giftWrapTotal, 2) ?></span>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="d-flex justify-content-between mb-2 small">
                         <span class="text-secondary">Delivery</span>
@@ -110,16 +136,20 @@
                     </div>
                     <p class="small text-muted mb-2">Delivery charges and delivery days are applied at checkout after you select your city (admin city rates).</p>
 
+                    <?php if (function_exists('session_gets_cashback') && session_gets_cashback()): ?>
                     <div class="d-flex justify-content-between mb-3 small">
                         <span class="text-secondary">Wallet cashback (as listed)</span>
                         <span class="badge badge-wallet">Rs. <?= number_format($estimatedCashback ?? cart_cashback_total($items), 0) ?></span>
                     </div>
+                    <?php else: ?>
+                    <div class="small text-muted mb-3">Sign in or register to earn wallet cashback.</div>
+                    <?php endif; ?>
 
                     <hr>
 
                     <div class="d-flex justify-content-between mb-4">
                         <span class="fs-5 fw-bold text-dark">Estimated Total</span>
-                        <span class="fs-5 fw-bold text-solqam">Rs. <?= number_format($subtotal, 2) ?></span>
+                        <span class="fs-5 fw-bold text-solqam">Rs. <?= number_format($subtotal + (float) ($giftWrapTotal ?? 0), 2) ?></span>
                     </div>
 
                     <a href="<?= site_url('checkout') ?>" class="btn btn-solqam-accent btn-lg w-100 rounded-pill py-2 fw-bold shadow-sm">

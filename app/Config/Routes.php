@@ -16,6 +16,8 @@ $routes->get('feed/meta.csv', 'FeedController::metaCsv');
 $routes->get('compare', 'Customer\CatalogController::compare');
 $routes->get('compare/toggle/(:num)', 'Customer\CatalogController::compareToggle/$1');
 $routes->get('/', 'Customer\HomeController::index');
+$routes->get('wishlist', 'Customer\AccountController::wishlist');
+$routes->get('seller/register', 'Auth\AuthController::register');
 $routes->get('shop', 'Customer\CatalogController::index');
 $routes->get('flash-deals', 'Customer\CatalogController::flashDeals');
 $routes->get('categories', 'Customer\CatalogController::index');
@@ -37,6 +39,7 @@ $routes->get('product/(:num)', 'Customer\CatalogController::detail/$1');
 $routes->get('cart', 'Customer\CartController::index');
 $routes->post('cart/add', 'Customer\CartController::add');
 $routes->post('cart/update', 'Customer\CartController::update');
+$routes->post('cart/gift', 'Customer\CartController::gift');
 $routes->get('cart/remove/(:num)', 'Customer\CartController::remove/$1');
 $routes->get('guest', 'Customer\GuestController::start');
 $routes->get('checkout', 'Customer\CheckoutController::index');
@@ -71,6 +74,7 @@ $routes->post('payments/payfast/ipn', 'Payments\CallbackController::payfastIpn')
 
 $routes->group('', ['filter' => ['auth', 'role:customer']], static function ($routes) {
     $routes->group('account', static function ($routes) {
+        $routes->get('', 'Customer\AccountController::index');
         $routes->get('orders', 'Customer\OrderController::index');
         $routes->get('orders/(:num)', 'Customer\OrderController::show/$1');
         $routes->get('orders/(:num)/invoice', 'Customer\OrderController::invoice/$1');
@@ -100,6 +104,9 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
 
     // Products CRUD
     $routes->get('products', 'Seller\ProductController::index');
+    $routes->get('products/out-of-stock', 'Seller\ProductController::outOfStock');
+    $routes->get('inventory', 'Seller\InventoryController::index');
+    $routes->post('inventory/stock/(:num)', 'Seller\InventoryController::updateStock/$1');
     $routes->get('products/create', 'Seller\ProductController::create');
     $routes->post('products/store', 'Seller\ProductController::store');
     $routes->post('products/import', 'Seller\ProductController::importCsv');
@@ -111,7 +118,9 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
 
     // Orders Management
     $routes->get('orders', 'Seller\OrderController::index');
+    $routes->get('orders/export', 'Seller\OrderController::export');
     $routes->get('orders/(:num)', 'Seller\OrderController::show/$1');
+    $routes->post('orders/(:num)/edit', 'Seller\OrderController::editPlaced/$1');
     $routes->post('orders/(:num)/status', 'Seller\OrderController::updateStatus/$1');
     $routes->post('orders/(:num)/fulfill', 'Seller\OrderController::setFulfill/$1');
     $routes->get('customers', 'Seller\CustomerController::index');
@@ -120,6 +129,9 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
     $routes->post('questions/(:num)/answer', 'Seller\HubController::answer/$1');
     $routes->get('payouts', 'Seller\HubController::payouts');
     $routes->get('payouts/statement', 'Seller\HubController::payoutStatement');
+    $routes->get('dues', 'Seller\DueController::index');
+    $routes->post('dues/proof-all', 'Seller\DueController::submitTotalProof');
+    $routes->post('dues/(:num)/proof', 'Seller\DueController::submitProof/$1');
     $routes->get('campaigns', 'Seller\CampaignController::index');
     $routes->post('campaigns/join', 'Seller\CampaignController::join');
     $routes->get('products/csv-template', 'Seller\ProductController::csvTemplate');
@@ -152,6 +164,7 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->get('dues', 'Admin\DueController::index');
     $routes->post('dues/(:num)/paid', 'Admin\DueController::markPaid/$1');
     $routes->get('dues/(:num)/receipt', 'Admin\DueController::receipt/$1');
+    $routes->post('dues/seller/(:num)/paid-all', 'Admin\DueController::markPaidSeller/$1');
     $routes->post('dues/seller/(:num)/offset', 'Admin\DueController::offsetWallet/$1');
 
     // Categories Management
@@ -163,6 +176,10 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
 
     // Platform-wide Product Catalog Moderation (all sellers)
     $routes->get('products', 'Admin\ProductController::index');
+    $routes->get('products/out-of-stock', 'Admin\ProductController::outOfStock');
+    $routes->get('inventory', 'Admin\InventoryController::index');
+    $routes->post('inventory/stock/(:num)', 'Admin\InventoryController::updateStock/$1');
+    $routes->post('products/adjust-prices', 'Admin\ProductController::adjustPrices');
     $routes->get('products/edit/(:num)', 'Admin\ProductController::edit/$1');
     $routes->post('products/update/(:num)', 'Admin\ProductController::update/$1');
     $routes->get('products/delete/(:num)', 'Admin\ProductController::delete/$1');
@@ -170,6 +187,8 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
 
     // Admin's Own First-Party Products (CRUD)
     $routes->get('my-products', 'Admin\MyProductController::index');
+    $routes->get('my-products/out-of-stock', 'Admin\MyProductController::outOfStock');
+    $routes->post('my-products/adjust-prices', 'Admin\MyProductController::adjustPrices');
     $routes->get('my-products/create', 'Admin\MyProductController::create');
     $routes->post('my-products/store', 'Admin\MyProductController::store');
     $routes->get('my-products/edit/(:num)', 'Admin\MyProductController::edit/$1');
@@ -184,7 +203,12 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     // Orders Monitor & Full Status Override (Admin has root authority)
     $routes->get('my-orders', 'Admin\OrderController::mine');
     $routes->get('orders', 'Admin\OrderController::index');
+    $routes->get('orders/export', 'Admin\OrderController::export');
+    $routes->get('my-orders/export', 'Admin\OrderController::export');
     $routes->get('orders/(:num)', 'Admin\OrderController::show/$1');
+    $routes->post('orders/(:num)/edit', 'Admin\OrderController::editPlaced/$1');
+    $routes->post('orders/(:num)/cancel-placed', 'Admin\OrderController::cancelPlaced/$1');
+    $routes->post('orders/(:num)/confirm-call', 'Admin\OrderController::confirmCall/$1');
     $routes->post('orders/(:num)/status', 'Admin\OrderController::updateStatus/$1');
     $routes->get('inbound', 'Admin\InboundController::index');
     $routes->post('inbound/(:num)/receive', 'Admin\InboundController::receive/$1');

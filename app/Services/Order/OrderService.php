@@ -89,17 +89,22 @@ class OrderService
             throw new RuntimeException('Cart is empty.');
         }
 
-        $cartItems = $this->cartItemModel->getItemsWithProducts($cart['id']);
+        $cartItems = \App\Services\Checkout\GiftWrapService::enrichItems($this->cartItemModel->getItemsWithProducts($cart['id']));
         if (empty($cartItems)) {
             throw new RuntimeException('Your cart is empty.');
         }
 
         $totalAmount = 0.0;
         foreach ($cartItems as $item) {
-            if ($item['stock_available'] < $item['quantity']) {
-                throw new RuntimeException('Insufficient stock for product: ' . esc($item['product_name']));
-            }
             $totalAmount += ((float) $item['unit_price'] * (int) $item['quantity']);
+        }
+        $giftWrapAmount = \App\Services\Checkout\GiftWrapService::wrapTotal($cartItems);
+        $giftHidePrice = 0;
+        foreach ($cartItems as $item) {
+            if (! empty($item['gift_wrap']) && ! empty($item['gift_hide_price'])) {
+                $giftHidePrice = 1;
+                break;
+            }
         }
 
         $address = (new AddressModel())->find($addressId);
@@ -113,6 +118,9 @@ class OrderService
         $couponId = null;
         $couponDiscount = 0.0;
         $normalizedCoupon = $couponCode ? strtoupper(trim($couponCode)) : null;
+        if ($normalizedCoupon && (! function_exists('session_gets_cashback') || ! session_gets_cashback())) {
+            $normalizedCoupon = null;
+        }
         if ($normalizedCoupon) {
             $applied = $this->couponService->apply($normalizedCoupon, $userId, $totalAmount);
             $couponId = (int) $applied['coupon']['id'];
@@ -122,7 +130,7 @@ class OrderService
         $goodsAfterDiscount = max(0.0, $totalAmount - $couponDiscount);
         $walletBalance = $this->walletService->getBalance($userId);
         $deliveryArrears = $this->walletService->getOutstandingDebt($userId);
-        $payableBeforeWallet = $goodsAfterDiscount + $shippingAmount + $deliveryArrears;
+        $payableBeforeWallet = $goodsAfterDiscount + $shippingAmount + $deliveryArrears + $giftWrapAmount;
 
         $walletAmountUsed = 0.0;
         if ($useWallet && $walletBalance > 0) {
@@ -143,7 +151,7 @@ class OrderService
             }
         } elseif ($paymentMethod === 'pay_later') {
             if (!$useWallet || $walletAmountUsed <= 0 || $finalPayable <= 0) {
-                throw new RuntimeException('Pay later tab available hai jab wallet use ho aur order total wallet se zyada ho. Baqi JazzCash, EasyPaisa, card, COD, ya Pay later se de sakte ho.');
+                throw new RuntimeException('Pay later is only available when you use wallet and the order total is more than the wallet balance. Pay the rest with JazzCash, EasyPaisa, card, COD, or Pay later.');
             }
             if (empty($payLater['full_name']) || empty($payLater['cnic_number']) || empty($payLater['cnic_front_path']) || empty($payLater['utility_bill_path'])) {
                 throw new RuntimeException('Pay later requires full name, CNIC number, CNIC copy, and a utility bill copy.');
@@ -154,9 +162,12 @@ class OrderService
         $cashbackTotal = 0.0;
         $weightedRate = 0.0;
         $sellerGoods = 0.0;
+        $cashbackOk = function_exists('session_gets_cashback') && session_gets_cashback();
         foreach ($cartItems as $item) {
             $line = (float) $item['unit_price'] * (int) $item['quantity'];
-            $cashbackTotal += cashback_amount($line, $item);
+            if ($cashbackOk) {
+                $cashbackTotal += cashback_amount($line, $item);
+            }
             if ($this->isAdminSeller((int) $item['seller_id'])) {
                 continue;
             }
@@ -168,7 +179,7 @@ class OrderService
         $commissionAmount = round($commissionAmount, 2);
         $commissionRate = $sellerGoods > 0 ? round($weightedRate / $sellerGoods, 2) : 0.0;
         $cashbackTotal = round($cashbackTotal, 2);
-        $orderNumber = 'SOL-' . strtoupper(date('ymd')) . '-' . strtoupper(substr(md5(uniqid()), 0, 5));
+        $orderNumber = 'T' . strtoupper(bin2hex(random_bytes(5)));
 
         $this->db->transStart();
 
@@ -193,16 +204,25 @@ class OrderService
                 'cashback_amount'    => $cashbackTotal,
                 'status'             => 'placed',
                 'notes'              => $notes,
+                'gift_wrap_amount'   => $giftWrapAmount,
+                'gift_hide_price'    => $giftHidePrice,
             ]));
             if ((int) $orderId <= 0) {
                 throw new RuntimeException($this->dbError('Order could not be saved.'));
+            }
+            $easyNumber = 'S-' . (int) $orderId;
+            try {
+                $this->orderModel->update((int) $orderId, ['order_number' => $easyNumber]);
+                $orderNumber = $easyNumber;
+            } catch (\Throwable $e) {
+                log_message('error', 'Order number assign: ' . $e->getMessage());
             }
 
             foreach ($cartItems as $item) {
                 $subtotal = (float) $item['unit_price'] * (int) $item['quantity'];
                 $locked = $this->lockProductStock((int) $item['product_id']);
-                if (! $locked || (int) $locked['stock'] < (int) $item['quantity']) {
-                    throw new RuntimeException('Insufficient stock for product: ' . ($item['product_name'] ?? ''));
+                if (! $locked) {
+                    throw new RuntimeException('Product not found: ' . ($item['product_name'] ?? ''));
                 }
                 $itemCommission = $this->isAdminSeller((int) $item['seller_id'])
                     ? 0.0
@@ -211,8 +231,8 @@ class OrderService
                         false,
                         $this->commissionService->rateForCategory((int) ($item['category_id'] ?? 0))
                     );
-                $itemCashbackRate = cashback_rate($item);
-                $itemCashback = cashback_amount($subtotal, $itemCashbackRate);
+                $itemCashbackRate = $cashbackOk ? cashback_rate($item) : 0.0;
+                $itemCashback = $cashbackOk ? cashback_amount($subtotal, $itemCashbackRate) : 0.0;
 
                 $itemId = $this->orderItemModel->insert($this->onlyTableColumns('order_items', [
                     'order_id'          => $orderId,
@@ -228,6 +248,10 @@ class OrderService
                     'cashback_percent'  => $itemCashbackRate,
                     'cashback_amount'   => $itemCashback,
                     'fulfillment_status'=> 'placed',
+                    'gift_wrap'         => ! empty($item['gift_wrap']) ? 1 : 0,
+                    'gift_message'      => ! empty($item['gift_wrap']) ? ($item['gift_message'] ?? null) : null,
+                    'gift_hide_price'   => (! empty($item['gift_wrap']) && ! empty($item['gift_hide_price'])) ? 1 : 0,
+                    'gift_wrap_fee'     => (float) ($item['gift_wrap_fee'] ?? 0),
                 ]));
                 if ((int) $itemId <= 0) {
                     throw new RuntimeException($this->dbError('Order item could not be saved.'));
@@ -343,13 +367,6 @@ class OrderService
 
             if ($paymentStatus === 'paid' && ! in_array($paymentMethod, ['cod', 'pay_later'], true)) {
                 $this->settleSellerFunds((int) $orderId, 'online');
-                $this->grantBuyerCashback([
-                    'id'              => (int) $orderId,
-                    'user_id'         => $userId,
-                    'total_amount'    => $totalAmount,
-                    'cashback_amount' => $cashbackTotal,
-                    'order_number'    => $orderNumber,
-                ], 'paid');
             }
 
             $this->cartItemModel->where('cart_id', $cart['id'])->delete();
@@ -473,7 +490,6 @@ class OrderService
 
         $this->settleSellerFunds((int) $payment['order_id'], 'online');
         if ($order) {
-            $this->grantBuyerCashback($order, 'paid');
             $buyer = (new UserModel())->find((int) $order['user_id']);
             SmsNotifier::paymentConfirmed(
                 (string) ($buyer['phone'] ?? ''),
@@ -665,6 +681,10 @@ class OrderService
         }
         $this->orderItemModel->where('order_id', $orderId)->set(['fulfillment_status' => $newStatus])->update();
 
+        if (in_array($newStatus, ['confirmed', 'shipped'], true)) {
+            $this->openSellerCodCommissionDues($orderId);
+        }
+
         $this->db->transComplete();
 
         $ok = $this->db->transStatus();
@@ -702,14 +722,6 @@ class OrderService
             'fulfill_by'     => $fulfillBy,
             'handoff_status' => $fulfillBy === 'admin' ? 'pending_admin' : null,
         ];
-        if ($fulfillBy === 'admin' && in_array((string) $shipment['status'], ['placed', ''], true)) {
-            $payload['status'] = 'confirmed';
-            $this->orderItemModel
-                ->where('order_id', $orderId)
-                ->where('seller_id', $sellerId)
-                ->set(['fulfillment_status' => 'confirmed'])
-                ->update();
-        }
         $shipmentModel->update($shipment['id'], $payload);
     }
 
@@ -773,6 +785,10 @@ class OrderService
             ->set(['fulfillment_status' => $newStatus])
             ->update();
 
+        if (in_array($newStatus, ['confirmed', 'shipped'], true)) {
+            $this->openSellerCodCommissionDues($orderId, $sellerId);
+        }
+
             if ($newStatus === 'delivered') {
             $payment = $this->paymentModel->where('order_id', $orderId)->first();
             $method = $payment['payment_method'] ?? 'cod';
@@ -827,7 +843,7 @@ class OrderService
                 $fresh = $this->orderModel->find($orderId) ?: $order;
                 $this->smsBuyerStatus($fresh, 'shipped', $extra);
             }
-        } elseif (in_array('confirmed', $statuses, true)) {
+        } elseif (in_array('confirmed', $statuses, true) && ! in_array('placed', $statuses, true)) {
             $order = $this->orderModel->find($orderId);
             if ($order && $order['status'] === 'placed') {
                 $this->orderModel->update($orderId, ['status' => 'confirmed']);
@@ -837,6 +853,48 @@ class OrderService
         }
 
         return true;
+    }
+
+    protected function openSellerCodCommissionDues(int $orderId, ?int $onlySellerId = null): void
+    {
+        $payment = $this->paymentModel->where('order_id', $orderId)->first();
+        $method  = (string) ($payment['payment_method'] ?? 'cod');
+        if (! in_array($method, ['cod', 'pay_later'], true)) {
+            return;
+        }
+        $dues = new \App\Services\Commission\SellerDueService();
+        $packages = (new ShipmentModel())->where('order_id', $orderId)->findAll();
+        if ($packages === []) {
+            $sellerIds = [];
+            foreach ($this->orderItemModel->where('order_id', $orderId)->findAll() as $item) {
+                $sellerIds[(int) $item['seller_id']] = true;
+            }
+            foreach (array_keys($sellerIds) as $sid) {
+                $packages[] = ['id' => 0, 'seller_id' => $sid, 'fulfill_by' => 'seller', 'shipping_amount' => 0];
+            }
+        }
+        foreach ($packages as $pkg) {
+            $sellerId = (int) ($pkg['seller_id'] ?? 0);
+            if ($sellerId < 1 || ($onlySellerId !== null && $sellerId !== $onlySellerId)) {
+                continue;
+            }
+            if ($this->isAdminSeller($sellerId) || ($pkg['fulfill_by'] ?? 'seller') === 'admin') {
+                continue;
+            }
+            $totals = ['goods' => 0.0, 'commission' => 0.0, 'cashback' => 0.0];
+            foreach ($this->orderItemModel->where('order_id', $orderId)->where('seller_id', $sellerId)->findAll() as $item) {
+                $totals['goods'] += (float) $item['subtotal'] + (float) ($item['gift_wrap_fee'] ?? 0);
+                $totals['commission'] += (float) $item['commission_amount'];
+            }
+            $dues->recordSellerCodCommission(
+                $sellerId,
+                $orderId,
+                (int) ($pkg['id'] ?? 0),
+                $totals,
+                (float) ($pkg['shipping_amount'] ?? 0),
+                $method
+            );
+        }
     }
 
     protected function settleSellerFunds(int $orderId, string $mode, ?int $onlySellerId = null): void
@@ -851,7 +909,7 @@ class OrderService
             if (! isset($bySeller[$sid])) {
                 $bySeller[$sid] = ['goods' => 0.0, 'commission' => 0.0, 'cashback' => 0.0];
             }
-            $bySeller[$sid]['goods'] += (float) $item['subtotal'];
+            $bySeller[$sid]['goods'] += (float) $item['subtotal'] + (float) ($item['gift_wrap_fee'] ?? 0);
             $bySeller[$sid]['commission'] += (float) $item['commission_amount'];
             $bySeller[$sid]['cashback'] += item_cashback($item);
         }
@@ -913,7 +971,7 @@ class OrderService
             $items = $this->orderItemModel->where('order_id', $orderId)->where('seller_id', $sellerId)->findAll();
             $totals = ['goods' => 0.0, 'commission' => 0.0, 'cashback' => 0.0];
             foreach ($items as $item) {
-                $totals['goods'] += (float) $item['subtotal'];
+                $totals['goods'] += (float) $item['subtotal'] + (float) ($item['gift_wrap_fee'] ?? 0);
                 $totals['commission'] += (float) $item['commission_amount'];
                 $totals['cashback'] += item_cashback($item);
             }
@@ -952,7 +1010,8 @@ class OrderService
                     "COD collected by Solqam, goods after commission order {$orderNumber} seller {$sellerId}"
                 );
             } elseif ($fulfillBy !== 'admin') {
-                (new \App\Services\Commission\SellerDueService())->recordSellerCodDelivery(
+                $dues = new \App\Services\Commission\SellerDueService();
+                $dues->recordSellerCodCommission(
                     $sellerId,
                     $orderId,
                     (int) ($shipment['id'] ?? 0),
@@ -960,6 +1019,7 @@ class OrderService
                     $shipAmt,
                     $method
                 );
+                $dues->addSellerCodCashback($sellerId, $orderId, $cashback);
             }
         } elseif ($sellerGetsDelivery && $deliveryToSeller > 0 && ! $this->hasLedger($orderId, 'seller_shipping', 'seller ' . $sellerId)) {
             $this->walletService->credit(
@@ -1162,6 +1222,10 @@ class OrderService
             return;
         }
 
+        if ($this->buyerIsGuestAccount((int) ($order['user_id'] ?? 0))) {
+            return;
+        }
+
         $cashbackAmount = round((float) ($order['cashback_amount'] ?? 0), 2);
         if ($cashbackAmount <= 0) {
             $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
@@ -1237,7 +1301,7 @@ class OrderService
             if (! isset($bySeller[$sid])) {
                 $bySeller[$sid] = ['goods' => 0.0, 'commission' => 0.0, 'cashback' => 0.0];
             }
-            $bySeller[$sid]['goods'] += (float) $item['subtotal'];
+            $bySeller[$sid]['goods'] += (float) $item['subtotal'] + (float) ($item['gift_wrap_fee'] ?? 0);
             $bySeller[$sid]['commission'] += (float) $item['commission_amount'];
             $bySeller[$sid]['cashback'] += item_cashback($item);
         }
@@ -1320,6 +1384,23 @@ class OrderService
         }
     }
 
+    protected function buyerIsGuestAccount(int $userId): bool
+    {
+        if ($userId < 1) {
+            return true;
+        }
+        try {
+            $user = (new UserModel())->find($userId);
+            $email = (string) ($user['email'] ?? '');
+            if ($email !== '' && \App\Services\Checkout\GuestCheckoutService::isGuestEmail($email)) {
+                return true;
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return false;
+    }
+
     protected function cashbackRow(int $orderId): ?array
     {
         $row = $this->db->table('wallet_transactions')
@@ -1391,6 +1472,280 @@ class OrderService
         }
     }
 
+    public function siblingPlacedOrders(int $orderId): array
+    {
+        $order = $this->orderModel->find($orderId);
+        if (! $order) {
+            return [];
+        }
+        $from = date('Y-m-d H:i:s', strtotime('-3 days'));
+        try {
+            $rows = $this->orderModel
+                ->select('orders.id, orders.order_number, orders.created_at, orders.final_payable, orders.total_amount, orders.status')
+                ->where('orders.user_id', (int) $order['user_id'])
+                ->where('orders.status', 'placed')
+                ->where('orders.id !=', $orderId)
+                ->where('orders.created_at >=', $from)
+                ->orderBy('orders.id', 'DESC')
+                ->findAll(10);
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        return $rows ?: [];
+    }
+
+    /**
+     * Packages Solqam may call/edit/confirm: admin-store SKUs, or seller sent to Solqam.
+     *
+     * @return list<int>
+     */
+    public function solqamDeskSellerIds(int $orderId, int $adminId): array
+    {
+        $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
+        $shipments = [];
+        try {
+            foreach ((new ShipmentModel())->where('order_id', $orderId)->findAll() as $s) {
+                $shipments[(int) ($s['seller_id'] ?? 0)] = $s;
+            }
+        } catch (\Throwable $e) {
+        }
+        $ids = [];
+        foreach ($items as $item) {
+            $sid = (int) ($item['seller_id'] ?? 0);
+            $fulfill = (string) ($shipments[$sid]['fulfill_by'] ?? ($this->isAdminSeller($sid) ? 'admin' : 'seller'));
+            if ($sid === $adminId || $this->isAdminSeller($sid) || $fulfill === 'admin') {
+                $ids[$sid] = true;
+            }
+        }
+
+        return array_map('intval', array_keys($ids));
+    }
+
+    /**
+     * Call-desk edit: qty / remove lines / address / notes. Only while status is placed
+     * so commission dues are not opened yet. Only Solqam-handled seller lines.
+     *
+     * @param array<int,int> $quantities item_id => qty (0 removes)
+     * @param list<int>      $allowedSellerIds
+     */
+    public function editPlacedOrder(int $orderId, array $quantities, array $addressIn, string $notes, array $allowedSellerIds = []): void
+    {
+        $order = $this->orderModel->find($orderId);
+        if (! $order) {
+            throw new RuntimeException('Order not found.');
+        }
+        if (($order['status'] ?? '') !== 'placed') {
+            throw new RuntimeException('You can edit only a placed order, before confirm.');
+        }
+
+        $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
+        if ($items === []) {
+            throw new RuntimeException('Order has no items.');
+        }
+        $allowed = array_values(array_unique(array_map('intval', $allowedSellerIds)));
+        if ($allowed === []) {
+            throw new RuntimeException('Seller self-deliver order. The seller confirms it. Admin can edit only admin-store or Send to Solqam packages.');
+        }
+
+        $this->db->transStart();
+        try {
+            $kept = 0;
+            foreach ($items as $item) {
+                $itemId = (int) $item['id'];
+                $oldQty = (int) $item['quantity'];
+                if (! in_array((int) ($item['seller_id'] ?? 0), $allowed, true)) {
+                    $kept++;
+                    continue;
+                }
+                $newQty = array_key_exists($itemId, $quantities) ? (int) $quantities[$itemId] : $oldQty;
+                $newQty = max(0, min(99, $newQty));
+
+                if ($newQty === 0) {
+                    $this->adjustStock($item, -$oldQty);
+                    $this->orderItemModel->delete($itemId);
+                    continue;
+                }
+
+                $delta = $newQty - $oldQty;
+                if ($delta > 0) {
+                    $locked = $this->lockProductStock((int) $item['product_id']);
+                    if (! $locked || (int) ($locked['stock'] ?? 0) < $delta) {
+                        throw new RuntimeException('Not enough stock: ' . ($item['product_name'] ?? ''));
+                    }
+                }
+                if ($delta !== 0) {
+                    $this->adjustStock($item, $delta);
+                }
+
+                $sub = round((float) $item['price'] * $newQty, 2);
+                $catId = 0;
+                try {
+                    $prod = $this->db->table('products')->select('category_id')->where('id', (int) $item['product_id'])->get()->getRowArray();
+                    $catId = (int) ($prod['category_id'] ?? 0);
+                } catch (\Throwable $e) {
+                }
+                $comm = $this->isAdminSeller((int) $item['seller_id'])
+                    ? 0.0
+                    : commission_amount($sub, false, $this->commissionService->rateForCategory($catId));
+                $cbRate = (float) ($item['cashback_percent'] ?? 0);
+                $this->orderItemModel->update($itemId, [
+                    'quantity'          => $newQty,
+                    'subtotal'          => $sub,
+                    'commission_amount' => $comm,
+                    'cashback_amount'   => cashback_amount($sub, $cbRate),
+                ]);
+                $kept++;
+            }
+
+            if ($kept < 1) {
+                throw new RuntimeException('Keep at least 1 item. Cancel the extra order instead.');
+            }
+
+            $addrId = (int) ($order['address_id'] ?? 0);
+            if ($addrId > 0) {
+                $payload = [
+                    'recipient_name'  => trim((string) ($addressIn['recipient_name'] ?? '')),
+                    'phone'           => trim((string) ($addressIn['phone'] ?? '')),
+                    'street_address'  => trim((string) ($addressIn['street_address'] ?? '')),
+                    'city'            => trim((string) ($addressIn['city'] ?? '')),
+                    'province'        => trim((string) ($addressIn['province'] ?? '')),
+                    'postal_code'     => trim((string) ($addressIn['postal_code'] ?? '')) ?: null,
+                    'alternate_phone' => trim((string) ($addressIn['alternate_phone'] ?? '')),
+                    'area'            => trim((string) ($addressIn['area'] ?? '')),
+                    'landmark'        => trim((string) ($addressIn['landmark'] ?? '')),
+                ];
+                $addrModel = new AddressModel();
+                try {
+                    $addrModel->skipValidation(true)->update($addrId, $payload);
+                } catch (\Throwable $e) {
+                    unset($payload['alternate_phone'], $payload['area'], $payload['landmark']);
+                    $addrModel->skipValidation(true)->update($addrId, $payload);
+                }
+            }
+
+            $freshItems = $this->orderItemModel->where('order_id', $orderId)->findAll();
+            $goods = 0.0;
+            $commT = 0.0;
+            $cbT = 0.0;
+            $gift = 0.0;
+            $sellerGoods = 0.0;
+            foreach ($freshItems as $it) {
+                $line = (float) ($it['subtotal'] ?? 0);
+                $goods += $line;
+                $commT += (float) ($it['commission_amount'] ?? 0);
+                $cbT += (float) ($it['cashback_amount'] ?? 0);
+                if (! empty($it['gift_wrap'])) {
+                    $gift += (float) ($it['gift_wrap_fee'] ?? 0);
+                }
+                if (! $this->isAdminSeller((int) ($it['seller_id'] ?? 0))) {
+                    $sellerGoods += $line;
+                }
+            }
+
+            $addr = $addrId > 0 ? (new AddressModel())->find($addrId) : null;
+            $quote = $this->shippingService->quote($addr['city'] ?? null, $addr['province'] ?? null, $goods);
+            $ship = (float) ($quote['amount'] ?? 0);
+            $coupon = min((float) ($order['coupon_discount'] ?? 0), $goods);
+            $arrears = (float) ($order['delivery_arrears'] ?? 0);
+            $wallet = (float) ($order['wallet_amount_used'] ?? 0);
+            $beforeWallet = max(0.0, $goods - $coupon) + $ship + $arrears + $gift;
+            if ($wallet > $beforeWallet + 0.009) {
+                $refund = round($wallet - $beforeWallet, 2);
+                if ($refund > 0) {
+                    $this->walletService->credit(
+                        (int) $order['user_id'],
+                        $refund,
+                        'refund',
+                        $orderId,
+                        'Order edit — extra wallet returned ' . ($order['order_number'] ?? '')
+                    );
+                    $wallet = $beforeWallet;
+                }
+            }
+            $final = max(0.0, round($beforeWallet - $wallet, 2));
+            $avgRate = $sellerGoods > 0 ? round(($commT / $sellerGoods) * 100, 2) : 0.0;
+
+            $this->orderModel->update($orderId, [
+                'total_amount'       => round($goods, 2),
+                'gift_wrap_amount'   => round($gift, 2),
+                'shipping_amount'    => round($ship, 2),
+                'coupon_discount'    => round($coupon, 2),
+                'wallet_amount_used' => round($wallet, 2),
+                'final_payable'      => $final,
+                'commission_amount'  => round($commT, 2),
+                'commission_rate'    => $avgRate,
+                'cashback_amount'    => round($cbT, 2),
+                'notes'              => $notes,
+            ]);
+
+            $this->resplitShipmentShipping($orderId, $ship, $freshItems);
+            $this->db->transComplete();
+        } catch (\Throwable $e) {
+            $this->db->transRollback();
+            throw $e instanceof RuntimeException ? $e : new RuntimeException($e->getMessage());
+        }
+
+        if (! $this->db->transStatus()) {
+            throw new RuntimeException('The order could not be saved. Please try again.');
+        }
+    }
+
+    protected function adjustStock(array $item, int $delta): void
+    {
+        if ($delta === 0) {
+            return;
+        }
+        $pid = (int) ($item['product_id'] ?? 0);
+        if ($pid < 1) {
+            return;
+        }
+        if ($delta > 0) {
+            $this->db->table('products')->where('id', $pid)->decrement('stock', $delta);
+            if ($this->tableHas('products', 'sold_count')) {
+                $this->db->table('products')->where('id', $pid)->increment('sold_count', $delta);
+            }
+            if (! empty($item['variant_id'])) {
+                $this->db->table('product_variants')->where('id', (int) $item['variant_id'])->decrement('stock', $delta);
+            }
+        } else {
+            $back = -$delta;
+            $this->db->table('products')->where('id', $pid)->increment('stock', $back);
+            if ($this->tableHas('products', 'sold_count')) {
+                $this->db->table('products')->where('id', $pid)->decrement('sold_count', $back);
+            }
+            if (! empty($item['variant_id'])) {
+                $this->db->table('product_variants')->where('id', (int) $item['variant_id'])->increment('stock', $back);
+            }
+        }
+    }
+
+    protected function resplitShipmentShipping(int $orderId, float $shippingAmount, array $items): void
+    {
+        try {
+            if (! $this->db->tableExists('shipments')) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            return;
+        }
+        $sellerIds = [];
+        foreach ($items as $item) {
+            $sellerIds[(int) ($item['seller_id'] ?? 0)] = true;
+        }
+        $ids = array_values(array_filter(array_keys($sellerIds)));
+        $count = count($ids);
+        if ($count < 1) {
+            return;
+        }
+        $share = round($shippingAmount / $count, 2);
+        $shipmentModel = new ShipmentModel();
+        foreach ($ids as $i => $sellerId) {
+            $amt = ($i === $count - 1) ? round($shippingAmount - ($share * ($count - 1)), 2) : $share;
+            $shipmentModel->where('order_id', $orderId)->where('seller_id', $sellerId)->set(['shipping_amount' => $amt])->update();
+        }
+    }
+
     public function cancelByBuyer(int $orderId, int $userId): bool
     {
         $order = $this->orderModel->find($orderId);
@@ -1398,7 +1753,7 @@ class OrderService
             throw new RuntimeException('Order not found.');
         }
         if (($order['status'] ?? '') !== 'placed') {
-            throw new RuntimeException('Cancel sirf placed order par allowed hai.');
+            throw new RuntimeException('Only a placed order can be cancelled.');
         }
         return $this->updateOrderStatus($orderId, 'cancelled', 'Cancelled by buyer');
     }

@@ -11,22 +11,35 @@ class StarterReviewService
 {
     public static function ensure(): void
     {
+        // Never run on HTTP. Live storefront was spending 20–30s per page on
+        // DELETE/INSERT starter reviews. Seed only from CLI (spark) if needed.
+        if (! is_cli()) {
+            return;
+        }
         static $ran = false;
-        if ($ran || is_cli()) {
+        if ($ran) {
             return;
         }
         $ran = true;
 
-        $marker = rtrim(WRITEPATH, '\\/') . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . 'starter_reviews_v2';
-        if (is_file($marker)) {
-            return;
+        $cacheDir = rtrim(WRITEPATH, '\\/') . DIRECTORY_SEPARATOR . 'cache';
+        if (! is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
         }
+        $tick = $cacheDir . DIRECTORY_SEPARATOR . 'starter_reviews_tick';
 
         try {
             $db = \Config\Database::connect();
             if (! $db->tableExists('reviews') || ! $db->tableExists('products') || ! $db->tableExists('users')) {
                 return;
             }
+
+            if (is_file($tick) && (time() - (int) filemtime($tick)) < 3600) {
+                return;
+            }
+            @touch($tick);
+
+            self::stripExcludedStarterReviews($db);
 
             $reviewers = self::reviewers($db);
             if ($reviewers === []) {
@@ -38,17 +51,20 @@ class StarterReviewService
             $now      = time();
             $inserted = 0;
 
+            $skip  = self::excludedSellerSql($db);
+            $joins = self::sellerJoins($db);
             $products = $db->query(
-                'SELECT p.id FROM products p
+                "SELECT p.id FROM products p
+                 {$joins}
                  WHERE p.status = ?
                    AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.product_id = p.id)
+                   AND NOT {$skip}
                  ORDER BY p.id DESC
-                 LIMIT 40',
+                 LIMIT 80",
                 ['active']
             )->getResultArray();
 
             if ($products === []) {
-                @file_put_contents($marker, 'done');
                 return;
             }
 
@@ -94,19 +110,60 @@ class StarterReviewService
                 }
             }
 
-            $left = $db->query(
-                'SELECT COUNT(*) AS c FROM products p
-                 WHERE p.status = ?
-                   AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.product_id = p.id)',
-                ['active']
-            )->getRowArray();
-            if ((int) ($left['c'] ?? 0) === 0) {
-                @file_put_contents($marker, (string) $inserted);
-            }
+            // Tick already stamped at start — at most one seed pass per hour.
         } catch (\Throwable $e) {
             self::rememberError($e->getMessage());
             log_message('error', 'Starter reviews: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Whole Traders (and similar store/account names) must not get starter reviews.
+     */
+    protected static function excludedSellerSql($db): string
+    {
+        $norm = static fn (string $col): string => "REPLACE(REPLACE(LOWER(COALESCE({$col}, '')), ' ', ''), '-', '')";
+        $parts = [
+            $norm('u.name') . " LIKE '%wholetraders%'",
+            $norm('u.email') . " LIKE '%wholetraders%'",
+        ];
+        if ($db->tableExists('seller_profiles')) {
+            $parts[] = $norm('sp.store_name') . " LIKE '%wholetraders%'";
+            $fields = $db->getFieldNames('seller_profiles');
+            if (in_array('business_name', $fields, true)) {
+                $parts[] = $norm('sp.business_name') . " LIKE '%wholetraders%'";
+            }
+        }
+
+        return '(' . implode(' OR ', $parts) . ')';
+    }
+
+    /**
+     * Remove fake starter reviews already written on excluded sellers.
+     * Real customer reviews (other emails) are left untouched.
+     */
+    protected static function stripExcludedStarterReviews($db): void
+    {
+        $skip  = self::excludedSellerSql($db);
+        $joins = self::sellerJoins($db);
+        $db->query(
+            "DELETE r FROM reviews r
+             INNER JOIN products p ON p.id = r.product_id
+             {$joins}
+             INNER JOIN users reviewer ON reviewer.id = r.user_id
+             WHERE reviewer.email LIKE '%@reviews.solqam.local'
+               AND {$skip}"
+        );
+    }
+
+    protected static function sellerJoins($db): string
+    {
+        $sql = 'LEFT JOIN users u ON u.id = p.seller_id';
+        if ($db->tableExists('seller_profiles')) {
+            $sql .= ' LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id';
+        }
+
+        return $sql;
     }
 
     /**

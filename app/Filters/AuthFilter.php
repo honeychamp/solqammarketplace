@@ -24,9 +24,8 @@ class AuthFilter implements FilterInterface
 
         $userId = (int) $session->get('user.id');
         $userModel = new \App\Models\UserModel();
-        if ($userId <= 0 || !$userModel->find($userId)) {
+        if ($userId <= 0 || !$userModel->findAliveById($userId)) {
             $session->remove('user');
-            $session->destroy();
             if ($isAdminRoute) {
                 return redirect()->to('/admin/login')->with('error', 'Admin session expired. Please log in again.');
             }

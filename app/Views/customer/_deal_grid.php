@@ -21,7 +21,9 @@ if ($dealProducts === []): ?>
             <div class="solqam-product-card">
                 <div class="card-media">
                     <img src="<?= esc($product['primary_image'] ?: base_url('assets/images/product-placeholder.svg')) ?>" alt="<?= esc($product['name']) ?>" loading="lazy">
-                    <?php if (!empty($product['is_mall'])): ?>
+                    <?php if ((int) ($product['stock'] ?? $product['stock_available'] ?? 1) <= 0): ?>
+                    <span class="solqam-mall-badge" style="background:#DC2626;">Out of stock</span>
+                    <?php elseif (!empty($product['is_mall'])): ?>
                     <span class="solqam-mall-badge">Mall</span>
                     <?php endif; ?>
                     <?php if ($discountPct > 0): ?>

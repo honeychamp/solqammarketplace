@@ -26,19 +26,50 @@ class ProductController extends BaseController
 
     public function index()
     {
-        $products = $this->productModel
+        return $this->listProducts(false);
+    }
+
+    public function outOfStock()
+    {
+        return $this->listProducts(true);
+    }
+
+    private function listProducts(bool $oosOnly)
+    {
+        $builder = $this->productModel
             ->select('products.*, categories.name as category_name, users.name as seller_name, seller_profiles.store_name, (SELECT image_path FROM product_images WHERE product_images.product_id = products.id ORDER BY is_primary DESC, id ASC LIMIT 1) as primary_image')
             ->join('categories', 'categories.id = products.category_id', 'left')
             ->join('users', 'users.id = products.seller_id', 'left')
-            ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left')
+            ->join('seller_profiles', 'seller_profiles.user_id = products.seller_id', 'left');
+        if ($oosOnly) {
+            $builder->where('products.stock <=', 0);
+        }
+        $products = $builder
+            ->orderBy('products.stock', 'ASC')
             ->orderBy('products.id', 'DESC')
             ->paginate(50);
 
         return view('admin/products/index', [
-            'title'    => 'Manage All Products — Solqam Admin Console',
+            'title'    => $oosOnly ? 'Out of stock — Solqam Admin Console' : 'Manage All Products — Solqam Admin Console',
             'products' => $products,
             'pager'    => $this->productModel->pager,
+            'oosOnly'  => $oosOnly,
         ]);
+    }
+
+    public function adjustPrices()
+    {
+        $amount = (float) $this->request->getPost('amount');
+        $dir    = (string) $this->request->getPost('direction');
+        try {
+            $done = (new \App\Services\Catalog\CatalogPriceAdjuster())->adjustByRupees($amount, $dir, null);
+            $verb = $done['delta'] < 0 ? 'decreased' : 'increased';
+            $rs   = number_format(abs($done['delta']), 0);
+
+            return redirect()->to('/admin/products')->with('success', $done['count'] . ' products ' . $verb . ' by Rs. ' . $rs . '.');
+        } catch (\Throwable $e) {
+            return redirect()->to('/admin/products')->with('error', $e->getMessage());
+        }
     }
 
     public function edit($id)

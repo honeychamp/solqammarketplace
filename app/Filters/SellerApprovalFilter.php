@@ -28,8 +28,12 @@ class SellerApprovalFilter implements FilterInterface
         $uri    = trim((string) uri_string(), '/');
         $method = strtoupper($request->getMethod());
         $isDashboard = $uri === 'seller/dashboard' || str_ends_with($uri, '/seller/dashboard');
+        $isDues      = str_starts_with($uri, 'seller/dues');
 
         if ($isDashboard && $method === 'GET') {
+            return;
+        }
+        if ($status === 'suspended' && $isDues) {
             return;
         }
 

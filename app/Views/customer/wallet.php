@@ -5,7 +5,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
         <div>
             <h3 class="fw-bold mb-1" style="color: #0F172A;"><i class="bi bi-wallet2 text-warning me-2"></i> Solqam Cash Wallet</h3>
-            <p class="text-secondary small mb-0">Checkout pe wallet pehle cut hota hai. Abhi baqi Cash on Delivery. PayFast keys ke baad JazzCash / EasyPaisa / card usi page se.</p>
+            <p class="text-secondary small mb-0">Wallet is applied first at checkout. Remaining can be Cash on Delivery. JazzCash / EasyPaisa / card on the same page once PayFast is live.</p>
         </div>
         <a href="<?= site_url('shop') ?>" class="btn btn-sol-primary btn-sm rounded-pill px-3 shadow-sm">
             <i class="bi bi-bag-check me-1"></i> Spend Balance at Checkout
@@ -57,7 +57,7 @@
                     <li class="d-flex mb-3">
                         <i class="bi bi-check-circle-fill text-success fs-5 me-3 flex-shrink-0"></i>
                         <div>
-                            <strong>Cashback auto-credit:</strong> JazzCash / EasyPaisa / card / full wallet pay → the cashback % on each product hits your ledger instantly. COD / Pay later → after delivery.
+                            <strong>Cashback auto-credit:</strong> After the parcel is marked Delivered, the cashback % on each product hits your wallet. Guest orders do not get cashback.
                         </div>
                     </li>
                     <li class="d-flex mb-3">
@@ -81,7 +81,7 @@
                     <li class="d-flex">
                         <i class="bi bi-calendar2-week text-warning fs-5 me-3 flex-shrink-0"></i>
                         <div>
-                            <strong>Pay later remaining:</strong> Jo amount baad mein deni hai woh wallet mein minus show hoti hai jab tak aap pay na karein. Agli purchase par ye remaining amount product ke sath add ho jati hai. Collect / deliver hone par minus clear.
+                            <strong>Pay later remaining:</strong> The amount still to pay shows as a minus wallet balance until you pay. On the next purchase it is added with the product total. It clears when collected / delivered.
                         </div>
                     </li>
                 </ul>

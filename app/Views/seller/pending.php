@@ -25,7 +25,7 @@ $dueSummary = $dueSummary ?? [];
     </div>
 
     <?php if ($isSuspended): ?>
-        <p class="mb-3">COD self-delivery ke baad commission + customer cashback Solqam ko ada nahi hua. Jab tak yeh amount clear na ho, naya order <strong>Delivered</strong> nahi ho sakta.</p>
+        <p class="mb-3">Commission and customer cashback from COD self-delivery are still unpaid to Solqam. Until this is cleared, a new order cannot be marked <strong>Delivered</strong>.</p>
         <div class="alert alert-danger rounded-4">
             Unpaid: Rs. <?= number_format((float) ($dueSummary['unpaid'] ?? 0), 0) ?>
             · Commission Rs. <?= number_format((float) ($dueSummary['commission'] ?? 0), 0) ?>

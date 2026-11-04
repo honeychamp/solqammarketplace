@@ -1,0 +1,6 @@
+Copy the app folder onto live (same paths). Replace existing files.
+Must include BOTH:
+  app/Services/Export/XlsxWorkbook.php
+  app/Services/Export/OrderExportService.php
+Then Admin -> Orders -> Full export .xlsx
+CSV already works on live. Whoops is only the old Excel writer.

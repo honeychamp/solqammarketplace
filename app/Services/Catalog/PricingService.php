@@ -27,9 +27,26 @@ class PricingService
 
     public function getFlashPriceMap(): array
     {
+        static $map = null;
+        if ($map !== null) {
+            return $map;
+        }
+        try {
+            $hit = cache()->get('sf_flash_price_map');
+            if (is_array($hit)) {
+                return $map = $hit;
+            }
+        } catch (\Throwable $e) {
+        }
         $campaigns = $this->flashSaleModel->getLiveCampaigns();
         if ($campaigns === []) {
-            return [];
+            $map = [];
+            try {
+                cache()->save('sf_flash_price_map', $map, 60);
+            } catch (\Throwable $e) {
+            }
+
+            return $map;
         }
         $ids = array_column($campaigns, 'id');
         $items = $this->flashItemModel
@@ -43,6 +60,10 @@ class PricingService
             if (! isset($map[$pid]) || $price < $map[$pid]) {
                 $map[$pid] = $price;
             }
+        }
+        try {
+            cache()->save('sf_flash_price_map', $map, 60);
+        } catch (\Throwable $e) {
         }
 
         return $map;

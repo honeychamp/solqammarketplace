@@ -110,6 +110,11 @@
                                     <td>
                                         <?php if ($d['status'] === 'paid'): ?>
                                             <span class="badge bg-success">Paid <?= !empty($d['paid_at']) ? date('d M', strtotime($d['paid_at'])) : '' ?></span>
+                                        <?php elseif ($d['status'] === 'processing'): ?>
+                                            <span class="badge bg-warning text-dark">Processing</span>
+                                            <?php if (! empty($d['proof_path'])): ?>
+                                                <div class="mt-1"><a href="<?= esc(media_url($d['proof_path'])) ?>" target="_blank">Screenshot</a></div>
+                                            <?php endif; ?>
                                         <?php elseif ($d['status'] === 'waived'): ?>
                                             <span class="badge bg-secondary">Waived</span>
                                         <?php elseif ((float) ($d['paid_amount'] ?? 0) > 0): ?>
@@ -120,7 +125,7 @@
                                     </td>
                                     <td class="text-end">
                                         <a class="btn btn-sm btn-outline-secondary rounded-pill" href="<?= site_url('admin/dues/' . (int) $d['id'] . '/receipt') ?>">Receipt</a>
-                                        <?php if ($d['status'] === 'unpaid' && $left > 0): ?>
+                                        <?php if (\App\Services\Commission\SellerDueService::isOpen($d['status'] ?? '') && $left > 0): ?>
                                             <form method="POST" action="<?= site_url('admin/dues/' . (int) $d['id'] . '/paid') ?>" class="d-inline-flex gap-1 align-items-center mt-1">
                                                 <?= csrf_field() ?>
                                                 <input type="number" step="1" min="1" name="amount" class="form-control form-control-sm" style="width:90px" placeholder="<?= (int) $left ?>" value="<?= (int) $left ?>">

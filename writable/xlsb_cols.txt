@@ -1,0 +1,46 @@
+﻿1		idx1=6 color1=65535 idx2=6 color2=65535
+2	03-Nov-2026	idx1=6 color1=65535 idx2=6 color2=65535
+3	S-100	idx1=6 color1=65535 idx2=6 color2=65535
+4	Summer Xatti	idx1=6 color1=65535 idx2=6 color2=65535
+5	03490758974	idx1=6 color1=65535 idx2=6 color2=65535
+6	03149368164	idx1=6 color1=65535 idx2=6 color2=65535
+7	Satellite up boys hostel Siddiqui Chowk saidpur road Rawalpindi	idx1=6 color1=65535 idx2=6 color2=65535
+8	Govt graduate college Rawalpindi	idx1=6 color1=65535 idx2=6 color2=65535
+9	Satellite town Rawalpindi	idx1=6 color1=65535 idx2=6 color2=65535
+10	Rawalpindi	idx1=6 color1=65535 idx2=6 color2=65535
+11	Punjab	idx1=6 color1=65535 idx2=6 color2=65535
+12	Complete	idx1=6 color1=65535 idx2=6 color2=65535
+13	ERGD	idx1=6 color1=65535 idx2=6 color2=65535
+14	Adjustable Hand Grip Strengthener 10–60KG with Counter | Hand Gripper, Forearm, Wrist & Finger Exerciser for Gym & Home Workout – Men & Women (No Color Choice)	idx1=6 color1=65535 idx2=6 color2=65535
+15	Variant	idx1=6 color1=65535 idx2=6 color2=65535
+16	1.00	idx1=6 color1=65535 idx2=6 color2=65535
+17	445.00	idx1=6 color1=65535 idx2=6 color2=65535
+18	190.00	idx1=6 color1=65535 idx2=6 color2=65535
+19	635.00	idx1=6 color1=65535 idx2=6 color2=65535
+20	Gift Message	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+21	0.00	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+22	255.00	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+23	0.00	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+24	44.50	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+25	Courier	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+26	Tracking Number	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+27	Standard	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+28	Dispatch Date	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+29	Delivered Date	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+30	03208653785	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+31	Website	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+32	Normal	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+33	Guest	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+34	1.00	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+35	1.00	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+36	0.00	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+37	Package Weight (kg)	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+38	Actual Shipping Cost (Rs)	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+39	Product Cost (Rs)	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+40	590.50	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+41	Supplier / Source	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+42	Customer Note / Instruction	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+43	Preferred Delivery Time	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+44	Internal Admin Note	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+45	Cancel / Return Reason	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215
+46	03-Nov-2026 11:42 AM	idx1=-4142 color1=16777215 idx2=-4142 color2=16777215

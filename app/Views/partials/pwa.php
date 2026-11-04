@@ -7,6 +7,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="<?= base_url('assets/images/solqam-apple-touch.png') ?>">
 <style>
 #solqam-pwa-install{position:fixed;left:12px;right:12px;bottom:12px;z-index:1080;display:none;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:#0B30E6;color:#fff;box-shadow:0 12px 32px rgba(11,48,230,.35)}
+@media (max-width:767.98px){body.has-m-tab #solqam-pwa-install{bottom:calc(72px + env(safe-area-inset-bottom,0px))}}
 #solqam-pwa-install.is-on{display:flex}
 #solqam-pwa-install img{width:40px;height:40px;border-radius:10px;background:#fff}
 #solqam-pwa-install .pwa-copy{flex:1;min-width:0}

@@ -48,10 +48,11 @@ $greet = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good ev
 </div>
 <?php $dueSummary = $dueSummary ?? []; if ((float) ($dueSummary['unpaid'] ?? 0) > 0): ?>
 <div class="alert alert-warning rounded-4 border-0 mb-4">
-    <strong>COD dues:</strong> Solqam ko Rs. <?= number_format((float) $dueSummary['unpaid'], 0) ?> dena hai
+    <strong>Pay Solqam:</strong> Commission is due after confirm. Unpaid now: Rs. <?= number_format((float) $dueSummary['unpaid'], 0) ?>
     (commission Rs. <?= number_format((float) $dueSummary['commission'], 0) ?>
     + cashback Rs. <?= number_format((float) $dueSummary['cashback'], 0) ?>).
-    Next order <strong>Delivered</strong> tabhi hoga jab admin yeh amount received mark kare.
+    Open <a href="<?= site_url('seller/dues') ?>" class="alert-link">Pay Solqam</a>, send JazzCash/bank, upload a screenshot.
+    The next order cannot be marked <strong>Delivered</strong> until admin marks it paid.
 </div>
 <?php endif; ?>
 
@@ -160,6 +161,7 @@ $greet = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good ev
                         <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
                             <div>
                                 <strong><?= esc($item['order_number']) ?></strong>
+                                <div class="small text-muted"><?= esc(pk_datetime($item['order_date'] ?? $item['created_at'] ?? '')) ?> PKT</div>
                                 <div class="small"><?= esc($item['product_name']) ?> × <?= (int) $item['quantity'] ?></div>
                                 <div class="small text-muted">
                                     <a href="<?= site_url('seller/customers/' . (int) ($item['customer_id'] ?? 0)) ?>"><?= esc($item['customer_name']) ?></a>

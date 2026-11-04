@@ -19,7 +19,7 @@
         </div>
         <div class="mb-3">
             <label class="form-label small fw-bold">New password</label>
-            <input type="password" name="password" class="form-control" minlength="6" autocomplete="new-password" placeholder="Khali chhoro to purana password rahe">
+            <input type="password" name="password" class="form-control" minlength="6" autocomplete="new-password" placeholder="Leave blank to keep the current password">
         </div>
         <div class="mb-4">
             <label class="form-label small fw-bold">Confirm password</label>

@@ -51,15 +51,19 @@ Events::on('pre_system', static function (): void {
 });
 
 Events::on('post_controller_constructor', static function (): void {
-    try {
-        \App\Services\Platform\SchemaHeal::run();
-    } catch (\Throwable $e) {
-        log_message('error', 'SchemaHeal: ' . $e->getMessage());
-    }
-    try {
-        \App\Services\Catalog\StarterReviewService::ensure();
-    } catch (\Throwable $e) {
-        log_message('error', 'Starter reviews: ' . $e->getMessage());
+    if (is_cli()) {
+        try {
+            \App\Services\Platform\SchemaHeal::run();
+        } catch (\Throwable $e) {
+            log_message('error', 'SchemaHeal: ' . $e->getMessage());
+        }
+        try {
+            \App\Services\Catalog\StarterReviewService::ensure();
+        } catch (\Throwable $e) {
+            log_message('error', 'Starter reviews: ' . $e->getMessage());
+        }
+
+        return;
     }
     try {
         if (class_exists(\App\Services\Marketing\MarketingService::class)) {

@@ -32,7 +32,7 @@
                     <li>COD + seller delivery: seller collects cash; category commission is due to Solqam; delivery fee stays with the seller.</li>
                     <li>COD + Solqam delivery: Solqam collects cash, keeps delivery fee and commission, pays the seller product value minus commission.</li>
                     <li>If admin sells their own listing: no commission is cut.</li>
-                    <li>Buyers receive the cashback % set on each product. Prepaid: instantly. COD / Pay later: after delivery.</li>
+                    <li>Buyers receive the cashback % set on each product after the order is delivered. Guests do not get cashback.</li>
                 </ul>
                 <a href="<?= site_url('register?role=seller') ?>" class="btn btn-solqam rounded-pill px-4 mt-4">Open a seller account</a>
             </div>

@@ -31,17 +31,16 @@ class CartController extends BaseApiController
     public function index()
     {
         $cart = $this->resolveCart();
-        $items = $this->cartItemModel->getItemsWithProducts((int) $cart['id']);
+        $items = \App\Services\Checkout\GiftWrapService::enrichItems($this->cartItemModel->getItemsWithProducts((int) $cart['id']));
 
-        $subtotal = 0.0;
-        foreach ($items as $item) {
-            $subtotal += ((float) $item['unit_price'] * (int) $item['quantity']);
-        }
+        $subtotal = \App\Services\Checkout\GiftWrapService::goodsTotal($items);
+        $giftWrap = \App\Services\Checkout\GiftWrapService::wrapTotal($items);
 
         return $this->respondSuccess([
             'cart_id'  => (int) $cart['id'],
             'items'    => $items,
             'subtotal' => round($subtotal, 2),
+            'gift_wrap' => $giftWrap,
             'count'    => count($items),
         ], 'Cart retrieved.');
     }
@@ -57,10 +56,6 @@ class CartController extends BaseApiController
             return $this->respondFail('Product not available.', null, 404);
         }
 
-        if ($product['stock'] < $quantity) {
-            return $this->respondFail("Only {$product['stock']} units available in stock.", null, 400);
-        }
-
         $cart = $this->resolveCart();
         $cartId = (int) $cart['id'];
 
@@ -72,9 +67,6 @@ class CartController extends BaseApiController
 
         if ($existing) {
             $newQty = $existing['quantity'] + $quantity;
-            if ($newQty > $product['stock']) {
-                $newQty = $product['stock'];
-            }
             $this->cartItemModel->update($existing['id'], [
                 'quantity'   => $newQty,
                 'unit_price' => $product['price'],
