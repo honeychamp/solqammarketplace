@@ -163,6 +163,13 @@ class OrderController extends BaseController
             $builder->where('orders.status', $status);
         }
 
+        hub_apply_search($builder, [
+            'orders.order_number',
+            'orders.status',
+            'users.name',
+            'users.phone',
+        ], 'orders.id');
+
         $orders = $builder->paginate(25);
 
         foreach ($orders as &$order) {

@@ -98,24 +98,42 @@
         badge.textContent = 'Total: ' + recordTotal();
     }
 
-    function applySearch() {
-        const q = (search && search.value ? search.value : '').trim().toLowerCase();
-        const blocks = searchableBlocks();
-        let shown = 0;
-        blocks.forEach(function (row) {
-            const hay = (row.innerText || '').toLowerCase();
-            const ok = q === '' || hay.indexOf(q) !== -1;
-            row.classList.toggle('hub-search-hide', !ok);
-            if (ok) shown++;
-        });
+    function haystack(el) {
+        if (el._hubHay) return el._hubHay;
+        const extra = el.getAttribute('data-search') || '';
+        el._hubHay = (cellText(el) + ' ' + extra).toLowerCase().replace(/[\s\-_]+/g, ' ').trim();
+        return el._hubHay;
+    }
+
+    function urlQ() {
+        try {
+            return (new URLSearchParams(window.location.search).get('q') || '').trim();
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function applySearchHint() {
+        const q = (search && search.value ? search.value : '').trim();
         if (q === '') {
             hint.classList.add('d-none');
             hint.textContent = '';
         } else {
             hint.classList.remove('d-none');
-            hint.textContent = shown + ' match' + (shown === 1 ? '' : 'es') + ' on this page';
+            hint.textContent = 'Showing matches from every page for “' + q + '”';
         }
         paintTotal();
+    }
+
+    function submitHubSearch() {
+        const form = document.getElementById('hubPageSearchForm');
+        if (!form || !search) return;
+        const next = search.value.trim();
+        if (next === urlQ()) {
+            applySearchHint();
+            return;
+        }
+        form.submit();
     }
 
     function fileStub() {
@@ -293,13 +311,24 @@
     }
 
     if (search) {
-        search.addEventListener('input', applySearch);
+        let timer = null;
+        search.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(submitHubSearch, 400);
+        });
         search.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 search.value = '';
-                applySearch();
+                clearTimeout(timer);
+                submitHubSearch();
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(timer);
+                submitHubSearch();
             }
         });
+        applySearchHint();
     }
     if (exportBtn) {
         exportBtn.addEventListener('click', downloadExcel);

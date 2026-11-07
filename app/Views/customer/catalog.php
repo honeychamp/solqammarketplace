@@ -61,8 +61,13 @@
             <?php if (empty($products)): ?>
                 <div class="text-center py-5 bg-white rounded-4 shadow-sm border p-5">
                     <i class="bi bi-search fs-1 text-muted mb-3 d-block"></i>
-                    <h5 class="fw-bold text-dark">No products yet</h5>
-                    <p class="text-muted small mb-4">Sellers can add products from Seller Hub. Shop will show them here.</p>
+                    <?php if (!empty($filters['search'])): ?>
+                        <h5 class="fw-bold text-dark">No matches for “<?= esc($filters['search']) ?>”</h5>
+                        <p class="text-muted small mb-4">Try a shorter word, brand name, or browse by category.</p>
+                    <?php else: ?>
+                        <h5 class="fw-bold text-dark">No products yet</h5>
+                        <p class="text-muted small mb-4">Sellers can add products from Seller Hub. Shop will show them here.</p>
+                    <?php endif; ?>
                     <a href="<?= site_url('shop') ?>" class="btn btn-solqam rounded-pill px-4">Browse Full Catalog</a>
                 </div>
             <?php else: ?>

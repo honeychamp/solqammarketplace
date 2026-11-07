@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261030j">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261104a">
     <?php if (is_file(APPPATH . 'Views/partials/marketing_tags.php')): ?>
         <?= view('partials/marketing_tags') ?>
     <?php endif; ?>
@@ -61,11 +61,12 @@ $showMobileTab = $tabUriEarly !== 'checkout' && ! str_starts_with($tabUriEarly, 
                 <!-- Grand Marketplace Search Bar -->
                 <div class="flex-grow-1 min-w-0">
                     <div class="solqam-search-container mx-auto">
-                        <form action="<?= site_url('shop') ?>" method="GET" class="m-0">
+                        <form action="<?= site_url('shop') ?>" method="GET" class="m-0" role="search">
                             <div class="solqam-search-input-group">
                                 <i class="bi bi-search ms-3 text-muted"></i>
-                                <input class="solqam-search-input" type="search" name="q" placeholder="Search electronics, fashion, groceries..." value="<?= esc($_GET['q'] ?? '') ?>" autocomplete="off">
-                                <button class="solqam-search-btn" type="submit">
+                                <input class="solqam-search-input" type="search" name="q" placeholder="Search products, brands, categories..." value="<?= esc($filters['search'] ?? ($_GET['q'] ?? '')) ?>" autocomplete="off" maxlength="80" enterkeyhint="search">
+                                <button class="solqam-search-btn" type="submit" aria-label="Search">
+                                    <i class="bi bi-search"></i>
                                     <span>Search</span>
                                 </button>
                             </div>

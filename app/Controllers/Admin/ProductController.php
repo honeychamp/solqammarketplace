@@ -44,6 +44,14 @@ class ProductController extends BaseController
         if ($oosOnly) {
             $builder->where('products.stock <=', 0);
         }
+        hub_apply_search($builder, [
+            'products.name',
+            'products.sku',
+            'products.brand',
+            'categories.name',
+            'users.name',
+            'seller_profiles.store_name',
+        ], 'products.id');
         $products = $builder
             ->orderBy('products.stock', 'ASC')
             ->orderBy('products.id', 'DESC')

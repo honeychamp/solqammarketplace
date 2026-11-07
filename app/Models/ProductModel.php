@@ -152,7 +152,10 @@ class ProductModel extends Model
 
     protected function buildCatalogQuery(array $filters, bool $countOnly)
     {
-        $needCategoryJoin = ! $countOnly || (! empty($filters['category_slug']) && empty($filters['category_ids']));
+        $searchQ = trim(preg_replace('/\s+/u', ' ', (string) ($filters['search'] ?? '')) ?? '');
+        $needCategoryJoin = ! $countOnly
+            || $searchQ !== ''
+            || (! empty($filters['category_slug']) && empty($filters['category_ids']));
         $builder = $this->select($countOnly ? 'products.id' : ('products.*, categories.name as category_name, categories.slug as category_slug, seller_profiles.store_name, ' . $this->catalogImageSelect()), false);
         if ($needCategoryJoin) {
             $builder->join('categories', 'categories.id = products.category_id', 'left');
@@ -171,17 +174,8 @@ class ProductModel extends Model
             $builder->where('categories.slug', $filters['category_slug']);
         }
 
-        if (!empty($filters['search'])) {
-            $q = $filters['search'];
-            $builder->groupStart()
-                ->like('products.name', $q)
-                ->orLike('products.description', $q);
-            if ($this->productsHas('brand')) {
-                $builder->orLike('products.brand', $q);
-            }
-            $builder->orLike('products.sku', $q)
-                ->orLike('seller_profiles.store_name', $q)
-                ->groupEnd();
+        if ($searchQ !== '') {
+            $this->applyCatalogSearch($builder, $searchQ);
         }
 
         if (!empty($filters['brand']) && $this->productsHas('brand')) {
@@ -213,7 +207,8 @@ class ProductModel extends Model
         }
 
         $sort = $filters['sort'] ?? 'latest';
-        if (!empty($filters['search']) && $sort === 'latest') {
+        if ($searchQ !== '' && $sort === 'latest') {
+            $this->applySearchRelevance($builder, $searchQ);
             if ($this->productsHas('sold_count')) {
                 $builder->orderBy('products.sold_count', 'DESC');
             }
@@ -335,6 +330,190 @@ class ProductModel extends Model
         }
 
         return $out;
+    }
+
+    protected function applyCatalogSearch($builder, string $q): void
+    {
+        $tokens = preg_split('/[\s,\/]+/u', $q) ?: [];
+        $tokens = array_values(array_unique(array_filter($tokens, static function ($t) {
+            return is_string($t) && mb_strlen($t) >= 2;
+        })));
+        if ($tokens === []) {
+            $tokens = [$q];
+        }
+
+        foreach ($tokens as $token) {
+            $builder->groupStart();
+            $this->matchSearchToken($builder, (string) $token);
+            $builder->groupEnd();
+        }
+    }
+
+    protected function matchSearchToken($builder, string $token): void
+    {
+        $first = true;
+        foreach ($this->searchTokenAlts($token) as $alt) {
+            $this->likeCatalogFields($builder, $alt, $first);
+            $first = false;
+        }
+
+        $compact = strtolower((string) preg_replace('/[^a-z0-9]+/i', '', $token));
+        if ($compact !== '' && strtolower($token) !== $compact) {
+            $like = $this->db->escape('%' . $compact . '%');
+            $builder->orWhere(
+                "REPLACE(REPLACE(REPLACE(LOWER(products.name),' ',''),'-',''),'_','') LIKE {$like}",
+                null,
+                false
+            );
+        }
+    }
+
+    protected function likeCatalogFields($builder, string $alt, bool $first): void
+    {
+        if ($first) {
+            $builder->like('products.name', $alt);
+        } else {
+            $builder->orLike('products.name', $alt);
+        }
+        $builder->orLike('products.sku', $alt)
+            ->orLike('products.slug', $alt)
+            ->orLike('categories.name', $alt)
+            ->orLike('categories.slug', $alt)
+            ->orLike('seller_profiles.store_name', $alt);
+        if ($this->productsHas('brand')) {
+            $builder->orLike('products.brand', $alt);
+        }
+        if (mb_strlen($alt) >= 3 && $this->productsHas('highlights')) {
+            $builder->orLike('products.highlights', $alt);
+        }
+        $catIds = $this->categoryIdsMatchingToken($alt);
+        if ($catIds !== []) {
+            $builder->orWhereIn('products.category_id', $catIds);
+        }
+    }
+
+    /**
+     * @return list<int>
+     */
+    protected function categoryIdsMatchingToken(string $token): array
+    {
+        $needle = mb_strtolower(trim($token));
+        if (mb_strlen($needle) < 2) {
+            return [];
+        }
+        $index = $this->categorySearchIndex();
+        $hit   = [];
+        foreach ($index['rows'] as $id => $row) {
+            $name = mb_strtolower((string) ($row['name'] ?? ''));
+            $slug = mb_strtolower((string) ($row['slug'] ?? ''));
+            if ($name === '' && $slug === '') {
+                continue;
+            }
+            if (! str_contains($name, $needle) && ! str_contains($slug, $needle)) {
+                continue;
+            }
+            foreach ($this->categoryDescendantIds($id, $index) as $did) {
+                $hit[$did] = true;
+            }
+        }
+
+        return array_map('intval', array_keys($hit));
+    }
+
+    /**
+     * @return array{rows: array<int, array>, children: array<int, list<int>>}
+     */
+    protected function categorySearchIndex(): array
+    {
+        static $index;
+        if ($index !== null) {
+            return $index;
+        }
+        $rows     = [];
+        $children = [];
+        try {
+            foreach ($this->db->table('categories')->select('id, parent_id, name, slug')->get()->getResultArray() as $row) {
+                $id          = (int) ($row['id'] ?? 0);
+                $rows[$id]   = $row;
+                $pid         = (int) ($row['parent_id'] ?? 0);
+                $children[$pid][] = $id;
+            }
+        } catch (\Throwable $e) {
+            $rows     = [];
+            $children = [];
+        }
+        $index = ['rows' => $rows, 'children' => $children];
+
+        return $index;
+    }
+
+    /**
+     * @param array{rows: array<int, array>, children: array<int, list<int>>} $index
+     * @return list<int>
+     */
+    protected function categoryDescendantIds(int $categoryId, array $index): array
+    {
+        $ids   = [$categoryId];
+        $queue = [$categoryId];
+        $guard = 0;
+        while ($queue !== [] && $guard++ < 2000) {
+            $current = array_pop($queue);
+            foreach ($index['children'][$current] ?? [] as $childId) {
+                $ids[]   = (int) $childId;
+                $queue[] = (int) $childId;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function searchTokenAlts(string $token): array
+    {
+        $t = mb_strtolower($token);
+        $alts = [$token];
+        if (mb_strlen($t) > 3 && str_ends_with($t, 's') && ! str_ends_with($t, 'ss')) {
+            $alts[] = mb_substr($token, 0, -1);
+        }
+        $map = [
+            'phone'        => ['mobile', 'smartphone'],
+            'phones'       => ['mobile', 'smartphone'],
+            'smartphone'   => ['phone', 'mobile'],
+            'smartphones'  => ['phone', 'mobile'],
+            'mobile'       => ['phone', 'smartphone'],
+            'mobiles'      => ['phone', 'smartphone'],
+            'earbud'       => ['earbuds', 'earphone', 'earphones'],
+            'earbuds'      => ['earphone', 'earphones'],
+            'earphone'     => ['earbuds', 'earphones'],
+            'earphones'    => ['earbuds', 'earphone'],
+            'watch'        => ['watches', 'smartwatch'],
+            'watches'      => ['watch', 'smartwatch'],
+            'laptop'       => ['notebook', 'laptops'],
+            'laptops'      => ['laptop', 'notebook'],
+            'fashion'      => ['clothing', 'apparel', 'dress'],
+        ];
+        if (isset($map[$t])) {
+            $alts = array_merge($alts, $map[$t]);
+        }
+
+        return array_values(array_unique($alts));
+    }
+
+    protected function applySearchRelevance($builder, string $q): void
+    {
+        $like  = $this->db->escapeLikeString($q);
+        $start = $this->db->escape($like . '%');
+        $any   = $this->db->escape('%' . $like . '%');
+        $brand = $this->productsHas('brand')
+            ? " WHEN products.brand LIKE {$any} ESCAPE '!' THEN 2"
+            : '';
+        $builder->orderBy(
+            "CASE WHEN products.name LIKE {$start} ESCAPE '!' THEN 0 WHEN products.name LIKE {$any} ESCAPE '!' THEN 1{$brand} ELSE 3 END",
+            '',
+            false
+        );
     }
 
     protected function applyPublicSellerScope($builder): void

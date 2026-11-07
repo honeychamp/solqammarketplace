@@ -30,6 +30,13 @@ class SellerController extends BaseController
             $builder->where('seller_profiles.approval_status', $status);
         }
 
+        hub_apply_search($builder, [
+            'seller_profiles.store_name',
+            'users.name',
+            'users.email',
+            'users.phone',
+        ], 'seller_profiles.id');
+
         $sellers = $builder->paginate(50);
         $sellerUserIds = array_map(static fn (array $s): int => (int) ($s['user_id'] ?? 0), $sellers);
         $customerCounts = (new OrderItemModel())->countCustomersBySellerIds($sellerUserIds);

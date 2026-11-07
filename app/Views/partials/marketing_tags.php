@@ -9,18 +9,16 @@ try {
 if (empty($mkt['enabled'])) {
     return;
 }
-$userEm = '';
-$userPh = '';
+$am = [];
 try {
-    $uid = (int) (session()->get('user.id') ?? 0);
-    if ($uid) {
-        $userEm = \App\Services\Marketing\MarketingService::hashPii((string) session()->get('user.email'));
-        $userPh = \App\Services\Marketing\MarketingService::hashPii(
-            \App\Services\Marketing\MarketingService::normalizePkPhone((string) session()->get('user.phone'))
-        );
-    }
+    $am = \App\Services\Marketing\MarketingService::pixelAdvancedMatching();
 } catch (\Throwable $e) {
+    $am = [];
 }
+$amFlags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP;
+$amJson = $am !== [] ? (', ' . json_encode($am, $amFlags)) : '';
+$userEm = (string) ($am['em'] ?? '');
+$userPh = (string) ($am['ph'] ?? '');
 $gtm   = esc($mkt['gtm_id'] ?? '', 'attr');
 $ga4   = esc($mkt['ga4_id'] ?? '', 'attr');
 $aw    = esc($mkt['google_ads_id'] ?? '', 'attr');
@@ -44,7 +42,7 @@ gtag('js', new Date());
 <?php if ($meta !== ''): ?>
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '<?= $meta ?>'<?= $userEm || $userPh ? ", {em:'" . esc($userEm, 'js') . "',ph:'" . esc($userPh, 'js') . "'}" : '' ?>);
+fbq('init', '<?= $meta ?>'<?= $amJson ?>);
 fbq('track', 'PageView', {}, {eventID: <?= json_encode(\App\Services\Marketing\MarketingService::pageViewEventId()) ?>});
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=<?= $meta ?>&ev=PageView&noscript=1" alt=""></noscript>
@@ -58,10 +56,12 @@ fbq('track', 'PageView', {}, {eventID: <?= json_encode(\App\Services\Marketing\M
 <script>
 window.SOLQAM_MKT = {
   currency: <?= json_encode($mkt['currency'] ?? 'PKR') ?>,
+  pixelId: <?= json_encode($mkt['meta_pixel_id'] ?? '') ?>,
+  advancedMatching: <?= json_encode($am, $amFlags ?? 0) ?>,
   adsId: <?= json_encode($mkt['google_ads_id'] ?? '') ?>,
   adsLabel: <?= json_encode($mkt['google_ads_label'] ?? '') ?>,
   consentRequired: <?= !empty($mkt['consent_required']) ? 'true' : 'false' ?>,
   queue: <?= json_encode($mktQueue) ?>
 };
 </script>
-<script src="<?= base_url('assets/js/solqam-marketing.js') ?>?v=20261023c" defer></script>
+<script src="<?= base_url('assets/js/solqam-marketing.js') ?>?v=20261107a" defer></script>

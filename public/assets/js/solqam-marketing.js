@@ -50,7 +50,12 @@
     Object.keys(meta).forEach((k) => { if (meta[k] === undefined || meta[k] === null || meta[k] === '') delete meta[k]; });
 
     if (typeof fbq === 'function' && row.event !== 'PageView') {
-      try { fbq('track', row.event, meta, { eventID: eventId }); } catch (e) {}
+      try {
+        if (row.event === 'Purchase' && cfg.pixelId && cfg.advancedMatching && typeof cfg.advancedMatching === 'object') {
+          fbq('init', cfg.pixelId, cfg.advancedMatching);
+        }
+        fbq('track', row.event, meta, { eventID: eventId });
+      } catch (e) {}
     }
     if (typeof ttq === 'object' && ttq && typeof ttq.track === 'function' && row.event !== 'PageView') {
       const ttName = row.event === 'Purchase' ? 'CompletePayment' : row.event;

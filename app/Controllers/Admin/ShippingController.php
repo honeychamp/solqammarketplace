@@ -10,6 +10,7 @@ class ShippingController extends BaseController
     public function index()
     {
         $model = new ShippingZoneModel();
+        hub_apply_search($model, ['city', 'province'], 'id');
         $zones = $model->orderBy('city', 'ASC')->paginate(25);
 
         return view('admin/shipping/index', [

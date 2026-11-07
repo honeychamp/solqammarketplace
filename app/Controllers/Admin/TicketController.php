@@ -11,9 +11,16 @@ class TicketController extends BaseController
     public function index()
     {
         $ticketModel = new SupportTicketModel();
-        $tickets = $ticketModel
+        $builder = $ticketModel
             ->select('support_tickets.*, users.name as customer_name, users.email as customer_email')
-            ->join('users', 'users.id = support_tickets.user_id', 'left')
+            ->join('users', 'users.id = support_tickets.user_id', 'left');
+        hub_apply_search($builder, [
+            'support_tickets.subject',
+            'support_tickets.status',
+            'users.name',
+            'users.email',
+        ], 'support_tickets.id');
+        $tickets = $builder
             ->orderBy('support_tickets.id', 'DESC')
             ->paginate(25);
 

@@ -15,6 +15,9 @@ class MarketingService
 
     protected static ?string $pageViewEventId = null;
 
+    /** @var array<string, string>|null Unhashed Meta advanced matching for this response */
+    protected static ?array $pagePixelUser = null;
+
     public const GA4 = [
         'PageView'              => 'page_view',
         'ViewContent'           => 'view_item',
@@ -110,6 +113,88 @@ class MarketingService
         return $digits;
     }
 
+    /**
+     * Plaintext advanced matching for the browser pixel (Meta hashes these itself).
+     *
+     * @return array<string, string>
+     */
+    public static function pixelAdvancedMatching(): array
+    {
+        if (is_array(self::$pagePixelUser) && self::$pagePixelUser !== []) {
+            return self::$pagePixelUser;
+        }
+
+        return self::plainUserFromFields([
+            'email'        => (string) (session()->get('user.email') ?? ''),
+            'phone'        => (string) (session()->get('user.phone') ?? ''),
+            'first_name'   => explode(' ', trim((string) (session()->get('user.name') ?? '')))[0] ?? '',
+            'last_name'    => trim(strstr((string) (session()->get('user.name') ?? ''), ' ') ?: ''),
+            'external_id'  => (string) (session()->get('user.id') ?? ''),
+            'country'      => 'pk',
+        ]);
+    }
+
+    /**
+     * Fire the browser Purchase once on the Thank You page, with order PII in pixel init.
+     * CAPI Purchase is already sent from checkout with the same event_id.
+     */
+    public static function prepareThanksPurchase(array $order): void
+    {
+        try {
+            $plain = self::plainUserFromOrder($order);
+            self::$pagePixelUser = $plain;
+            if (! self::enabled() || (($order['id'] ?? 0) < 1) || self::isMachineTraffic()) {
+                return;
+            }
+            $settings = self::settings();
+            if ((int) ($settings['consent_required'] ?? 0) === 1 && ! self::hasConsent()) {
+                return;
+            }
+            $orderId = (int) $order['id'];
+            $eventId = (string) ($order['marketing_event_id'] ?: ($order['order_number'] ?? ('order_' . $orderId)));
+            $flag    = 'mkt_px_purchase_' . $eventId;
+            if (session()->get($flag)) {
+                return;
+            }
+            try {
+                if (cache()->get($flag)) {
+                    session()->set($flag, 1);
+
+                    return;
+                }
+            } catch (\Throwable $e) {
+            }
+            session()->set($flag, 1);
+            try {
+                cache()->save($flag, 1, 86400 * 120);
+            } catch (\Throwable $e) {
+            }
+
+            $items  = $order['items'] ?? [];
+            if ($items === []) {
+                $items = (new OrderItemModel())->where('order_id', $orderId)->findAll();
+            }
+            $mapped = self::mapOrderItems(is_array($items) ? $items : []);
+            $value  = self::orderEventValue($order, $mapped, 'Purchase');
+            if ($value <= 0) {
+                return;
+            }
+            $payload  = self::normalize('Purchase', array_merge($mapped, [
+                'transaction_id' => (string) ($order['order_number'] ?? $orderId),
+                'value'          => $value,
+                'tax'            => 0,
+                'shipping'       => (float) ($order['shipping_amount'] ?? 0),
+                'coupon'         => (string) ($order['coupon_code'] ?? ''),
+                'payment_type'   => (string) ($order['payment_method'] ?? $order['payment_status'] ?? ''),
+            ]), $settings);
+            $payload['event_id'] = $eventId;
+            self::queueBrowser('Purchase', $payload, $eventId);
+            (new MarketingEventLogModel())->record('browser', 'Purchase', $eventId, $payload, 'queued', 'queued');
+        } catch (\Throwable $e) {
+            log_message('error', 'Marketing thanks purchase: ' . $e->getMessage());
+        }
+    }
+
     public static function track(string $eventName, array $data = []): void
     {
         try {
@@ -138,8 +223,11 @@ class MarketingService
             if (in_array($eventName, ['Purchase', 'Refund'], true) && (($payload['value'] ?? 0) <= 0)) {
                 return;
             }
-            self::queueBrowser($eventName, $payload, $eventId);
-            (new MarketingEventLogModel())->record('browser', $eventName, $eventId, $payload, 'queued', 'queued');
+            // Browser Purchase must run on the Thank You page (with advanced matching), not on pay redirect / home.
+            if ($eventName !== 'Purchase') {
+                self::queueBrowser($eventName, $payload, $eventId);
+                (new MarketingEventLogModel())->record('browser', $eventName, $eventId, $payload, 'queued', 'queued');
+            }
 
             $user    = self::userData($data);
             $custom  = self::metaCustom($payload);
@@ -208,7 +296,8 @@ class MarketingService
             }
             $mapped = self::mapOrderItems($items);
             $value  = self::orderEventValue($order, $mapped, $eventName);
-            self::track($eventName, array_merge($mapped, [
+            $pii    = self::orderPiiFields($order, is_array($user) ? $user : []);
+            self::track($eventName, array_merge($mapped, $pii, [
                 'event_id'        => $eventName === 'Purchase' ? $eventId : ($eventName . '_' . $eventId),
                 'transaction_id'  => (string) ($order['order_number'] ?? $orderId),
                 'value'           => $value,
@@ -216,11 +305,6 @@ class MarketingService
                 'shipping'        => (float) ($order['shipping_amount'] ?? 0),
                 'coupon'          => (string) ($order['coupon_code'] ?? ''),
                 'payment_type'    => (string) ($payment['payment_method'] ?? ''),
-                'email'           => (string) ($user['email'] ?? ''),
-                'phone'           => (string) ($user['phone'] ?? ''),
-                'external_id'     => (string) ($order['user_id'] ?? ''),
-                'first_name'      => explode(' ', (string) ($user['name'] ?? ''))[0] ?? '',
-                'last_name'       => trim(strstr((string) ($user['name'] ?? ''), ' ') ?: ''),
             ]));
         } catch (\Throwable $e) {
             log_message('error', 'Marketing order: ' . $e->getMessage());
@@ -425,20 +509,178 @@ class MarketingService
         return $custom;
     }
 
+    /**
+     * @return array<string, string>
+     */
+    protected static function orderPiiFields(array $order, array $user): array
+    {
+        $addr = [];
+        $aid  = (int) ($order['address_id'] ?? 0);
+        if ($aid > 0) {
+            try {
+                $addr = \Config\Database::connect()->table('addresses')->where('id', $aid)->get()->getRowArray() ?: [];
+            } catch (\Throwable $e) {
+                $addr = [];
+            }
+        }
+        $name = (string) ($addr['recipient_name'] ?? $order['recipient_name'] ?? $user['name'] ?? $order['customer_name'] ?? '');
+        [$fn, $ln] = self::splitPersonName($name);
+
+        return [
+            'email'        => (string) ($user['email'] ?? $order['customer_email'] ?? ''),
+            'phone'        => (string) ($addr['phone'] ?? $order['recipient_phone'] ?? $user['phone'] ?? $order['customer_phone'] ?? ''),
+            'first_name'   => $fn,
+            'last_name'    => $ln,
+            'city'         => (string) ($addr['city'] ?? $order['city'] ?? ''),
+            'province'     => (string) ($addr['province'] ?? $order['province'] ?? ''),
+            'postal_code'  => (string) ($addr['postal_code'] ?? $order['postal_code'] ?? ''),
+            'country'      => 'pk',
+            'external_id'  => (string) ($order['order_number'] ?? $order['id'] ?? ''),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected static function plainUserFromOrder(array $order): array
+    {
+        $user = [];
+        try {
+            $uid = (int) ($order['user_id'] ?? 0);
+            if ($uid > 0) {
+                $user = (new UserModel())->find($uid) ?: [];
+            }
+        } catch (\Throwable $e) {
+            $user = [];
+        }
+
+        return self::plainUserFromFields(self::orderPiiFields($order, is_array($user) ? $user : []));
+    }
+
+    /**
+     * @param array<string, mixed> $f
+     * @return array<string, string>
+     */
+    protected static function plainUserFromFields(array $f): array
+    {
+        [$fn, $ln] = self::splitPersonName(trim(
+            (string) ($f['first_name'] ?? '') . ' ' . (string) ($f['last_name'] ?? '')
+        ));
+        if ($fn === '' && $ln === '') {
+            [$fn, $ln] = self::splitPersonName((string) ($f['name'] ?? ''));
+        }
+        $em  = strtolower(trim((string) ($f['email'] ?? $f['em'] ?? '')));
+        $em  = preg_replace('/\s+/', '', $em) ?? $em;
+        $ph  = self::normalizePkPhone((string) ($f['phone'] ?? $f['ph'] ?? ''));
+        $ct  = self::normalizeGeo((string) ($f['city'] ?? $f['ct'] ?? ''));
+        $st  = self::normalizeGeo((string) ($f['province'] ?? $f['st'] ?? $f['state'] ?? ''));
+        $zp  = preg_replace('/\D+/', '', (string) ($f['postal_code'] ?? $f['zp'] ?? '')) ?? '';
+        $cc  = strtolower(trim((string) ($f['country'] ?? 'pk')));
+        $cc  = preg_replace('/[^a-z]/', '', $cc) ?? 'pk';
+        if (strlen($cc) !== 2) {
+            $cc = 'pk';
+        }
+        $ext = trim((string) ($f['external_id'] ?? ''));
+        if ($ext === '0') {
+            $ext = '';
+        }
+
+        $out = [];
+        if ($em !== '' && str_contains($em, '@')) {
+            $out['em'] = $em;
+        }
+        if ($ph !== '') {
+            $out['ph'] = $ph;
+        }
+        if ($fn !== '') {
+            $out['fn'] = $fn;
+        }
+        if ($ln !== '') {
+            $out['ln'] = $ln;
+        }
+        if ($ct !== '') {
+            $out['ct'] = $ct;
+        }
+        if ($st !== '') {
+            $out['st'] = $st;
+        }
+        if ($zp !== '') {
+            $out['zp'] = $zp;
+        }
+        if ($ext !== '') {
+            $out['external_id'] = $ext;
+        }
+        if ($out !== []) {
+            $out['country'] = $cc !== '' ? $cc : 'pk';
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    protected static function splitPersonName(string $name): array
+    {
+        $name  = strtolower(trim($name));
+        $name  = preg_replace('/[^a-z\s]/', ' ', $name) ?? $name;
+        $parts = array_values(array_filter(preg_split('/\s+/', $name) ?: []));
+        if ($parts === []) {
+            return ['', ''];
+        }
+        $fn = preg_replace('/[^a-z]/', '', $parts[0]) ?? '';
+        $ln = preg_replace('/[^a-z]/', '', implode('', array_slice($parts, 1))) ?? '';
+
+        return [$fn, $ln];
+    }
+
+    protected static function normalizeGeo(string $value): string
+    {
+        $value = strtolower(trim($value));
+
+        return preg_replace('/[^a-z]/', '', $value) ?? '';
+    }
+
+    protected static function hashAdvanced(string $value): string
+    {
+        $value = strtolower(trim($value));
+        if ($value === '') {
+            return '';
+        }
+
+        return self::sha256Hex($value);
+    }
+
     protected static function userData(array $data): array
     {
-        $email = self::hashEmail((string) ($data['email'] ?? session()->get('user.email') ?? ''));
-        $phone = self::hashPhone((string) ($data['phone'] ?? session()->get('user.phone') ?? ''));
-        $uid   = trim((string) ($data['external_id'] ?? session()->get('user.id') ?? ''));
-        $ext   = ($uid !== '' && $uid !== '0') ? self::sha256Hex($uid) : '';
-        $ip    = self::clientIp();
-        $ua    = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512);
-        $ids   = self::facebookClickIds($data);
+        $merged = array_merge([
+            'email'       => (string) (session()->get('user.email') ?? ''),
+            'phone'       => (string) (session()->get('user.phone') ?? ''),
+            'external_id' => (string) (session()->get('user.id') ?? ''),
+        ], $data);
+        $plain = self::plainUserFromFields($merged);
+        $hash  = static function (string $key) use ($plain): ?array {
+            $v = (string) ($plain[$key] ?? '');
+            if ($v === '') {
+                return null;
+            }
+
+            return [self::hashAdvanced($v)];
+        };
+        $ip  = self::clientIp();
+        $ua  = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512);
+        $ids = self::facebookClickIds($data);
 
         $out = array_filter([
-            'em'                 => $email !== '' ? [$email] : null,
-            'ph'                 => $phone !== '' ? [$phone] : null,
-            'external_id'        => $ext !== '' ? [$ext] : null,
+            'em'                 => $hash('em'),
+            'ph'                 => $hash('ph'),
+            'fn'                 => $hash('fn'),
+            'ln'                 => $hash('ln'),
+            'ct'                 => $hash('ct'),
+            'st'                 => $hash('st'),
+            'zp'                 => $hash('zp'),
+            'country'            => $hash('country'),
+            'external_id'        => $hash('external_id'),
             'client_ip_address'  => ($ip !== '' && $ip !== '0.0.0.0') ? $ip : null,
             'client_user_agent'  => $ua !== '' ? $ua : null,
             'fbp'                => $ids['fbp'] !== '' ? $ids['fbp'] : null,

@@ -45,7 +45,7 @@ class CatalogController extends BaseController
             'category_id'   => $categoryId,
             'category_ids'  => $categoryIds,
             'category_slug' => $categorySlug,
-            'search'        => $this->request->getGet('q') ?? $this->request->getGet('search'),
+            'search'        => trim((string) ($this->request->getGet('q') ?? $this->request->getGet('search') ?? '')),
             'brand'         => $this->request->getGet('brand'),
             'mall'          => $this->request->getGet('mall'),
             'sponsored'     => $this->request->getGet('sponsored'),
@@ -57,13 +57,7 @@ class CatalogController extends BaseController
             'page'          => max(1, (int) ($this->request->getGet('page') ?? 1)),
         ];
 
-        $shopKey = 'sf_shop_' . md5(json_encode([
-            $filters['category_ids'], $filters['category_slug'], $filters['search'],
-            $filters['brand'], $filters['mall'], $filters['sponsored'],
-            $filters['min_price'], $filters['max_price'], $filters['sort'],
-            $filters['flash'], $filters['page'],
-        ]));
-        $shopPack = storefront_remember($shopKey, 90, function () use ($filters): array {
+        $loadShop = function () use ($filters): array {
             $total = $this->productModel->countCatalog($filters);
             $pageCount = max(1, (int) ceil($total / (int) $filters['limit']));
             $use = $filters;
@@ -77,18 +71,40 @@ class CatalogController extends BaseController
                 'page'      => $use['page'],
                 'products'  => $this->productModel->getCatalog($use),
             ];
-        });
+        };
+        if ($filters['search'] !== '') {
+            $shopPack = $loadShop();
+        } else {
+            $shopKey = 'sf_shop_' . md5(json_encode([
+                $filters['category_ids'], $filters['category_slug'], $filters['search'],
+                $filters['brand'], $filters['mall'], $filters['sponsored'],
+                $filters['min_price'], $filters['max_price'], $filters['sort'],
+                $filters['flash'], $filters['page'],
+            ]));
+            $shopPack = storefront_remember($shopKey, 90, $loadShop);
+        }
         $total     = (int) ($shopPack['total'] ?? 0);
         $pageCount = (int) ($shopPack['pageCount'] ?? 1);
         $filters['page'] = (int) ($shopPack['page'] ?? $filters['page']);
         $products  = $shopPack['products'] ?? [];
         $searchHint = null;
-        if ($products === [] && ! empty($filters['search']) && strlen((string) $filters['search']) > 3) {
-            $short = substr((string) $filters['search'], 0, 4);
-            $alt = $this->productModel->getCatalog(array_merge($filters, ['search' => $short]));
-            if ($alt !== []) {
-                $products = $alt;
-                $searchHint = $short;
+        if ($products === [] && $filters['search'] !== '') {
+            $parts = preg_split('/[\s,\/]+/u', (string) $filters['search']) ?: [];
+            $first = '';
+            foreach ($parts as $part) {
+                if (is_string($part) && mb_strlen($part) >= 3) {
+                    $first = $part;
+                    break;
+                }
+            }
+            if ($first !== '' && strcasecmp($first, (string) $filters['search']) !== 0) {
+                $alt = $this->productModel->getCatalog(array_merge($filters, ['search' => $first, 'page' => 1]));
+                if ($alt !== []) {
+                    $products = $alt;
+                    $searchHint = $first;
+                    $total = $this->productModel->countCatalog(array_merge($filters, ['search' => $first]));
+                    $pageCount = max(1, (int) ceil($total / (int) $filters['limit']));
+                }
             }
         }
         $flashMap = [];

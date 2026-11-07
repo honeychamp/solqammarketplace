@@ -10,6 +10,7 @@ class CouponController extends BaseController
     public function index()
     {
         $model   = new CouponModel();
+        hub_apply_search($model, ['code', 'type'], 'id');
         $coupons = $model->orderBy('id', 'DESC')->paginate(25);
         return view('admin/coupons/index', [
             'title'   => 'Vouchers — Solqam Admin',

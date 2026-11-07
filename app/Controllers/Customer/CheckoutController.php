@@ -420,6 +420,11 @@ class CheckoutController extends BaseController
             return redirect()->to('/track')->with('error', 'Enter your order number to track this order.');
         }
 
+        try {
+            \App\Services\Marketing\MarketingService::prepareThanksPurchase($order);
+        } catch (\Throwable $e) {
+        }
+
         return view('customer/order_thanks', [
             'title' => 'Order placed — Solqam',
             'order' => $order,

@@ -16,8 +16,10 @@ class CustomerController extends BaseController
 
     public function index()
     {
-        $customers = $this->userModel
-            ->where('role', 'customer')
+        $builder = $this->userModel
+            ->where('role', 'customer');
+        hub_apply_search($builder, ['name', 'email', 'phone'], 'id');
+        $customers = $builder
             ->orderBy('id', 'DESC')
             ->paginate(50);
 

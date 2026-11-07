@@ -4,7 +4,7 @@
 <div class="mb-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
         <h4 class="fw-bold mb-1">Ads tracking (Meta, TikTok, Google)</h4>
-        <p class="text-secondary small mb-0">Paste pixel IDs and <strong>server tokens</strong> here. Storefront JS never sees CAPI / Events API tokens. Currency is PKR. Same <code>event_id</code> is used on browser + server so purchases are not double-counted.</p>
+        <p class="text-secondary small mb-0">Paste pixel IDs and <strong>server tokens</strong> here. Storefront JS never sees CAPI / Events API tokens. Currency is PKR. Thank You page sends Meta advanced matching (phone, name, city, country) in <code>fbq('init')</code> as plaintext; CAPI sends the same fields SHA-256 hashed with the same <code>event_id</code> so Purchase is not double-counted.</p>
     </div>
     <a class="btn btn-outline-dark btn-sm rounded-pill" href="<?= site_url('admin/marketing/logs') ?>">Event logs</a>
 </div>

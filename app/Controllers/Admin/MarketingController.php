@@ -62,6 +62,7 @@ class MarketingController extends BaseController
         if ($plat !== '') {
             $q->where('platform', $plat);
         }
+        hub_apply_search($q, ['event_name', 'status', 'platform'], 'id');
         $rows = $q->paginate(40);
 
         return view('admin/marketing/logs', [

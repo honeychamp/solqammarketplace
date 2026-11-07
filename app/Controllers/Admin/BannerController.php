@@ -10,6 +10,7 @@ class BannerController extends BaseController
     public function index()
     {
         $model   = new BannerModel();
+        hub_apply_search($model, ['title', 'subtitle', 'placement', 'link_url'], 'id');
         $banners = $model->orderBy('sort_order', 'ASC')->paginate(25);
         return view('admin/banners/index', [
             'title'   => 'Homepage Banners — Solqam Admin',

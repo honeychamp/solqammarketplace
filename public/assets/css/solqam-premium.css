@@ -1988,7 +1988,8 @@ body:has(.modal.pdp-lightbox.show) .modal-backdrop { z-index: 1990; }
 }
 @media (max-width: 575.98px) {
     .solqam-search-btn span { display: none; }
-    .solqam-search-btn { padding: 0.55rem 0.9rem; }
+    .solqam-search-btn { padding: 0.55rem 0.85rem; min-width: 44px; justify-content: center; }
+    .solqam-search-btn .bi { font-size: 1.05rem; }
     .btn-solqam, .btn-sol-primary { padding: 0.5rem 1rem; }
 }
 

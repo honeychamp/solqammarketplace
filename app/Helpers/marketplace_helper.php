@@ -473,12 +473,110 @@ if (!function_exists('dash_delta')) {
     }
 }
 
+if (! function_exists('hub_search_q')) {
+    function hub_search_q(): string
+    {
+        return trim((string) (service('request')->getGet('q') ?? ''));
+    }
+}
+
+if (! function_exists('hub_search_tokens')) {
+    /**
+     * @return list<string>
+     */
+    function hub_search_tokens(?string $q = null): array
+    {
+        $q = trim(preg_replace('/\s+/u', ' ', (string) ($q ?? hub_search_q())) ?? '');
+        if ($q === '') {
+            return [];
+        }
+        $parts = preg_split('/[\s,\/]+/u', $q) ?: [$q];
+        $out   = [];
+        foreach ($parts as $part) {
+            $part = trim((string) $part);
+            if (mb_strlen($part) >= 1) {
+                $out[] = $part;
+            }
+        }
+
+        return $out === [] ? [$q] : array_values(array_unique($out));
+    }
+}
+
+if (! function_exists('hub_apply_search')) {
+    /**
+     * @param list<string> $fields
+     */
+    function hub_apply_search($builder, array $fields, ?string $idField = null): void
+    {
+        $tokens = hub_search_tokens();
+        if ($tokens === [] || $fields === []) {
+            return;
+        }
+        foreach ($tokens as $token) {
+            $builder->groupStart();
+            $first = true;
+            foreach ($fields as $field) {
+                if ($first) {
+                    $builder->like($field, $token);
+                    $first = false;
+                } else {
+                    $builder->orLike($field, $token);
+                }
+            }
+            if ($idField && ctype_digit($token)) {
+                $builder->orWhere($idField, (int) $token);
+            }
+            $builder->groupEnd();
+        }
+    }
+}
+
+if (! function_exists('hub_row_haystack')) {
+    function hub_row_haystack(array $row): string
+    {
+        $bits = [];
+        foreach ($row as $value) {
+            if (is_array($value)) {
+                $bits[] = hub_row_haystack($value);
+            } elseif (is_scalar($value) && $value !== '' && $value !== null) {
+                $bits[] = (string) $value;
+            }
+        }
+
+        return strtolower((string) preg_replace('/[\s\-_]+/u', ' ', implode(' ', $bits)));
+    }
+}
+
+if (! function_exists('hub_filter_rows')) {
+    function hub_filter_rows(array $rows, ?string $q = null): array
+    {
+        $tokens = hub_search_tokens($q);
+        if ($tokens === []) {
+            return $rows;
+        }
+        $need = array_map(static fn ($t) => strtolower($t), $tokens);
+
+        return array_values(array_filter($rows, static function ($row) use ($need) {
+            $hay = hub_row_haystack(is_array($row) ? $row : (array) $row);
+            foreach ($need as $token) {
+                if ($token !== '' && ! str_contains($hay, $token)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
+    }
+}
+
 if (!function_exists('hub_paginate_array')) {
     /**
      * @return array{0: array, 1: \CodeIgniter\Pager\Pager}
      */
     function hub_paginate_array(array $rows, int $perPage = 25): array
     {
+        $rows  = hub_filter_rows($rows);
         $page  = max(1, (int) (service('request')->getGet('page') ?: 1));
         $total = count($rows);
         $pager = service('pager');
@@ -591,10 +689,6 @@ if (! function_exists('gift_wrap_fee')) {
 if (! function_exists('order_status_url')) {
     function order_status_url(int $orderId): string
     {
-        if (session()->get('user.isLoggedIn')) {
-            return site_url('account/orders/' . $orderId);
-        }
-
         return site_url('order/thanks/' . $orderId);
     }
 }

@@ -24,6 +24,12 @@ class InboundController extends BaseController
             if ($db->fieldExists('fulfill_by', 'shipments')) {
                 $model->where('shipments.fulfill_by', 'admin');
             }
+            hub_apply_search($model, [
+                'orders.order_number',
+                'shipments.status',
+                'seller_profiles.store_name',
+                'users.name',
+            ], 'shipments.id');
             $packages = $model
                 ->whereNotIn('shipments.status', ['delivered', 'cancelled', 'undelivered'])
                 ->orderBy('shipments.id', 'DESC')

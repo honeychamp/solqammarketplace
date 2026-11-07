@@ -10,11 +10,18 @@ class PayoutController extends BaseController
     public function index()
     {
         $model   = new SellerPayoutModel();
-        $payouts = $model
+        $builder = $model
             ->select('seller_payouts.*, seller_profiles.store_name, users.name as seller_name, orders.order_number')
             ->join('seller_profiles', 'seller_profiles.user_id = seller_payouts.seller_id', 'left')
             ->join('users', 'users.id = seller_payouts.seller_id', 'left')
-            ->join('orders', 'orders.id = seller_payouts.order_id', 'left')
+            ->join('orders', 'orders.id = seller_payouts.order_id', 'left');
+        hub_apply_search($builder, [
+            'seller_payouts.status',
+            'seller_profiles.store_name',
+            'users.name',
+            'orders.order_number',
+        ], 'seller_payouts.id');
+        $payouts = $builder
             ->orderBy('seller_payouts.id', 'DESC')
             ->paginate(25);
 

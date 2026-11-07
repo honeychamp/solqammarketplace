@@ -38,12 +38,28 @@ class InventoryService
         }
 
         if ($q !== '') {
-            $builder->groupStart()
-                ->like('products.name', $q)
-                ->orLike('products.sku', $q)
-                ->orLike('products.brand', $q)
-                ->orLike('seller_profiles.store_name', $q)
-                ->groupEnd();
+            $tokens = preg_split('/[\s,\/]+/u', $q) ?: [$q];
+            $used   = false;
+            foreach ($tokens as $token) {
+                $token = trim((string) $token);
+                if (mb_strlen($token) < 2) {
+                    continue;
+                }
+                $used = true;
+                $builder->groupStart()
+                    ->like('products.name', $token)
+                    ->orLike('products.sku', $token)
+                    ->orLike('products.brand', $token)
+                    ->orLike('categories.name', $token)
+                    ->orLike('seller_profiles.store_name', $token)
+                    ->groupEnd();
+            }
+            if (! $used) {
+                $builder->groupStart()
+                    ->like('products.name', $q)
+                    ->orLike('products.sku', $q)
+                    ->groupEnd();
+            }
         }
 
         $all = $builder
