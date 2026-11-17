@@ -649,6 +649,10 @@ class OrderService
             $this->refundWalletOnVoid($order, 'Cancelled');
             $this->reversePayLaterWallet($order);
             $this->restoreDeliveryArrearsOnVoid($order);
+            try {
+                (new \App\Services\Commission\SellerDueService())->cancelForOrder($orderId);
+            } catch (\Throwable $e) {
+            }
         } elseif ($newStatus === 'undelivered') {
             if (empty($extra['skip_void_effects'])) {
                 $this->restockItems($this->orderItemModel->where('order_id', $orderId)->findAll());
@@ -1523,20 +1527,33 @@ class OrderService
     }
 
     /**
-     * Call-desk edit: qty / remove lines / address / notes. Only while status is placed
-     * so commission dues are not opened yet. Only Solqam-handled seller lines.
+     * @return list<string>
+     */
+    public static function adminEditableStatuses(): array
+    {
+        return ['placed', 'confirmed', 'shipped', 'delivered'];
+    }
+
+    /**
+     * Call-desk edit: qty / remove lines / gift wrap / address / notes.
+     * Seller hub: placed only. Admin: also confirmed, shipped, delivered.
      *
      * @param array<int,int> $quantities item_id => qty (0 removes)
      * @param list<int>      $allowedSellerIds
+     * @param array<int, array{wrap?:bool,hide?:bool,message?:?string}> $giftIn
      */
-    public function editPlacedOrder(int $orderId, array $quantities, array $addressIn, string $notes, array $allowedSellerIds = []): void
+    public function editPlacedOrder(int $orderId, array $quantities, array $addressIn, string $notes, array $allowedSellerIds = [], bool $adminOverride = false, array $giftIn = []): void
     {
         $order = $this->orderModel->find($orderId);
         if (! $order) {
             throw new RuntimeException('Order not found.');
         }
-        if (($order['status'] ?? '') !== 'placed') {
-            throw new RuntimeException('You can edit only a placed order, before confirm.');
+        $status = (string) ($order['status'] ?? '');
+        $ok     = $adminOverride ? self::adminEditableStatuses() : ['placed'];
+        if (! in_array($status, $ok, true)) {
+            throw new RuntimeException($adminOverride
+                ? 'This order can no longer be edited.'
+                : 'You can edit only a placed order, before confirm.');
         }
 
         $items = $this->orderItemModel->where('order_id', $orderId)->findAll();
@@ -1589,11 +1606,30 @@ class OrderService
                     ? 0.0
                     : commission_amount($sub, false, $this->commissionService->rateForCategory($catId));
                 $cbRate = (float) ($item['cashback_percent'] ?? 0);
+                $wrapOn = array_key_exists($itemId, $giftIn)
+                    ? ! empty($giftIn[$itemId]['wrap'])
+                    : ! empty($item['gift_wrap']);
+                $unitFee = \App\Services\Checkout\GiftWrapService::unitFee();
+                $giftFee = $wrapOn ? round($unitFee * max(1, $newQty), 2) : 0.0;
+                $giftHide = $wrapOn && (array_key_exists($itemId, $giftIn)
+                    ? ! empty($giftIn[$itemId]['hide'])
+                    : ! empty($item['gift_hide_price']));
+                $giftMsg = $wrapOn
+                    ? \App\Services\Checkout\GiftWrapService::sanitizeMessage(
+                        array_key_exists($itemId, $giftIn)
+                            ? ($giftIn[$itemId]['message'] ?? null)
+                            : ($item['gift_message'] ?? null)
+                    )
+                    : null;
                 $this->orderItemModel->update($itemId, [
                     'quantity'          => $newQty,
                     'subtotal'          => $sub,
                     'commission_amount' => $comm,
                     'cashback_amount'   => cashback_amount($sub, $cbRate),
+                    'gift_wrap'         => $wrapOn ? 1 : 0,
+                    'gift_wrap_fee'     => $giftFee,
+                    'gift_hide_price'   => $giftHide ? 1 : 0,
+                    'gift_message'      => $giftMsg,
                 ]);
                 $kept++;
             }
@@ -1606,22 +1642,25 @@ class OrderService
             if ($addrId > 0) {
                 $payload = [
                     'recipient_name'  => trim((string) ($addressIn['recipient_name'] ?? '')),
-                    'phone'           => trim((string) ($addressIn['phone'] ?? '')),
+                    'phone'           => function_exists('pk_store_phone')
+                        ? (pk_store_phone((string) ($addressIn['phone'] ?? '')) ?: trim((string) ($addressIn['phone'] ?? '')))
+                        : trim((string) ($addressIn['phone'] ?? '')),
                     'street_address'  => trim((string) ($addressIn['street_address'] ?? '')),
                     'city'            => trim((string) ($addressIn['city'] ?? '')),
                     'province'        => trim((string) ($addressIn['province'] ?? '')),
                     'postal_code'     => trim((string) ($addressIn['postal_code'] ?? '')) ?: null,
-                    'alternate_phone' => trim((string) ($addressIn['alternate_phone'] ?? '')),
-                    'area'            => trim((string) ($addressIn['area'] ?? '')),
-                    'landmark'        => trim((string) ($addressIn['landmark'] ?? '')),
                 ];
-                $addrModel = new AddressModel();
                 try {
-                    $addrModel->skipValidation(true)->update($addrId, $payload);
+                    $names = $this->db->getFieldNames('addresses');
+                    foreach (['alternate_phone', 'area', 'landmark'] as $col) {
+                        if (in_array($col, $names, true)) {
+                            $val = trim((string) ($addressIn[$col] ?? ''));
+                            $payload[$col] = $val !== '' ? $val : null;
+                        }
+                    }
                 } catch (\Throwable $e) {
-                    unset($payload['alternate_phone'], $payload['area'], $payload['landmark']);
-                    $addrModel->skipValidation(true)->update($addrId, $payload);
                 }
+                (new AddressModel())->skipValidation(true)->update($addrId, $payload);
             }
 
             $freshItems = $this->orderItemModel->where('order_id', $orderId)->findAll();
@@ -1629,6 +1668,7 @@ class OrderService
             $commT = 0.0;
             $cbT = 0.0;
             $gift = 0.0;
+            $giftHideOrder = 0;
             $sellerGoods = 0.0;
             foreach ($freshItems as $it) {
                 $line = (float) ($it['subtotal'] ?? 0);
@@ -1637,6 +1677,9 @@ class OrderService
                 $cbT += (float) ($it['cashback_amount'] ?? 0);
                 if (! empty($it['gift_wrap'])) {
                     $gift += (float) ($it['gift_wrap_fee'] ?? 0);
+                    if (! empty($it['gift_hide_price'])) {
+                        $giftHideOrder = 1;
+                    }
                 }
                 if (! $this->isAdminSeller((int) ($it['seller_id'] ?? 0))) {
                     $sellerGoods += $line;
@@ -1669,6 +1712,7 @@ class OrderService
             $this->orderModel->update($orderId, [
                 'total_amount'       => round($goods, 2),
                 'gift_wrap_amount'   => round($gift, 2),
+                'gift_hide_price'    => $giftHideOrder,
                 'shipping_amount'    => round($ship, 2),
                 'coupon_discount'    => round($coupon, 2),
                 'wallet_amount_used' => round($wallet, 2),
@@ -1680,6 +1724,12 @@ class OrderService
             ]);
 
             $this->resplitShipmentShipping($orderId, $ship, $freshItems);
+            if ($adminOverride && in_array($status, ['confirmed', 'shipped', 'delivered'], true)) {
+                try {
+                    $this->openSellerCodCommissionDues($orderId);
+                } catch (\Throwable $e) {
+                }
+            }
             $this->db->transComplete();
         } catch (\Throwable $e) {
             $this->db->transRollback();

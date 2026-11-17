@@ -11,6 +11,8 @@
 
 <div class="alert alert-info rounded-4 border-0">
     Leave a token field empty to keep the saved value. Turn <strong>Enable tracking</strong> on only after IDs are filled. Use <strong>Test mode</strong> plus Meta Test Event Code while you verify Events Manager.
+    Purchase must fire only on Thank You (<code>/order/thanks/…</code>) with <code>value</code> + <code>currency=PKR</code>.
+    In Events Manager turn off <strong>Automatic events</strong> and pause any GTM tag that sends Purchase on All Pages / homepage — those create the “currency missing” error.
 </div>
 
 <form method="POST" action="<?= site_url('admin/marketing') ?>" class="card-custom p-4">

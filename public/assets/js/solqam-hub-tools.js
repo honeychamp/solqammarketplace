@@ -1,9 +1,42 @@
+(function hubMobileNav() {
+    var body = document.body;
+    if (!body.classList.contains('hub-app')) {
+        return;
+    }
+    var open = function () { body.classList.add('hub-nav-open'); };
+    var close = function () { body.classList.remove('hub-nav-open'); };
+    var toggle = function () { body.classList.toggle('hub-nav-open'); };
+    document.querySelectorAll('.hub-nav-toggle').forEach(function (btn) {
+        btn.addEventListener('click', toggle);
+    });
+    document.querySelectorAll('.hub-nav-backdrop').forEach(function (el) {
+        el.addEventListener('click', close);
+    });
+    document.querySelectorAll('.hub-app .solqam-sidebar a[href]').forEach(function (a) {
+        a.addEventListener('click', function () {
+            if (window.matchMedia('(max-width: 991.98px)').matches) {
+                close();
+            }
+        });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            close();
+        }
+    });
+    window.addEventListener('resize', function () {
+        if (window.matchMedia('(min-width: 992px)').matches) {
+            close();
+        }
+    });
+})();
+
 (function persistHubSidebarScroll() {
     var el = document.querySelector('.hub-app .sidebar-scroll');
     if (!el) {
         return;
     }
-    var key = 'solqam.sidebarScroll.' + (document.body.classList.contains('admin-hub') ? 'admin' : 'seller');
+    var key = 'solqam.sidebarScroll.' + (document.body.classList.contains('admin-hub') ? 'admin' : (document.body.classList.contains('dukandar-hub') ? 'merchant' : 'seller'));
     var save = function () {
         try {
             sessionStorage.setItem(key, String(el.scrollTop));

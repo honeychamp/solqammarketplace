@@ -1,0 +1,47 @@
+Solqam Marketplace — Google Play listing (copy-paste)
+
+Package name (do not change):
+com.solqam.marketplace
+
+Default language: English (United States)
+App name (30 chars): Solqam Marketplace
+Short description (80 chars):
+Shop genuine brands in Pakistan. COD, wallet cashback, nationwide delivery.
+
+Full description:
+Solqam is Pakistan’s multi-vendor marketplace for genuine electronics, fashion, home and daily essentials.
+
+Shop from verified sellers with Cash on Delivery nationwide. Earn wallet cashback after delivery. Pay online with PayFast (JazzCash, EasyPaisa, Visa, Mastercard) when you choose.
+
+• Browse categories and flash deals
+• Track your order
+• Solqam Card for in-store credit at partner merchants
+• Seller hub to list products and fulfil orders
+• 7-day returns on eligible items
+
+Website: https://solqam.com
+Support email: info@solqam.com
+Privacy policy: https://solqam.com/privacy
+Terms: https://solqam.com/terms
+
+App category: Shopping
+Tags: shopping, marketplace, pakistan, cod, ecommerce
+Contact: info@solqam.com
+Phone (optional): leave blank unless you want it public
+
+Graphics:
+• App icon: public/assets/images/solqam-pwa-512.png (512×512)
+• High-res icon: public/assets/images/solqam-app-icon-1024.png (1024×1024)
+• Phone screenshots: 2–8 images, portrait, from a real phone (Home, Shop, Product, Cart, Checkout, Track)
+• Feature graphic: 1024×500 (Play Console → Store listing)
+
+Content rating: Shopping / Store — no user-generated public chat as the main feature.
+Target age: 13+
+Countries: start with Pakistan, then expand.
+
+After first AAB upload:
+Play Console → Test and release → App integrity → App signing
+Copy BOTH SHA-256 certificates (App signing key + Upload key).
+Paste them into app/Config/Twa.php and tell the developer — the site must publish them at:
+https://solqam.com/.well-known/assetlinks.json
+Without those hashes the Android app shows a URL bar.

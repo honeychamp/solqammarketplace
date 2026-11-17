@@ -27,9 +27,20 @@ $routes->get('store/(:num)', 'Customer\StoreController::show/$1');
 $routes->post('product/(:num)/question', 'Customer\CatalogController::askQuestion/$1', ['filter' => ['auth', 'role:customer']]);
 $routes->post('wishlist/toggle', 'Customer\AccountController::toggleWishlist', ['filter' => 'auth']);
 $routes->post('store/follow', 'Customer\AccountController::toggleFollow', ['filter' => 'auth']);
+$routes->get('card/shops', 'Customer\CardController::shops');
+$routes->get('card/c/(:segment)', 'Customer\CardController::cardLink/$1');
+$routes->post('card/freeze', 'Customer\CardController::freeze', ['filter' => 'auth']);
+$routes->post('card/pin', 'Customer\CardController::pin', ['filter' => 'auth']);
+$routes->post('card/cvv', 'Customer\CardController::rotateCvv', ['filter' => 'auth']);
+$routes->get('card', 'Customer\CardController::index');
+$routes->get('geo/cities/(:segment)', 'GeoController::cities/$1');
+$routes->match(['GET', 'POST'], 'merchant/join', 'Dukandar\JoinController::index', ['filter' => 'auth']);
+$routes->match(['GET', 'POST'], 'dukandar/join', 'Dukandar\JoinController::index', ['filter' => 'auth']);
 $routes->get('help', 'Customer\HelpController::index');
 $routes->get('commission', 'Customer\PagesController::commission');
 $routes->match(['GET', 'HEAD'], 'privacy', 'Customer\PagesController::privacy');
+$routes->match(['GET', 'HEAD'], 'terms', 'Customer\PagesController::terms');
+$routes->match(['GET', 'HEAD'], 'terms-and-conditions', 'Customer\PagesController::terms');
 $routes->match(['GET', 'HEAD'], 'data-deletion', 'Customer\PagesController::dataDeletion');
 $routes->get('seller-policies', 'Customer\PagesController::policies');
 $routes->get('fulfillment', 'Customer\PagesController::fulfillment');
@@ -45,6 +56,7 @@ $routes->get('guest', 'Customer\GuestController::start');
 $routes->get('checkout', 'Customer\CheckoutController::index');
 $routes->post('checkout', 'Customer\CheckoutController::process');
 $routes->post('checkout/coupon', 'Customer\CheckoutController::applyCoupon');
+$routes->post('marketing/lead', 'Customer\MarketingLeadController::capture');
 $routes->get('checkout/shipping-quote', 'Customer\CheckoutController::shippingQuote');
 $routes->get('checkout/pay/(:num)', 'Customer\CheckoutController::pay/$1');
 $routes->get('order/thanks/(:num)', 'Customer\CheckoutController::thanks/$1');
@@ -82,6 +94,7 @@ $routes->group('', ['filter' => ['auth', 'role:customer']], static function ($ro
         $routes->post('orders/(:num)/return', 'Customer\OrderController::requestReturn/$1');
         $routes->post('orders/(:num)/review', 'Customer\OrderController::submitReview/$1');
         $routes->get('wallet', 'Customer\AccountController::wallet');
+        $routes->get('card', 'Customer\CardController::index');
         $routes->get('wishlist', 'Customer\AccountController::wishlist');
         $routes->match(['GET', 'POST'], 'addresses', 'Customer\AccountController::addresses');
     });
@@ -140,6 +153,21 @@ $routes->group('seller', ['filter' => ['auth', 'role:seller', 'seller_approved']
     $routes->post('messages/(:num)/send', 'Seller\ChatController::send/$1');
 });
 
+$merchantHub = static function ($routes) {
+    $routes->get('dashboard', 'Dukandar\HubController::dashboard');
+    $routes->match(['GET', 'POST'], 'profile', 'Dukandar\HubController::profile');
+    $routes->get('scan', 'Dukandar\HubController::scan');
+    $routes->post('scan/lookup', 'Dukandar\HubController::lookup');
+    $routes->post('scan/sale', 'Dukandar\HubController::sale');
+    $routes->get('credits', 'Dukandar\HubController::credits');
+    $routes->post('credits/proof-all', 'Dukandar\HubController::proofAll');
+    $routes->post('credits/(:num)/proof', 'Dukandar\HubController::proof/$1');
+    $routes->get('customers', 'Dukandar\HubController::customers');
+    $routes->match(['GET', 'POST'], 'become-seller', 'Dukandar\HubController::becomeSeller');
+};
+$routes->group('merchant', ['filter' => ['auth', 'dukandar']], $merchantHub);
+$routes->group('dukandar', ['filter' => ['auth', 'dukandar']], $merchantHub);
+
 // --------------------------------------------------------------------
 // Dedicated Admin Authentication Routes (Isolated from Customer & Seller)
 // --------------------------------------------------------------------
@@ -196,6 +224,41 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], static function ($
     $routes->get('my-products/delete/(:num)', 'Admin\MyProductController::delete/$1');
 
     // Customers Directory
+    $routes->get('merchants', 'Admin\DukandarController::index');
+    $routes->get('merchants/credits', 'Admin\DukandarController::credits');
+    $routes->get('merchants/(:num)', 'Admin\DukandarController::show/$1');
+    $routes->post('merchants/(:num)/approve', 'Admin\DukandarController::approve/$1');
+    $routes->post('merchants/(:num)/reject', 'Admin\DukandarController::reject/$1');
+    $routes->post('merchants/credits/(:num)/release', 'Admin\DukandarController::release/$1');
+    $routes->post('merchants/credits/(:num)/reject', 'Admin\DukandarController::rejectCredit/$1');
+    $routes->post('merchants/(:num)/release-credits', 'Admin\DukandarController::releaseShop/$1');
+    $routes->post('merchants/payouts/(:num)/approve', 'Admin\DukandarController::approvePayout/$1');
+    $routes->post('merchants/payouts/(:num)/reject', 'Admin\DukandarController::rejectPayout/$1');
+    $routes->get('dukandars', 'Admin\DukandarController::index');
+    $routes->post('dukandars/(:num)/approve', 'Admin\DukandarController::approve/$1');
+    $routes->post('dukandars/(:num)/reject', 'Admin\DukandarController::reject/$1');
+    $routes->get('dukandars/credits', 'Admin\DukandarController::credits');
+    $routes->post('dukandars/credits/(:num)/release', 'Admin\DukandarController::release/$1');
+    $routes->post('dukandars/credits/(:num)/reject', 'Admin\DukandarController::rejectCredit/$1');
+    $routes->post('dukandars/(:num)/release-credits', 'Admin\DukandarController::releaseShop/$1');
+    $routes->post('dukandars/payouts/(:num)/approve', 'Admin\DukandarController::approvePayout/$1');
+    $routes->post('dukandars/payouts/(:num)/reject', 'Admin\DukandarController::rejectPayout/$1');
+    $routes->get('cards', 'Admin\DukandarController::cards');
+    $routes->post('cards/(:num)/freeze', 'Admin\DukandarController::freezeCard/$1');
+    $routes->get('card-ids', 'Admin\CardGeoController::index');
+    $routes->post('card-ids/division', 'Admin\CardGeoController::storeDivision');
+    $routes->post('card-ids/division/(:num)/update', 'Admin\CardGeoController::updateDivision/$1');
+    $routes->post('card-ids/division/(:num)/delete', 'Admin\CardGeoController::deleteDivision/$1');
+    $routes->post('card-ids/city', 'Admin\CardGeoController::storeCity');
+    $routes->post('card-ids/city/(:num)/update', 'Admin\CardGeoController::updateCity/$1');
+    $routes->post('card-ids/city/(:num)/delete', 'Admin\CardGeoController::deleteCity/$1');
+    $routes->post('card-ids/category', 'Admin\CardGeoController::storeCategory');
+    $routes->post('card-ids/category/(:num)/update', 'Admin\CardGeoController::updateCategory/$1');
+    $routes->post('card-ids/category/(:num)/delete', 'Admin\CardGeoController::deleteCategory/$1');
+    $routes->post('card-ids/golden', 'Admin\CardGeoController::storeGolden');
+    $routes->post('card-ids/golden/(:num)/assign', 'Admin\CardGeoController::assignGolden/$1');
+    $routes->post('card-ids/golden/(:num)/delete', 'Admin\CardGeoController::deleteGolden/$1');
+
     $routes->get('customers', 'Admin\CustomerController::index');
     $routes->get('customers/(:num)', 'Admin\CustomerController::show/$1');
     $routes->post('customers/(:num)/toggle', 'Admin\CustomerController::toggleStatus/$1');

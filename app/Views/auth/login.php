@@ -8,7 +8,7 @@
                 <div class="text-center mb-4">
                     <img src="<?= base_url('assets/images/solqam-logo.svg') ?>?v=20261005c" alt="Solqam Marketplace" height="72" class="mb-3">
                     <h3 class="fw-bold text-dark mb-1">Welcome Back</h3>
-                    <p class="text-secondary small">Sign in to your Customer or Seller account</p>
+                    <p class="text-secondary small">Sign in to your Customer, Seller or Merchant account</p>
                 </div>
 
                 <?= view('partials/social_login', ['intent' => 'customer']) ?>

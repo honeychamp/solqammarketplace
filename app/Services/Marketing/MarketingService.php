@@ -18,6 +18,9 @@ class MarketingService
     /** @var array<string, string>|null Unhashed Meta advanced matching for this response */
     protected static ?array $pagePixelUser = null;
 
+    /** @var array<string, mixed>|null Session/DB identity for this request */
+    protected static ?array $baseIdentity = null;
+
     public const GA4 = [
         'PageView'              => 'page_view',
         'ViewContent'           => 'view_item',
@@ -30,6 +33,7 @@ class MarketingService
         'Purchase'              => 'purchase',
         'CompleteRegistration'  => 'sign_up',
         'Lead'                  => 'generate_lead',
+        'Contact'               => 'generate_lead',
         'Refund'                => 'refund',
         'AddToWishlist'         => 'add_to_wishlist',
         'CouponApplied'         => 'select_promotion',
@@ -124,14 +128,54 @@ class MarketingService
             return self::$pagePixelUser;
         }
 
-        return self::plainUserFromFields([
-            'email'        => (string) (session()->get('user.email') ?? ''),
-            'phone'        => (string) (session()->get('user.phone') ?? ''),
-            'first_name'   => explode(' ', trim((string) (session()->get('user.name') ?? '')))[0] ?? '',
-            'last_name'    => trim(strstr((string) (session()->get('user.name') ?? ''), ' ') ?: ''),
-            'external_id'  => (string) (session()->get('user.id') ?? ''),
-            'country'      => 'pk',
-        ]);
+        return self::plainUserFromFields(self::identityFromContext([]));
+    }
+
+    /**
+     * Persist checkout / form PII for later CAPI events in this session.
+     *
+     * @param array<string, mixed> $fields
+     */
+    public static function rememberLead(array $fields): void
+    {
+        try {
+            $cur  = session()->get('mkt_lead');
+            $lead = is_array($cur) ? $cur : [];
+            $map  = [
+                'email'        => ['email', 'em', 'guest_email'],
+                'phone'        => ['phone', 'ph', 'recipient_phone'],
+                'name'         => ['name', 'recipient_name', 'full_name'],
+                'first_name'   => ['first_name', 'fn'],
+                'last_name'    => ['last_name', 'ln'],
+                'city'         => ['city', 'ct'],
+                'province'     => ['province', 'state', 'st'],
+                'postal_code'  => ['postal_code', 'zp'],
+            ];
+            foreach ($map as $dest => $keys) {
+                foreach ($keys as $key) {
+                    $v = trim((string) ($fields[$key] ?? ''));
+                    if ($v === '') {
+                        continue;
+                    }
+                    if ($dest === 'phone') {
+                        $v = self::normalizePkPhone($v);
+                        if ($v === '') {
+                            continue;
+                        }
+                    }
+                    if ($dest === 'email' && ! str_contains($v, '@')) {
+                        continue;
+                    }
+                    $lead[$dest] = $v;
+                    break;
+                }
+            }
+            if ($lead !== []) {
+                session()->set('mkt_lead', $lead);
+                self::$baseIdentity = null;
+            }
+        } catch (\Throwable $e) {
+        }
     }
 
     /**
@@ -210,7 +254,7 @@ class MarketingService
             $eventId  = (string) ($data['event_id'] ?? self::newEventId($eventName));
             $payload  = self::normalize($eventName, $data, $settings);
             $payload['event_id'] = $eventId;
-            $payload['currency'] = $payload['currency'] ?? $currency;
+            $payload['currency'] = strtoupper((string) ($payload['currency'] ?: $currency ?: self::CURRENCY)) ?: self::CURRENCY;
 
             if (self::isDuplicateBrowse($eventName, $payload, $data)) {
                 return;
@@ -231,8 +275,24 @@ class MarketingService
 
             $user    = self::userData($data);
             $custom  = self::metaCustom($payload);
+            if (in_array($eventName, ['Purchase', 'Refund'], true)) {
+                if (empty($custom['currency'])) {
+                    $custom['currency'] = $payload['currency'];
+                }
+                if (! isset($custom['value']) || (float) $custom['value'] <= 0) {
+                    return;
+                }
+            }
             $url     = (string) ($data['event_source_url'] ?? self::sourceUrl());
             $tiktokU = self::tiktokUser($data);
+
+            $needMatch = in_array($eventName, [
+                'ViewContent', 'AddToCart', 'InitiateCheckout', 'Search', 'ViewCart',
+                'AddToWishlist', 'AddPaymentInfo', 'CompleteRegistration', 'Lead', 'Contact',
+            ], true);
+            if ($needMatch && ! self::hasHashedCustomerMatch($user)) {
+                return;
+            }
 
             self::sendCapiAfterResponse($settings, $eventName, $eventId, $custom, $user, $tiktokU, $url);
         } catch (\Throwable $e) {
@@ -324,7 +384,9 @@ class MarketingService
             self::captureClickIds();
             $eventId = self::pageViewEventId();
             $url     = self::sourceUrl();
-            register_shutdown_function(static function () use ($eventId, $url): void {
+            $user    = self::userData([]);
+            $tiktokU = self::tiktokUser([]);
+            register_shutdown_function(static function () use ($eventId, $url, $user, $tiktokU): void {
                 try {
                     if (function_exists('fastcgi_finish_request')) {
                         @fastcgi_finish_request();
@@ -340,10 +402,11 @@ class MarketingService
                     if ((int) ($settings['consent_required'] ?? 0) === 1 && ! self::hasConsent()) {
                         return;
                     }
-                    $user = self::userData([]);
-                    (new MetaTrackingService())->sendCapi($settings, 'PageView', $eventId, [], $user, $url);
-                    (new TikTokTrackingService())->sendEventsApi($settings, 'PageView', $eventId, [], self::tiktokUser([]), $url);
+                    $freshUser = self::withClientNetwork($user);
+                    (new MetaTrackingService())->sendCapi($settings, 'PageView', $eventId, [], $freshUser, $url);
+                    (new TikTokTrackingService())->sendEventsApi($settings, 'PageView', $eventId, [], $tiktokU, $url);
                 } catch (\Throwable $e) {
+                    log_message('error', 'Marketing pageview: ' . $e->getMessage());
                 }
             });
         } catch (\Throwable $e) {
@@ -369,7 +432,8 @@ class MarketingService
     {
         $send = static function () use ($settings, $eventName, $eventId, $custom, $user, $tiktokU, $url): void {
             try {
-                (new MetaTrackingService())->sendCapi($settings, $eventName, $eventId, $custom, $user, $url);
+                $freshUser = self::withClientNetwork($user);
+                (new MetaTrackingService())->sendCapi($settings, $eventName, $eventId, $custom, $freshUser, $url);
                 (new TikTokTrackingService())->sendEventsApi($settings, $eventName, $eventId, $custom, $tiktokU, $url);
             } catch (\Throwable $e) {
                 log_message('error', 'Marketing capi ' . $eventName . ': ' . $e->getMessage());
@@ -492,10 +556,12 @@ class MarketingService
     protected static function metaCustom(array $payload): array
     {
         $value = self::moneyOrNull($payload['value'] ?? null);
+        $currency = strtoupper(trim((string) ($payload['currency'] ?? self::CURRENCY)));
+        if ($currency === '' || ! preg_match('/^[A-Z]{3}$/', $currency)) {
+            $currency = self::CURRENCY;
+        }
 
         $custom = array_filter([
-            'currency'         => $payload['currency'] ?? self::CURRENCY,
-            'value'            => $value,
             'content_ids'      => $payload['content_ids'] ?: null,
             'content_type'     => $payload['content_type'] ?? 'product',
             'content_name'     => $payload['content_name'] ?: null,
@@ -505,6 +571,10 @@ class MarketingService
             'search_string'    => $payload['search_string'] ?: null,
             'order_id'         => $payload['transaction_id'] ?: null,
         ], static fn ($v) => $v !== null && $v !== '' && $v !== []);
+        $custom['currency'] = $currency;
+        if ($value !== null) {
+            $custom['value'] = $value;
+        }
 
         return $custom;
     }
@@ -535,7 +605,11 @@ class MarketingService
             'province'     => (string) ($addr['province'] ?? $order['province'] ?? ''),
             'postal_code'  => (string) ($addr['postal_code'] ?? $order['postal_code'] ?? ''),
             'country'      => 'pk',
-            'external_id'  => (string) ($order['order_number'] ?? $order['id'] ?? ''),
+            'external_id'  => (string) (
+                ((int) ($order['user_id'] ?? 0) > 0)
+                    ? (int) $order['user_id']
+                    : ((int) ($user['id'] ?? 0) > 0 ? (int) $user['id'] : '')
+            ),
         ];
     }
 
@@ -623,14 +697,18 @@ class MarketingService
     protected static function splitPersonName(string $name): array
     {
         $name  = strtolower(trim($name));
-        $name  = preg_replace('/[^a-z\s]/', ' ', $name) ?? $name;
-        $parts = array_values(array_filter(preg_split('/\s+/', $name) ?: []));
+        $name = trim($name);
+        if ($name === '') {
+            return ['', ''];
+        }
+        $name  = function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+        $name  = preg_replace('/[^\p{L}\s]/u', ' ', $name) ?? $name;
+        $parts = array_values(array_filter(preg_split('/\s+/u', $name) ?: [], static fn ($p) => $p !== ''));
         if ($parts === []) {
             return ['', ''];
         }
-        $fn = preg_replace('/[^a-z]/', '', $parts[0]) ?? '';
-        $ln = preg_replace('/[^a-z]/', '', implode('', array_slice($parts, 1))) ?? '';
-
+        $fn = preg_replace('/[^\p{L}]/u', '', $parts[0]) ?? '';
+        $ln = preg_replace('/[^\p{L}]/u', '', implode('', array_slice($parts, 1))) ?? '';
         return [$fn, $ln];
     }
 
@@ -644,6 +722,11 @@ class MarketingService
     protected static function hashAdvanced(string $value): string
     {
         $value = strtolower(trim($value));
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+        $value = function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
         if ($value === '') {
             return '';
         }
@@ -651,25 +734,173 @@ class MarketingService
         return self::sha256Hex($value);
     }
 
+    /**
+     * Logged-in account + session lead + non-empty event overlay. Never lets empty
+     * POST fields wipe a known email/phone.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    protected static function identityFromContext(array $data): array
+    {
+        if (self::$baseIdentity === null) {
+            $base = [
+                'email'        => '',
+                'phone'        => '',
+                'name'         => '',
+                'first_name'   => '',
+                'last_name'    => '',
+                'city'         => '',
+                'province'     => '',
+                'postal_code'  => '',
+                'country'      => 'pk',
+                'external_id'  => '',
+            ];
+            try {
+                $sess = session()->get('user');
+                if (is_array($sess)) {
+                    $base['email']        = (string) ($sess['email'] ?? '');
+                    $base['phone']        = (string) ($sess['phone'] ?? '');
+                    $base['name']         = (string) ($sess['name'] ?? '');
+                    $base['external_id']  = (string) ($sess['id'] ?? '');
+                }
+                $lead = session()->get('mkt_lead');
+                if (is_array($lead)) {
+                    foreach ($base as $k => $cur) {
+                        if ($cur === '' && ! empty($lead[$k])) {
+                            $base[$k] = (string) $lead[$k];
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+
+            $uid = (int) $base['external_id'];
+            if ($uid < 1) {
+                $base['external_id'] = self::visitorExternalId();
+            }
+            if ($uid > 0 && ($base['email'] === '' || $base['phone'] === '' || $base['name'] === '')) {
+                try {
+                    $row = (new UserModel())->find($uid);
+                    if (is_array($row)) {
+                        if ($base['email'] === '') {
+                            $base['email'] = (string) ($row['email'] ?? '');
+                        }
+                        if ($base['phone'] === '') {
+                            $base['phone'] = (string) ($row['phone'] ?? '');
+                        }
+                        if ($base['name'] === '') {
+                            $base['name'] = (string) ($row['name'] ?? '');
+                        }
+                    }
+                } catch (\Throwable $e) {
+                }
+            }
+            if ($uid > 0 && ($base['city'] === '' || $base['province'] === '' || $base['postal_code'] === '' || $base['name'] === '')) {
+                try {
+                    $addr = (new \App\Models\AddressModel())->getDefaultAddress($uid);
+                    if (is_array($addr)) {
+                        if ($base['city'] === '') {
+                            $base['city'] = (string) ($addr['city'] ?? '');
+                        }
+                        if ($base['province'] === '') {
+                            $base['province'] = (string) ($addr['province'] ?? '');
+                        }
+                        if ($base['postal_code'] === '') {
+                            $base['postal_code'] = (string) ($addr['postal_code'] ?? '');
+                        }
+                        if ($base['name'] === '' && ! empty($addr['recipient_name'])) {
+                            $base['name'] = (string) $addr['recipient_name'];
+                        }
+                        if ($base['phone'] === '' && ! empty($addr['phone'])) {
+                            $base['phone'] = (string) $addr['phone'];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                }
+            }
+            self::$baseIdentity = $base;
+        }
+
+        $out = self::$baseIdentity;
+
+        foreach (['email', 'phone', 'name', 'first_name', 'last_name', 'city', 'province', 'postal_code', 'external_id'] as $k) {
+            $v = trim((string) ($data[$k] ?? ''));
+            if ($v !== '' && $v !== '0') {
+                $out[$k] = $v;
+            }
+        }
+        if ($out['external_id'] === '0' || $out['external_id'] === '') {
+            $out['external_id'] = self::visitorExternalId();
+        }
+
+        return $out;
+    }
+
+    protected static function hasHashedCustomerMatch(array $user): bool
+    {
+        foreach (['em', 'ph', 'fn', 'ln', 'ge', 'db', 'ct', 'st', 'zp'] as $key) {
+            if (! empty($user[$key])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected static function visitorExternalId(): string
+    {
+        $id = '';
+        try {
+            $id = trim((string) session()->get('mkt_vid'));
+        } catch (\Throwable $e) {
+        }
+        if ($id === '' || ! preg_match('/^[a-f0-9]{16,64}$/', $id)) {
+            $id = trim(self::rawCookie('solqam_vid'));
+        }
+        if ($id === '' || ! preg_match('/^[a-f0-9]{16,64}$/', $id)) {
+            try {
+                $id = bin2hex(random_bytes(16));
+            } catch (\Throwable $e) {
+                $id = hash('sha256', (self::clientIp() ?: '0') . '|' . (string) ($_SERVER['HTTP_USER_AGENT'] ?? '') . '|' . microtime(true));
+                $id = substr($id, 0, 32);
+            }
+            try {
+                session()->set('mkt_vid', $id);
+            } catch (\Throwable $e) {
+            }
+            self::persistPixelCookie('solqam_vid', $id);
+        }
+
+        return $id;
+    }
+
     protected static function userData(array $data): array
     {
-        $merged = array_merge([
-            'email'       => (string) (session()->get('user.email') ?? ''),
-            'phone'       => (string) (session()->get('user.phone') ?? ''),
-            'external_id' => (string) (session()->get('user.id') ?? ''),
-        ], $data);
-        $plain = self::plainUserFromFields($merged);
+        $plain = self::plainUserFromFields(self::identityFromContext($data));
         $hash  = static function (string $key) use ($plain): ?array {
             $v = (string) ($plain[$key] ?? '');
             if ($v === '') {
                 return null;
             }
+            $h = self::hashAdvanced($v);
+            if ($h === '') {
+                return null;
+            }
 
-            return [self::hashAdvanced($v)];
+            return [$h];
         };
         $ip  = self::clientIp();
         $ua  = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512);
         $ids = self::facebookClickIds($data);
+
+        $countryHash = $hash('country') ?: [self::hashAdvanced('pk')];
+        $extHash     = $hash('external_id');
+        if ($extHash === null) {
+            $vid = self::visitorExternalId();
+            $h   = self::hashAdvanced($vid);
+            $extHash = $h !== '' ? [$h] : null;
+        }
 
         $out = array_filter([
             'em'                 => $hash('em'),
@@ -679,10 +910,10 @@ class MarketingService
             'ct'                 => $hash('ct'),
             'st'                 => $hash('st'),
             'zp'                 => $hash('zp'),
-            'country'            => $hash('country'),
-            'external_id'        => $hash('external_id'),
+            'country'            => $countryHash,
             'client_ip_address'  => ($ip !== '' && $ip !== '0.0.0.0') ? $ip : null,
             'client_user_agent'  => $ua !== '' ? $ua : null,
+            'external_id'        => $extHash,
             'fbp'                => $ids['fbp'] !== '' ? $ids['fbp'] : null,
             'fbc'                => $ids['fbc'] !== '' ? $ids['fbc'] : null,
         ], static fn ($v) => $v !== null && $v !== '' && $v !== []);
@@ -722,14 +953,26 @@ class MarketingService
 
     protected static function facebookClickIds(array $data): array
     {
-        return [
-            'fbp' => self::exactFbp((string) ($data['fbp'] ?? '')),
-            'fbc' => self::exactFbc((string) ($data['fbc'] ?? '')),
-        ];
+        $fbp = self::exactFbp((string) ($data['fbp'] ?? ''));
+        $fbc = self::exactFbc((string) ($data['fbc'] ?? ''));
+        if ($fbp === '') {
+            try {
+                $fbp = self::pixelFbp((string) (session()->get('mkt__fbp') ?? ''));
+            } catch (\Throwable $e) {
+            }
+        }
+        if ($fbc === '') {
+            try {
+                $fbc = self::pixelFbc((string) (session()->get('mkt__fbc') ?? ''));
+            } catch (\Throwable $e) {
+            }
+        }
+
+        return ['fbp' => $fbp, 'fbc' => $fbc];
     }
 
     /**
-     * Cookie first, exact string only. Never build fbc from fbclid (Meta flags that as a modified click id).
+     * Cookie first, then posted, then fbclid → fbc.
      */
     protected static function exactFbc(string $posted): string
     {
@@ -739,8 +982,31 @@ class MarketingService
                 return $ok;
             }
         }
+        $clid = self::rawFbclid();
+        if ($clid !== '') {
+            return 'fb.1.' . (int) round(microtime(true) * 1000) . '.' . $clid;
+        }
 
         return '';
+    }
+
+    protected static function rawFbclid(): string
+    {
+        $q = (string) ($_GET['fbclid'] ?? '');
+        if ($q === '' && isset($_SERVER['QUERY_STRING'])) {
+            if (preg_match('/(?:^|&)fbclid=([^&]+)/', (string) $_SERVER['QUERY_STRING'], $m)) {
+                $q = rawurldecode($m[1]);
+            }
+        }
+        $q = trim($q);
+        if ($q === '' || strlen($q) > 512) {
+            return '';
+        }
+        if (! preg_match('/^[A-Za-z0-9._~-]+$/', $q)) {
+            return '';
+        }
+
+        return $q;
     }
 
     protected static function pixelFbc(string $value): string
@@ -761,9 +1027,20 @@ class MarketingService
     {
         foreach ([self::rawCookie('_fbp'), $posted] as $v) {
             $v = trim($v);
-            if ($v !== '' && preg_match('/^fb\.\d+\.\d+\.\d+$/', $v)) {
-                return $v;
+            $ok = self::pixelFbp($v);
+            if ($ok !== '') {
+                return $ok;
             }
+        }
+
+        return '';
+    }
+
+    protected static function pixelFbp(string $value): string
+    {
+        $value = trim($value);
+        if ($value !== '' && preg_match('/^fb\.\d+\.\d+\.\d+$/', $value)) {
+            return $value;
         }
 
         return '';
@@ -823,10 +1100,11 @@ class MarketingService
     {
         $goods   = self::firstMoney($mapped['value'] ?? null, $order['total_amount'] ?? null);
         $ship    = round((float) ($order['shipping_amount'] ?? 0), 2);
+        $gift    = round((float) ($order['gift_wrap_amount'] ?? 0), 2);
         $disc    = round((float) ($order['discount_amount'] ?? $order['coupon_discount'] ?? 0), 2);
         $wallet  = round((float) ($order['wallet_amount_used'] ?? 0), 2);
         $payable = round((float) ($order['final_payable'] ?? 0), 2);
-        $value   = round(max(0, $goods - $disc) + max(0, $ship), 2);
+        $value   = round(max(0, $goods - $disc) + max(0, $ship) + max(0, $gift), 2);
         if ($value <= 0) {
             $value = round($payable + $wallet, 2);
         }
@@ -855,27 +1133,74 @@ class MarketingService
     {
         try {
             $posted = '';
+            $postedFbc = '';
+            $postedFbp = '';
             $req = function_exists('service') ? service('request') : null;
             if ($req) {
-                $posted = (string) ($req->getPost('fbc') ?? '');
+                $postedFbc = (string) ($req->getPost('fbc') ?? $req->getGet('fbc') ?? '');
+                $postedFbp = (string) ($req->getPost('fbp') ?? $req->getGet('fbp') ?? '');
             }
-            self::exactFbc($posted);
-            self::exactFbp($req ? (string) ($req->getPost('fbp') ?? '') : '');
+            $fbc = self::exactFbc($postedFbc);
+            $fbp = self::exactFbp($postedFbp);
+            if ($fbc === '') {
+                $fbc = self::pixelFbc((string) (session()->get('mkt__fbc') ?? ''));
+            }
+            if ($fbp === '') {
+                $fbp = self::pixelFbp((string) (session()->get('mkt__fbp') ?? ''));
+            }
+            if ($fbc !== '' && self::pixelFbc(self::rawCookie('_fbc')) === '') {
+                self::persistPixelCookie('_fbc', $fbc);
+            }
+            if ($fbp === '') {
+                $fbp = 'fb.1.' . (int) round(microtime(true) * 1000) . '.' . random_int(1000000000, 2147483646);
+            }
+            if ($fbp !== '' && self::pixelFbp(self::rawCookie('_fbp')) === '') {
+                self::persistPixelCookie('_fbp', $fbp);
+            }
+            self::visitorExternalId();
         } catch (\Throwable $e) {
         }
     }
 
+    protected static function persistPixelCookie(string $name, string $value): void
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return;
+        }
+        $_COOKIE[$name] = $value;
+        try {
+            session()->set('mkt_' . $name, $value);
+        } catch (\Throwable $e) {
+        }
+        if (headers_sent()) {
+            return;
+        }
+        $https = (! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+        setcookie($name, $value, [
+            'expires'  => time() + 90 * 86400,
+            'path'     => '/',
+            'secure'   => $https,
+            'httponly' => false,
+            'samesite' => 'Lax',
+        ]);
+    }
+
     protected static function tiktokUser(array $data): array
     {
-        $email = self::hashEmail((string) ($data['email'] ?? session()->get('user.email') ?? ''));
-        $phone = self::hashPhone((string) ($data['phone'] ?? session()->get('user.phone') ?? ''));
-        $uid   = trim((string) ($data['external_id'] ?? session()->get('user.id') ?? ''));
-        $ext   = ($uid !== '' && $uid !== '0') ? self::sha256Hex($uid) : '';
+        $id    = self::identityFromContext($data);
+        $email = self::hashEmail((string) ($id['email'] ?? ''));
+        $phone = self::hashPhone((string) ($id['phone'] ?? ''));
+        $uid   = trim((string) ($id['external_id'] ?? ''));
+        if ($uid === '0') {
+            $uid = '';
+        }
 
         return array_filter([
             'email'        => $email,
             'phone'        => $phone,
-            'external_id'  => $ext,
+            'external_id'  => $uid,
             'ip'           => self::clientIp(),
             'user_agent'   => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
             'ttclid'       => self::cookie('ttclid') ?: (string) ($_GET['ttclid'] ?? ''),
@@ -900,20 +1225,70 @@ class MarketingService
         return strtolower($eventName) . '_' . bin2hex(random_bytes(8));
     }
 
+    /**
+     * Meta rejects private / placeholder IPs and then flags client_ip_address as missing.
+     *
+     * @param array<string, mixed> $user
+     * @return array<string, mixed>
+     */
+    protected static function withClientNetwork(array $user): array
+    {
+        $ip = self::clientIp();
+        if ($ip !== '') {
+            $user['client_ip_address'] = $ip;
+        }
+        $ua = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512);
+        if ($ua !== '') {
+            $user['client_user_agent'] = $ua;
+        }
+
+        return $user;
+    }
+
     protected static function clientIp(): string
     {
-        foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
+        $candidates = [];
+        foreach ([
+            'HTTP_CF_CONNECTING_IP',
+            'HTTP_TRUE_CLIENT_IP',
+            'HTTP_X_REAL_IP',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_FORWARDED',
+            'HTTP_FORWARDED',
+            'REMOTE_ADDR',
+        ] as $key) {
             $raw = (string) ($_SERVER[$key] ?? '');
             if ($raw === '') {
                 continue;
             }
-            $ip = trim(explode(',', $raw)[0]);
-            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            if (preg_match_all('/for=(?:"?\[?)([^\]";,\s]+)/i', $raw, $fwd)) {
+                foreach ($fwd[1] as $hit) {
+                    $candidates[] = $hit;
+                }
+            }
+            foreach (explode(',', $raw) as $part) {
+                $part = trim($part, " \t\"[]");
+                if (stripos($part, 'for=') === 0) {
+                    $part = trim(substr($part, 4), " \t\"[]");
+                }
+                if ($part !== '') {
+                    $candidates[] = $part;
+                }
+            }
+        }
+
+        $publicFlags = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
+        foreach ($candidates as $ip) {
+            $ip = trim((string) $ip);
+            if (preg_match('/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/', $ip, $m)) {
+                $ip = $m[1];
+            }
+            if (filter_var($ip, FILTER_VALIDATE_IP, $publicFlags)) {
                 return $ip;
             }
         }
 
-        return '0.0.0.0';
+        return '';
     }
 
     protected static function cookie(string $name): string

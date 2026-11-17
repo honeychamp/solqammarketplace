@@ -163,6 +163,29 @@ class SellerDueService
         $this->addSellerCodCashback($sellerId, $orderId, (float) ($totals['cashback'] ?? 0));
     }
 
+    /** Admin cancelled the order — drop open COD dues. Paid records stay as paid. */
+    public function cancelForOrder(int $orderId): void
+    {
+        if (! $this->ready()) {
+            return;
+        }
+        $model = new SellerCodDueModel();
+        $rows  = $model->where('order_id', $orderId)->findAll();
+        foreach ($rows as $row) {
+            $st = (string) ($row['status'] ?? '');
+            if ($st === 'waived' || $st === 'paid') {
+                continue;
+            }
+            $model->update((int) $row['id'], [
+                'cashback_amount' => 0,
+                'due_amount'      => 0,
+                'status'          => 'waived',
+                'paid_note'       => substr(trim(($row['paid_note'] ?? '') . ' Order cancelled by admin.'), -240),
+            ]);
+            $this->liftHoldIfCleared((int) $row['seller_id']);
+        }
+    }
+
     /** Keep commission due if the parcel never went out. Drop cashback that was not earned. */
     public function waiveForOrder(int $orderId): void
     {

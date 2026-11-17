@@ -246,13 +246,28 @@ class OrderController extends BaseController
             'landmark'        => (string) $this->request->getPost('landmark'),
         ];
         $notes = (string) $this->request->getPost('notes');
+        $giftIn = \App\Services\Checkout\GiftWrapService::fromEditPost(
+            $quantities,
+            $this->request->getPost('gift_wrap'),
+            $this->request->getPost('gift_hide'),
+            $this->request->getPost('gift_message')
+        );
         $back = $this->orderBack((int) $id);
         try {
-            $adminId = (int) session()->get('user.id');
-            $deskIds = $this->orderService->solqamDeskSellerIds((int) $id, $adminId);
-            $this->orderService->editPlacedOrder((int) $id, $quantities, $address, $notes, $deskIds);
+            $order = $this->orderModel->find((int) $id);
+            if (! $order) {
+                throw new \RuntimeException('Order not found.');
+            }
+            $sellerIds = [];
+            foreach ($this->orderItemModel->where('order_id', (int) $id)->findAll() as $row) {
+                $sid = (int) ($row['seller_id'] ?? 0);
+                if ($sid > 0) {
+                    $sellerIds[$sid] = $sid;
+                }
+            }
+            $this->orderService->editPlacedOrder((int) $id, $quantities, $address, $notes, array_values($sellerIds), true, $giftIn);
 
-            return $this->redirectAfterHub($back, 'success', 'Solqam package updated. Confirm after call only confirms this package — the seller confirms their own self-deliver package.');
+            return $this->redirectAfterHub($back, 'success', 'Order updated. Totals, shipping and commission were recalculated.');
         } catch (\Throwable $e) {
             return $this->redirectAfterHub($back, 'error', $e->getMessage());
         }
@@ -265,12 +280,20 @@ class OrderController extends BaseController
             : $this->orderBack((int) $id);
         try {
             $order = $this->orderModel->find((int) $id);
-            if (! $order || ($order['status'] ?? '') !== 'placed') {
-                throw new \RuntimeException('Only a placed extra order can be cancelled.');
+            if (! $order) {
+                throw new \RuntimeException('Order not found.');
             }
-            $this->orderService->updateOrderStatus((int) $id, 'cancelled', 'Cancelled after call — duplicate / not needed');
+            $status = (string) ($order['status'] ?? '');
+            if (! in_array($status, \App\Services\Order\OrderService::adminEditableStatuses(), true)) {
+                throw new \RuntimeException('This order can no longer be cancelled.');
+            }
+            $reason = trim((string) $this->request->getPost('reason'));
+            if ($reason === '') {
+                $reason = 'Cancelled by admin';
+            }
+            $this->orderService->updateOrderStatus((int) $id, 'cancelled', $reason);
 
-            return $this->redirectAfterHub($back, 'success', 'Extra order ' . ($order['order_number'] ?? '') . ' cancelled. Commission was not charged.');
+            return $this->redirectAfterHub($back, 'success', 'Order ' . ($order['order_number'] ?? '') . ' cancelled.');
         } catch (\Throwable $e) {
             return $this->redirectAfterHub($back, 'error', $e->getMessage());
         }
@@ -328,7 +351,7 @@ class OrderController extends BaseController
         if ($target < 1) {
             $target = $adminId;
         }
-        if (! in_array($target, $deskIds, true)) {
+        if ($newStatus !== 'cancelled' && ! in_array($target, $deskIds, true)) {
             return $this->redirectAfterHub(
                 '/admin/orders/' . $id,
                 'error',
@@ -338,22 +361,11 @@ class OrderController extends BaseController
 
         try {
             if ($newStatus === 'cancelled') {
-                $items = $this->orderItemModel->where('order_id', (int) $id)->findAll();
-                $onlyDesk = true;
-                foreach ($items as $row) {
-                    if (! in_array((int) ($row['seller_id'] ?? 0), $deskIds, true)) {
-                        $onlyDesk = false;
-                        break;
-                    }
+                $cur = (string) (($this->orderModel->find((int) $id)['status'] ?? ''));
+                if (! in_array($cur, \App\Services\Order\OrderService::adminEditableStatuses(), true)) {
+                    return $this->redirectAfterHub('/admin/orders/' . $id, 'error', 'This order can no longer be cancelled.');
                 }
-                if (! $onlyDesk) {
-                    return $this->redirectAfterHub(
-                        '/admin/orders/' . $id,
-                        'error',
-                        'This order also has seller self-deliver items. The whole order cannot be cancelled here.'
-                    );
-                }
-                $this->orderService->updateOrderStatus((int) $id, 'cancelled');
+                $this->orderService->updateOrderStatus((int) $id, 'cancelled', 'Cancelled by admin');
             } else {
                 $this->orderService->updateSellerShipment((int) $id, $target, $newStatus, [
                     'tracking_number' => $this->request->getPost('tracking_number'),

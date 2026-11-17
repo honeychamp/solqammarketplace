@@ -36,19 +36,28 @@ class AuthService
         $this->db->transStart();
 
         $apiToken = bin2hex(random_bytes(32));
+        $profile  = [
+            'gender'              => $data['gender'] ?? null,
+            'father_husband_name' => $data['father_husband_name'] ?? null,
+            'date_of_birth'       => $data['date_of_birth'] ?? null,
+        ];
         $existing = $this->userModel->findByEmailOrPhone((string) ($data['phone'] ?? ''));
         if ($existing && ($existing['role'] ?? '') === 'customer' && \App\Services\Checkout\GuestCheckoutService::isGuestEmail($existing['email'] ?? '')) {
-            $this->userModel->skipValidation()->update((int) $existing['id'], [
+            $this->userModel->skipValidation()->update((int) $existing['id'], array_merge([
                 'name'          => $data['name'],
                 'email'         => $data['email'],
                 'phone'         => $data['phone'],
                 'password_hash' => password_hash($data['password'], PASSWORD_BCRYPT),
                 'api_token'     => $apiToken,
                 'is_verified'   => 0,
-            ]);
+                'city'           => $data['city'] ?? null,
+                'province'       => $data['province'] ?? null,
+                'division_code'  => $data['division_code'] ?? null,
+                'city_code'      => $data['city_code'] ?? null,
+            ], $profile));
             $userId = (int) $existing['id'];
         } else {
-            $userId = $this->userModel->insert([
+            $userId = $this->userModel->insert(array_merge([
                 'name'          => $data['name'],
                 'email'         => $data['email'],
                 'phone'         => $data['phone'],
@@ -57,11 +66,20 @@ class AuthService
                 'status'        => 'active',
                 'is_verified'   => 0, // Requires OTP verification
                 'api_token'     => $apiToken,
-            ]);
+                'city'           => $data['city'] ?? null,
+                'province'       => $data['province'] ?? null,
+                'division_code'  => $data['division_code'] ?? null,
+                'city_code'      => $data['city_code'] ?? null,
+            ], $profile));
         }
 
         // Auto-initialize Wallet ledger
         $this->walletService->getOrCreateWallet($userId);
+        try {
+            (new \App\Services\Card\CardNetworkService())->issueCard((int) $userId);
+        } catch (\Throwable $e) {
+            log_message('error', 'Issue Solqam Card on register: ' . $e->getMessage());
+        }
 
         $this->db->transComplete();
 
@@ -92,6 +110,10 @@ class AuthService
             'status'        => 'active', // Can sign in; store stays pending until admin approval
             'is_verified'   => 0,
             'api_token'     => $apiToken,
+            'city'           => $sellerData['city'] ?? ($userData['city'] ?? null),
+            'province'       => $userData['province'] ?? ($sellerData['province'] ?? null),
+            'division_code'  => $userData['division_code'] ?? null,
+            'city_code'      => $userData['city_code'] ?? null,
         ]);
 
         $this->sellerProfileModel->insert([
@@ -109,6 +131,11 @@ class AuthService
 
         // Auto-initialize Wallet ledger
         $this->walletService->getOrCreateWallet($userId);
+        try {
+            (new \App\Services\Card\CardNetworkService())->issueCard((int) $userId);
+        } catch (\Throwable $e) {
+            log_message('error', 'Issue Solqam Card on seller register: ' . $e->getMessage());
+        }
 
         $this->db->transComplete();
 
@@ -119,6 +146,17 @@ class AuthService
             'phone'   => $userData['phone'],
             'otp'     => $otp,
         ];
+    }
+
+    /**
+     * Register a dukandar (physical shop). User stays a customer so they can also shop.
+     */
+    public function registerDukandar(array $userData, array $shopData): array
+    {
+        $result = $this->registerCustomer($userData);
+        (new \App\Services\Card\CardNetworkService())->upsertProfile((int) $result['user_id'], $shopData);
+
+        return $result;
     }
 
     /**
@@ -208,6 +246,15 @@ class AuthService
             $profile = $this->sellerProfileModel->getByUserId((int) $user['id']);
             $userData['store_name']       = $profile['store_name'] ?? 'Vendor Store';
             $userData['approval_status']  = $profile['approval_status'] ?? 'pending';
+        }
+        try {
+            $shop = (new \App\Models\DukandarProfileModel())->getByUserId((int) $user['id']);
+            if ($shop) {
+                $userData['dukandar_status'] = $shop['approval_status'] ?? 'pending';
+                $userData['shop_name']       = $shop['shop_name'] ?? 'Shop';
+                $userData['merchant_code']   = $shop['merchant_code'] ?? '';
+            }
+        } catch (\Throwable $e) {
         }
 
         $this->session->set('user', $userData);

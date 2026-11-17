@@ -53,10 +53,13 @@
                         <tr>
                             <td>
                                 <strong class="text-dark"><?= esc($o['order_number']) ?></strong>
+                                <?php if ((float) ($o['gift_wrap_amount'] ?? 0) > 0): ?>
+                                    <div class="small text-danger"><i class="bi bi-gift-fill"></i> Gift wrap</div>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <div class="fw-semibold text-dark"><?= esc($o['customer_name'] ?? 'Guest Buyer') ?></div>
-                                <small class="text-muted"><i class="bi bi-telephone me-1"></i><?= esc($o['customer_phone'] ?? 'N/A') ?></small>
+                                <small class="text-muted"><i class="bi bi-telephone me-1"></i><?= esc(pk_local_phone($o['customer_phone'] ?? '') ?: ($o['customer_phone'] ?? 'N/A')) ?></small>
                             </td>
                             <td>
                                 <?php if (!empty($o['sellers'])): ?>

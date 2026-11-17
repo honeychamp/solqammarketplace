@@ -29,6 +29,10 @@ class CatalogController extends BaseController
 
     public function index()
     {
+        try {
+            \App\Services\Catalog\StarterReviewService::touchStorefront();
+        } catch (\Throwable $e) {
+        }
         $categorySlug = $this->request->getGet('category');
         $categoryId   = $this->request->getGet('category_id');
         $categoryIds  = [];
@@ -181,6 +185,10 @@ class CatalogController extends BaseController
 
     public function detail($id)
     {
+        try {
+            \App\Services\Catalog\StarterReviewService::touchStorefront((int) $id);
+        } catch (\Throwable $e) {
+        }
         $product = $this->productModel->getDetailedProduct((int) $id);
         if (!$product) {
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Product not found');

@@ -12,6 +12,10 @@ class HomeController extends BaseController
 {
     public function index()
     {
+        try {
+            \App\Services\Catalog\StarterReviewService::touchStorefront();
+        } catch (\Throwable $e) {
+        }
         $categoryModel = new CategoryModel();
         $productModel  = new ProductModel();
         $pricing       = new PricingService();

@@ -108,7 +108,7 @@ foreach ($processing as $d) {
                         <tr>
                             <td>
                                 <div class="fw-bold"><?= esc($s['store_name']) ?></div>
-                                <div class="small text-muted"><?= esc($s['seller_name']) ?> · <?= esc($s['phone']) ?></div>
+                                <div class="small text-muted"><?= esc($s['seller_name']) ?> · <?= esc(pk_local_phone($s['phone'] ?? '') ?: ($s['phone'] ?? '')) ?></div>
                             </td>
                             <td class="fw-bold text-danger">Rs. <?= number_format((float) $s['unpaid'], 0) ?></td>
                             <td>Rs. <?= number_format((float) $s['commission'], 0) ?></td>

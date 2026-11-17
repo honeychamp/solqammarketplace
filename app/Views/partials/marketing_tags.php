@@ -42,6 +42,7 @@ gtag('js', new Date());
 <?php if ($meta !== ''): ?>
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('set', 'autoConfig', false, '<?= $meta ?>');
 fbq('init', '<?= $meta ?>'<?= $amJson ?>);
 fbq('track', 'PageView', {}, {eventID: <?= json_encode(\App\Services\Marketing\MarketingService::pageViewEventId()) ?>});
 </script>
@@ -61,7 +62,11 @@ window.SOLQAM_MKT = {
   adsId: <?= json_encode($mkt['google_ads_id'] ?? '') ?>,
   adsLabel: <?= json_encode($mkt['google_ads_label'] ?? '') ?>,
   consentRequired: <?= !empty($mkt['consent_required']) ? 'true' : 'false' ?>,
+  csrfName: <?= json_encode(function_exists('csrf_token') ? csrf_token() : 'csrf_test_name') ?>,
+  csrfHash: <?= json_encode(function_exists('csrf_hash') ? csrf_hash() : '') ?>,
+  csrfHeader: <?= json_encode(function_exists('csrf_header') ? csrf_header() : 'X-CSRF-TOKEN') ?>,
+  leadUrl: <?= json_encode(site_url('marketing/lead')) ?>,
   queue: <?= json_encode($mktQueue) ?>
 };
 </script>
-<script src="<?= base_url('assets/js/solqam-marketing.js') ?>?v=20261107a" defer></script>
+<script src="<?= base_url('assets/js/solqam-marketing.js') ?>?v=20261117a" defer></script>

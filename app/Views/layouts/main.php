@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?= esc($title ?? 'Solqam Marketplace') ?></title>
     <?= view('partials/favicon') ?>
     <?= view('partials/pwa') ?>
@@ -12,7 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261104a">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261113t">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-responsive.css') ?>?v=20261113t">
     <?php if (is_file(APPPATH . 'Views/partials/marketing_tags.php')): ?>
         <?= view('partials/marketing_tags') ?>
     <?php endif; ?>
@@ -34,13 +35,13 @@ $showMobileTab = $tabUriEarly !== 'checkout' && ! str_starts_with($tabUriEarly, 
                 <span class="d-none d-lg-inline text-white-50">|</span>
                 <span class="d-none d-lg-inline"><i class="bi bi-shield-check text-success me-1"></i> 100% Genuine Products &amp; Doorstep COD</span>
             </div>
-            <div class="d-flex align-items-center gap-3 mt-0">
-                <a href="<?= site_url('register?role=seller') ?>" class="text-warning fw-semibold">
-                    <i class="bi bi-shop me-1"></i> Become a Seller
+            <div class="solqam-topbar-links mt-0">
+                <a href="<?= site_url('card') ?>" class="text-warning fw-semibold">
+                    <i class="bi bi-credit-card-2-front me-1"></i> Solqam Card
                 </a>
-                <span class="text-white-50">|</span>
+                <span class="text-white-50 solqam-topbar-sep">|</span>
                 <a href="<?= site_url('track') ?>">Track My Order</a>
-                <span class="text-white-50">|</span>
+                <span class="text-white-50 solqam-topbar-sep">|</span>
                 <a href="<?= site_url('help') ?>">Help &amp; Support</a>
             </div>
         </div>
@@ -64,7 +65,7 @@ $showMobileTab = $tabUriEarly !== 'checkout' && ! str_starts_with($tabUriEarly, 
                         <form action="<?= site_url('shop') ?>" method="GET" class="m-0" role="search">
                             <div class="solqam-search-input-group">
                                 <i class="bi bi-search ms-3 text-muted"></i>
-                                <input class="solqam-search-input" type="search" name="q" placeholder="Search products, brands, categories..." value="<?= esc($filters['search'] ?? ($_GET['q'] ?? '')) ?>" autocomplete="off" maxlength="80" enterkeyhint="search">
+                                <input class="solqam-search-input" type="search" name="q" placeholder="Search products, brands..." value="<?= esc($filters['search'] ?? ($_GET['q'] ?? '')) ?>" autocomplete="off" maxlength="80" enterkeyhint="search">
                                 <button class="solqam-search-btn" type="submit" aria-label="Search">
                                     <i class="bi bi-search"></i>
                                     <span>Search</span>
@@ -225,22 +226,25 @@ $showMobileTab = $tabUriEarly !== 'checkout' && ! str_starts_with($tabUriEarly, 
                 <div class="col-6 col-lg-2 col-md-3">
                     <h6>Customer Care</h6>
                     <ul class="list-unstyled mb-0">
-                        <li><a href="<?= site_url('help') ?>">Help Center</a></li>
-                        <li><a href="<?= site_url('track') ?>">Track Your Order</a></li>
-                        <li><a href="<?= site_url('account/wallet') ?>">Solqam Wallet</a></li>
-                        <li><a href="<?= site_url('returns-policy') ?>">Returns &amp; Refunds</a></li>
-                        <li><a href="<?= site_url('shipping-info') ?>">Shipping &amp; Delivery</a></li>
+                        <li><a href="<?= site_url('help') ?>" class="<?= footer_link_class('help') ?>">Help Center</a></li>
+                        <li><a href="<?= site_url('track') ?>" class="<?= footer_link_class('track') ?>">Track Your Order</a></li>
+                        <li><a href="<?= site_url('account/wallet') ?>" class="<?= footer_link_class('account/wallet') ?>">Solqam Wallet</a></li>
+                        <li><a href="<?= site_url('returns-policy') ?>" class="<?= footer_link_class('returns-policy') ?>">Returns &amp; Refunds</a></li>
+                        <li><a href="<?= site_url('shipping-info') ?>" class="<?= footer_link_class('shipping-info') ?>">Shipping &amp; Delivery</a></li>
+                        <li><a href="<?= site_url('terms') ?>" class="<?= footer_link_class('terms') ?>">Terms &amp; Conditions</a></li>
+                        <li><a href="<?= site_url('privacy') ?>" class="<?= footer_link_class('privacy') ?>">Privacy Policy</a></li>
                     </ul>
                 </div>
 
                 <div class="col-6 col-lg-2 col-md-3">
                     <h6>Sell on Solqam</h6>
                     <ul class="list-unstyled mb-0">
-                        <li><a href="<?= site_url('register?role=seller') ?>" class="text-warning fw-semibold">Seller Registration</a></li>
-                        <li><a href="<?= site_url('login') ?>">Seller Hub Login</a></li>
-                        <li><a href="<?= site_url('commission') ?>">Commission Structure</a></li>
-                        <li><a href="<?= site_url('seller-policies') ?>">Seller Policies</a></li>
-                        <li><a href="<?= site_url('fulfillment') ?>">Fulfillment by Solqam</a></li>
+                        <li><a href="<?= site_url('register?role=seller') ?>" class="<?= footer_link_class('register', 'role', 'seller') ?>">Seller Registration</a></li>
+                        <li><a href="<?= site_url('register?role=merchant') ?>" class="<?= footer_link_class('register', 'role', 'merchant') ?>">Merchant Registration</a></li>
+                        <li><a href="<?= site_url('login') ?>" class="<?= footer_link_class('login') ?>">Seller Hub Login</a></li>
+                        <li><a href="<?= site_url('commission') ?>" class="<?= footer_link_class('commission') ?>">Commission Structure</a></li>
+                        <li><a href="<?= site_url('seller-policies') ?>" class="<?= footer_link_class('seller-policies') ?>">Seller Policies</a></li>
+                        <li><a href="<?= site_url('fulfillment') ?>" class="<?= footer_link_class('fulfillment') ?>">Fulfillment by Solqam</a></li>
                     </ul>
                 </div>
 

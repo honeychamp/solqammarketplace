@@ -37,6 +37,7 @@ class Filters extends BaseFilters
         'auth'            => \App\Filters\AuthFilter::class,
         'role'            => \App\Filters\RoleFilter::class,
         'seller_approved' => \App\Filters\SellerApprovalFilter::class,
+        'dukandar'        => \App\Filters\DukandarFilter::class,
         'api_auth'        => \App\Filters\ApiAuthFilter::class,
     ];
 

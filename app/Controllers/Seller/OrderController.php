@@ -139,8 +139,14 @@ class OrderController extends BaseController
             'landmark'        => (string) $this->request->getPost('landmark'),
         ];
         $notes = (string) $this->request->getPost('notes');
+        $giftIn = \App\Services\Checkout\GiftWrapService::fromEditPost(
+            $quantities,
+            $this->request->getPost('gift_wrap'),
+            $this->request->getPost('gift_hide'),
+            $this->request->getPost('gift_message')
+        );
         try {
-            $this->orderService->editPlacedOrder((int) $orderId, $quantities, $address, $notes, [$sellerId]);
+            $this->orderService->editPlacedOrder((int) $orderId, $quantities, $address, $notes, [$sellerId], false, $giftIn);
 
             return $this->redirectAfterHub('/seller/orders/' . $orderId, 'success', 'Order updated. Now tap Confirm (Accept Order). Commission is not due until you confirm.');
         } catch (\Throwable $e) {

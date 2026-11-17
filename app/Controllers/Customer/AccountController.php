@@ -31,9 +31,16 @@ class AccountController extends BaseController
         $balance = $walletService->getBalance($userId);
         $transactions = $walletService->getTransactions($userId, 50);
 
+        $pending = 0.0;
+        try {
+            $pending = (new \App\Services\Card\CardNetworkService())->pendingCreditsForCustomer($userId);
+        } catch (\Throwable $e) {
+        }
+
         return view('customer/wallet', [
             'title'        => 'My Solqam Wallet Ledger — Solqam Marketplace',
             'balance'      => $balance,
+            'pendingCard'  => $pending,
             'transactions' => $transactions,
         ]);
     }

@@ -46,9 +46,10 @@ class OrderItemModel extends Model
 
     public function getSellerOrderItems(int $sellerId): array
     {
-        return $this->select('order_items.*, orders.order_number, orders.status as order_status, orders.created_at as order_date, orders.user_id as customer_id, orders.wallet_amount_used, orders.final_payable, users.name as customer_name, users.phone as customer_phone')
+        return $this->select("order_items.*, orders.order_number, orders.status as order_status, orders.created_at as order_date, orders.user_id as customer_id, orders.wallet_amount_used, orders.final_payable, users.name as customer_name, COALESCE(NULLIF(TRIM(addresses.phone), ''), users.phone) as customer_phone, addresses.phone as recipient_phone", false)
             ->join('orders', 'orders.id = order_items.order_id')
             ->join('users', 'users.id = orders.user_id')
+            ->join('addresses', 'addresses.id = orders.address_id', 'left')
             ->where('order_items.seller_id', $sellerId)
             ->orderBy('order_items.id', 'DESC')
             ->findAll();
@@ -100,12 +101,13 @@ class OrderItemModel extends Model
             return [];
         }
 
-        $select = 'order_items.*, orders.user_id as customer_id, users.name as customer_name, users.phone as customer_phone, users.email as customer_email, users.status as customer_status';
+        $select = "order_items.*, orders.user_id as customer_id, users.name as customer_name, COALESCE(NULLIF(TRIM(addresses.phone), ''), users.phone) as customer_phone, users.email as customer_email, users.status as customer_status";
         try {
             $this->builder()->resetQuery();
-            $items = $this->select($select)
+            $items = $this->select($select, false)
                 ->join('orders', 'orders.id = order_items.order_id')
                 ->join('users', 'users.id = orders.user_id')
+                ->join('addresses', 'addresses.id = orders.address_id', 'left')
                 ->where('order_items.seller_id', $sellerId)
                 ->orderBy('order_items.id', 'DESC')
                 ->findAll();

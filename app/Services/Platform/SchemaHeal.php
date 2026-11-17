@@ -8,7 +8,111 @@ namespace App\Services\Platform;
  */
 class SchemaHeal
 {
-    public const VERSION = 22;
+    public const VERSION = 30;
+
+    /** Bump this when Pakistan geo seed grows so live DBs re-sync. */
+    public const GEO_PACK = 'pk2';
+
+    /**
+     * Solqam Card + dukandar tables. Safe on HTTP — runs once, then a cache marker.
+     */
+    public static function ensureCardNetwork(): void
+    {
+        $cacheDir = rtrim(WRITEPATH, '/\\') . DIRECTORY_SEPARATOR . 'cache';
+        if (! is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+        $marker  = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_card_network';
+        $plastic = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_card_plastic';
+        $idfmt   = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_card_idfmt';
+        $geo     = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_card_geo';
+        $adv     = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_merchant_adv';
+        $idv2    = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_idv2';
+        $pos     = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_card_pos';
+        $fifo    = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_card_fifo';
+        $appr    = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_card_adminpay';
+        $shopin  = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_shop_in';
+        $kyc     = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_user_kyc';
+        $tenure  = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_shop_tenure';
+        $geoAll  = $cacheDir . DIRECTORY_SEPARATOR . 'schema_heal_geo_all_pk';
+        try {
+            $db = \Config\Database::connect();
+            if (is_file($marker)
+                && is_file($plastic)
+                && is_file($idfmt)
+                && is_file($geo)
+                && $db->tableExists('solqam_cards')
+                && $db->tableExists('dukandar_profiles')
+                && $db->tableExists('dukandar_scans')
+                && $db->tableExists('solqam_city_codes')
+            ) {
+                $forge = \Config\Database::forge();
+                if (! is_file($adv)) {
+                    self::healMerchantAdvance($db, $forge);
+                    @file_put_contents($adv, (string) time());
+                }
+                if (! is_file($idv2)) {
+                    self::healCardIdV2($db, $forge);
+                    @file_put_contents($idv2, (string) time());
+                }
+                if (! is_file($pos)) {
+                    self::healCardPos($db, $forge);
+                    @file_put_contents($pos, (string) time());
+                }
+                if (! is_file($fifo)) {
+                    self::healCardFifo($db, $forge);
+                    @file_put_contents($fifo, (string) time());
+                }
+                if (! is_file($appr)) {
+                    self::healCardAdminPay($db, $forge);
+                    @file_put_contents($appr, (string) time());
+                }
+                if (! is_file($shopin)) {
+                    self::healShopInsidePhoto($db, $forge);
+                    @file_put_contents($shopin, (string) time());
+                }
+                if (! is_file($kyc)) {
+                    self::healUserKyc($db, $forge);
+                    @file_put_contents($kyc, (string) time());
+                }
+                if (! is_file($tenure)) {
+                    self::healShopTenure($db, $forge);
+                    @file_put_contents($tenure, (string) time());
+                }
+                self::healPakistanGeo($db, $geoAll);
+
+                return;
+            }
+            $forge = \Config\Database::forge();
+            self::healCardNetwork($db, $forge);
+            self::healCardPlastic($db, $forge);
+            self::healCardIdFormat($db);
+            self::healCardGeo($db, $forge);
+            self::healMerchantAdvance($db, $forge);
+            self::healCardIdV2($db, $forge);
+            self::healCardPos($db, $forge);
+            self::healCardFifo($db, $forge);
+            self::healCardAdminPay($db, $forge);
+            self::healShopInsidePhoto($db, $forge);
+            self::healUserKyc($db, $forge);
+            self::healShopTenure($db, $forge);
+            @file_put_contents($marker, (string) time());
+            @file_put_contents($plastic, (string) time());
+            @file_put_contents($idfmt, (string) time());
+            @file_put_contents($geo, (string) time());
+            @file_put_contents($adv, (string) time());
+            @file_put_contents($idv2, (string) time());
+            @file_put_contents($pos, (string) time());
+            @file_put_contents($fifo, (string) time());
+            @file_put_contents($appr, (string) time());
+            @file_put_contents($shopin, (string) time());
+            @file_put_contents($kyc, (string) time());
+            @file_put_contents($tenure, (string) time());
+            self::healPakistanGeo($db, $geoAll);
+        } catch (\Throwable $e) {
+            log_message('error', 'SchemaHeal card network: ' . $e->getMessage());
+        }
+    }
 
     /**
      * Extra order-export columns. Safe on HTTP — runs once, then a cache marker.
@@ -274,6 +378,7 @@ class SchemaHeal
             ]);
 
             self::healOrderExport($db, $forge);
+            self::healCardNetwork($db, $forge);
 
             if (! is_dir(WRITEPATH . 'cache')) {
                 @mkdir(WRITEPATH . 'cache', 0755, true);
@@ -486,11 +591,23 @@ class SchemaHeal
     protected static function addColumn($db, $forge, string $table, string $column, array $def): void
     {
         try {
-            if (! $db->tableExists($table) || $db->fieldExists($column, $table)) {
+            if (! $db->tableExists($table)) {
+                return;
+            }
+            if (method_exists($db, 'resetDataCache')) {
+                $db->resetDataCache();
+            }
+            if ($db->fieldExists($column, $table)) {
                 return;
             }
             $forge->addColumn($table, [$column => $def]);
+            if (method_exists($db, 'resetDataCache')) {
+                $db->resetDataCache();
+            }
         } catch (\Throwable $e) {
+            if (stripos($e->getMessage(), 'Duplicate column') !== false) {
+                return;
+            }
             log_message('error', "SchemaHeal {$table}.{$column}: " . $e->getMessage());
         }
     }
@@ -592,6 +709,451 @@ class SchemaHeal
         self::addIndex($db, 'cart_items', 'idx_cart_items_cart', '`cart_id`');
         self::addIndex($db, 'wallet_transactions', 'idx_wallet_tx_wallet', '`wallet_id`');
         self::addIndex($db, 'orders', 'idx_orders_user_status', '`user_id`, `status`');
+    }
+
+    protected static function healCardNetwork($db, $forge): void
+    {
+        if (! $db->tableExists('solqam_cards')) {
+            $forge->addField([
+                'id'         => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'user_id'    => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+                'card_code'  => ['type' => 'VARCHAR', 'constraint' => 20],
+                'status'     => ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'active'],
+                'issued_at'  => ['type' => 'DATETIME', 'null' => true],
+                'created_at' => ['type' => 'DATETIME', 'null' => true],
+                'updated_at' => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addUniqueKey('card_code');
+            $forge->addUniqueKey('user_id');
+            $forge->createTable('solqam_cards', true);
+        }
+
+        if (! $db->tableExists('dukandar_profiles')) {
+            $forge->addField([
+                'id'               => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'user_id'          => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+                'owner_name'       => ['type' => 'VARCHAR', 'constraint' => 150],
+                'shop_name'        => ['type' => 'VARCHAR', 'constraint' => 180],
+                'phone'            => ['type' => 'VARCHAR', 'constraint' => 20, 'null' => true],
+                'email'            => ['type' => 'VARCHAR', 'constraint' => 150, 'null' => true],
+                'city'             => ['type' => 'VARCHAR', 'constraint' => 80],
+                'area'             => ['type' => 'VARCHAR', 'constraint' => 120, 'null' => true],
+                'address'          => ['type' => 'VARCHAR', 'constraint' => 500, 'null' => true],
+                'category'         => ['type' => 'VARCHAR', 'constraint' => 60, 'default' => 'General'],
+                'shop_image'       => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+                'lat'              => ['type' => 'DECIMAL', 'constraint' => '10,7', 'null' => true],
+                'lng'              => ['type' => 'DECIMAL', 'constraint' => '10,7', 'null' => true],
+                'approval_status'  => ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'pending'],
+                'rejection_reason' => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+                'accepts_card'     => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 1],
+                'created_at'       => ['type' => 'DATETIME', 'null' => true],
+                'updated_at'       => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addUniqueKey('user_id');
+            $forge->addKey('city');
+            $forge->addKey('category');
+            $forge->addKey('approval_status');
+            $forge->createTable('dukandar_profiles', true);
+        }
+
+        if (! $db->tableExists('dukandar_scans')) {
+            $forge->addField([
+                'id'               => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'dukandar_id'      => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+                'customer_user_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+                'card_code'        => ['type' => 'VARCHAR', 'constraint' => 20],
+                'bill_amount'      => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+                'credit_percent'   => ['type' => 'DECIMAL', 'constraint' => '5,2', 'default' => '5.00'],
+                'credit_amount'    => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => '0.00'],
+                'status'           => ['type' => 'VARCHAR', 'constraint' => 30, 'default' => 'pending_payment'],
+                'proof_path'       => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+                'proof_note'       => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+                'submitted_at'     => ['type' => 'DATETIME', 'null' => true],
+                'released_at'      => ['type' => 'DATETIME', 'null' => true],
+                'rejected_at'      => ['type' => 'DATETIME', 'null' => true],
+                'admin_note'       => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+                'created_at'       => ['type' => 'DATETIME', 'null' => true],
+                'updated_at'       => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addKey('dukandar_id');
+            $forge->addKey('customer_user_id');
+            $forge->addKey('status');
+            $forge->createTable('dukandar_scans', true);
+        }
+        self::healMerchantAdvance($db, $forge);
+        self::healCardIdV2($db, $forge);
+    }
+
+    protected static function healMerchantAdvance($db, $forge): void
+    {
+        if (! $db->tableExists('dukandar_profiles')) {
+            return;
+        }
+        self::addColumn($db, $forge, 'dukandar_profiles', 'province', [
+            'type'       => 'VARCHAR',
+            'constraint' => 40,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'dukandar_profiles', 'whatsapp', [
+            'type'       => 'VARCHAR',
+            'constraint' => 20,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'dukandar_profiles', 'opening_hours', [
+            'type'       => 'VARCHAR',
+            'constraint' => 80,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'dukandar_profiles', 'merchant_code', [
+            'type'       => 'VARCHAR',
+            'constraint' => 20,
+            'null'       => true,
+        ]);
+        self::healShopInsidePhoto($db, $forge);
+        self::addIndex($db, 'dukandar_profiles', 'idx_dukandar_merchant_code', '`merchant_code`');
+        try {
+            $rows = $db->table('dukandar_profiles')->select('id, merchant_code')->get()->getResultArray();
+            foreach ($rows as $row) {
+                if (trim((string) ($row['merchant_code'] ?? '')) !== '') {
+                    continue;
+                }
+                $db->table('dukandar_profiles')->where('id', (int) $row['id'])->update([
+                    'merchant_code' => 'M' . str_pad((string) (int) $row['id'], 7, '0', STR_PAD_LEFT),
+                ]);
+            }
+        } catch (\Throwable $e) {
+        }
+    }
+
+    protected static function healShopInsidePhoto($db, $forge): void
+    {
+        if (! $db->tableExists('dukandar_profiles')) {
+            return;
+        }
+        self::addColumn($db, $forge, 'dukandar_profiles', 'shop_image_in', [
+            'type'       => 'VARCHAR',
+            'constraint' => 255,
+            'null'       => true,
+        ]);
+    }
+
+    protected static function healShopTenure($db, $forge): void
+    {
+        if (! $db->tableExists('dukandar_profiles')) {
+            return;
+        }
+        self::addColumn($db, $forge, 'dukandar_profiles', 'occupancy_type', [
+            'type'       => 'VARCHAR',
+            'constraint' => 16,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'dukandar_profiles', 'business_year', [
+            'type' => 'INT',
+            'null' => true,
+        ]);
+    }
+
+    protected static function healUserKyc($db, $forge): void
+    {
+        if (! $db->tableExists('users')) {
+            return;
+        }
+        self::addColumn($db, $forge, 'users', 'gender', [
+            'type'       => 'VARCHAR',
+            'constraint' => 16,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'users', 'father_husband_name', [
+            'type'       => 'VARCHAR',
+            'constraint' => 150,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'users', 'date_of_birth', [
+            'type' => 'DATE',
+            'null' => true,
+        ]);
+    }
+
+    /**
+     * Credit-card fields on solqam_cards (PAN look, CVV, freeze, PIN, tier).
+     */
+    protected static function healCardPlastic($db, $forge): void
+    {
+        if (! $db->tableExists('solqam_cards')) {
+            return;
+        }
+        self::addColumn($db, $forge, 'solqam_cards', 'pan', [
+            'type'       => 'VARCHAR',
+            'constraint' => 20,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'solqam_cards', 'last4', [
+            'type'       => 'VARCHAR',
+            'constraint' => 4,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'solqam_cards', 'cvv', [
+            'type'       => 'VARCHAR',
+            'constraint' => 4,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'solqam_cards', 'holder_name', [
+            'type'       => 'VARCHAR',
+            'constraint' => 80,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'solqam_cards', 'expires_at', [
+            'type' => 'DATE',
+            'null' => true,
+        ]);
+        self::addColumn($db, $forge, 'solqam_cards', 'frozen_at', [
+            'type' => 'DATETIME',
+            'null' => true,
+        ]);
+        self::addColumn($db, $forge, 'solqam_cards', 'pin_hash', [
+            'type'       => 'VARCHAR',
+            'constraint' => 255,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'solqam_cards', 'tier', [
+            'type'       => 'VARCHAR',
+            'constraint' => 20,
+            'default'    => 'blue',
+        ]);
+        self::addIndex($db, 'solqam_cards', 'idx_solqam_cards_pan', '`pan`');
+        self::healCardIdFormat($db);
+        self::healCardGeo($db, $forge);
+    }
+
+    protected static function healPakistanGeo($db, string $geoAll): void
+    {
+        $have = is_file($geoAll) ? trim((string) @file_get_contents($geoAll)) : '';
+        $cities = 0;
+        try {
+            if ($db->tableExists('solqam_geo_cities')) {
+                $cities = (int) $db->table('solqam_geo_cities')->countAllResults();
+            }
+        } catch (\Throwable $e) {
+        }
+        if ($have === self::GEO_PACK && $cities >= 500) {
+            return;
+        }
+        try {
+            \App\Services\Card\SolqamGeoCatalog::seed($db);
+            $cities = $db->tableExists('solqam_geo_cities')
+                ? (int) $db->table('solqam_geo_cities')->countAllResults()
+                : 0;
+            if ($cities >= 500) {
+                @file_put_contents($geoAll, self::GEO_PACK);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'Solqam geo pack: ' . $e->getMessage());
+        }
+    }
+
+    protected static function healCardGeo($db, $forge): void
+    {
+        self::addColumn($db, $forge, 'users', 'city', [
+            'type'       => 'VARCHAR',
+            'constraint' => 80,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'users', 'province', [
+            'type'       => 'VARCHAR',
+            'constraint' => 40,
+            'null'       => true,
+        ]);
+        if (! $db->tableExists('solqam_city_codes')) {
+            $forge->addField([
+                'id'               => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'province_letter'  => ['type' => 'CHAR', 'constraint' => 1],
+                'slug'             => ['type' => 'VARCHAR', 'constraint' => 80],
+                'city_name'        => ['type' => 'VARCHAR', 'constraint' => 80],
+                'city_code'        => ['type' => 'CHAR', 'constraint' => 4],
+                'created_at'       => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addUniqueKey(['province_letter', 'slug']);
+            $forge->createTable('solqam_city_codes', true);
+        }
+        try {
+            \App\Services\Card\SolqamCityRegistry::seed($db);
+        } catch (\Throwable $e) {
+        }
+    }
+
+    protected static function healCardIdFormat($db): void
+    {
+        if (! $db->tableExists('solqam_cards')) {
+            return;
+        }
+        try {
+            $db->query('ALTER TABLE `solqam_cards` MODIFY `pan` VARCHAR(24) NULL');
+        } catch (\Throwable $e) {
+        }
+    }
+
+    protected static function healCardIdV2($db, $forge): void
+    {
+        self::addColumn($db, $forge, 'users', 'division_code', [
+            'type'       => 'CHAR',
+            'constraint' => 2,
+            'null'       => true,
+        ]);
+        self::addColumn($db, $forge, 'users', 'city_code', [
+            'type'       => 'CHAR',
+            'constraint' => 2,
+            'null'       => true,
+        ]);
+        if ($db->tableExists('dukandar_profiles')) {
+            self::addColumn($db, $forge, 'dukandar_profiles', 'category_code', [
+                'type'       => 'CHAR',
+                'constraint' => 3,
+                'null'       => true,
+            ]);
+        }
+        if ($db->tableExists('solqam_cards')) {
+            try {
+                $db->query('ALTER TABLE `solqam_cards` MODIFY `pan` VARCHAR(24) NULL');
+            } catch (\Throwable $e) {
+            }
+        }
+        if (! $db->tableExists('solqam_divisions')) {
+            $forge->addField([
+                'id'            => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'code'          => ['type' => 'CHAR', 'constraint' => 2],
+                'name'          => ['type' => 'VARCHAR', 'constraint' => 120],
+                'province_name' => ['type' => 'VARCHAR', 'constraint' => 80],
+                'is_active'     => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 1],
+                'created_at'    => ['type' => 'DATETIME', 'null' => true],
+                'updated_at'    => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addUniqueKey('code');
+            $forge->createTable('solqam_divisions', true);
+        }
+        if (! $db->tableExists('solqam_geo_cities')) {
+            $forge->addField([
+                'id'          => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'division_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+                'code'        => ['type' => 'CHAR', 'constraint' => 2],
+                'name'        => ['type' => 'VARCHAR', 'constraint' => 120],
+                'is_active'   => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 1],
+                'created_at'  => ['type' => 'DATETIME', 'null' => true],
+                'updated_at'  => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addKey('division_id');
+            $forge->addUniqueKey(['division_id', 'code']);
+            $forge->createTable('solqam_geo_cities', true);
+        }
+        if (! $db->tableExists('solqam_merchant_categories')) {
+            $forge->addField([
+                'id'         => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'code'       => ['type' => 'CHAR', 'constraint' => 3],
+                'name'       => ['type' => 'VARCHAR', 'constraint' => 120],
+                'is_active'  => ['type' => 'TINYINT', 'constraint' => 1, 'default' => 1],
+                'created_at' => ['type' => 'DATETIME', 'null' => true],
+                'updated_at' => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addUniqueKey('code');
+            $forge->createTable('solqam_merchant_categories', true);
+        }
+        if (! $db->tableExists('solqam_golden_numbers')) {
+            $forge->addField([
+                'id'          => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'member_type' => ['type' => 'CHAR', 'constraint' => 1],
+                'serial'      => ['type' => 'CHAR', 'constraint' => 8],
+                'status'      => ['type' => 'VARCHAR', 'constraint' => 20, 'default' => 'reserved'],
+                'user_id'     => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+                'card_id'     => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'null' => true],
+                'note'        => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+                'created_at'  => ['type' => 'DATETIME', 'null' => true],
+                'updated_at'  => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addUniqueKey(['member_type', 'serial']);
+            $forge->createTable('solqam_golden_numbers', true);
+        }
+        try {
+            \App\Services\Card\SolqamGeoCatalog::seed($db);
+        } catch (\Throwable $e) {
+            log_message('error', 'Solqam geo seed: ' . $e->getMessage());
+        }
+    }
+
+    protected static function healCardPos($db, $forge): void
+    {
+        if ($db->tableExists('dukandar_scans')) {
+            self::addColumn($db, $forge, 'dukandar_scans', 'pan', [
+                'type'       => 'VARCHAR',
+                'constraint' => 24,
+                'null'       => true,
+            ]);
+        }
+    }
+
+    protected static function healCardFifo($db, $forge): void
+    {
+        if ($db->tableExists('dukandar_scans')) {
+            self::addColumn($db, $forge, 'dukandar_scans', 'paid_amount', [
+                'type'       => 'DECIMAL',
+                'constraint' => '12,2',
+                'default'    => 0,
+            ]);
+            try {
+                $db->query("UPDATE dukandar_scans SET paid_amount = credit_amount WHERE status = 'released' AND (paid_amount IS NULL OR paid_amount = 0)");
+            } catch (\Throwable $e) {
+            }
+        }
+        if (! $db->tableExists('dukandar_payouts')) {
+            $forge->addField([
+                'id'          => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'dukandar_id' => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+                'amount'      => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => 0],
+                'allocated'   => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => 0],
+                'proof_path'  => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+                'proof_note'  => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
+                'created_at'  => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addKey('dukandar_id');
+            $forge->createTable('dukandar_payouts', true);
+        }
+    }
+
+    protected static function healCardAdminPay($db, $forge): void
+    {
+        if ($db->tableExists('dukandar_scans')) {
+            self::addColumn($db, $forge, 'dukandar_scans', 'queued_amount', [
+                'type'       => 'DECIMAL',
+                'constraint' => '12,2',
+                'default'    => 0,
+            ]);
+        }
+        if ($db->tableExists('dukandar_payouts')) {
+            self::addColumn($db, $forge, 'dukandar_payouts', 'status', [
+                'type'       => 'VARCHAR',
+                'constraint' => 20,
+                'default'    => 'pending',
+            ]);
+        }
+        if (! $db->tableExists('dukandar_payout_lines')) {
+            $forge->addField([
+                'id'         => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true, 'auto_increment' => true],
+                'payout_id'  => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+                'scan_id'    => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+                'amount'     => ['type' => 'DECIMAL', 'constraint' => '12,2', 'default' => 0],
+                'created_at' => ['type' => 'DATETIME', 'null' => true],
+            ]);
+            $forge->addKey('id', true);
+            $forge->addKey('payout_id');
+            $forge->createTable('dukandar_payout_lines', true);
+        }
     }
 
     protected static function addIndex($db, string $table, string $name, string $columnsSql): void

@@ -243,6 +243,12 @@ class GuestCheckoutService
 
     public function normalizePhone(string $phone): string
     {
+        if (function_exists('pk_store_phone')) {
+            $stored = pk_store_phone($phone);
+            if ($stored !== '') {
+                return $stored;
+            }
+        }
         $ten = $this->lastTen($phone);
 
         return strlen($ten) === 10 ? ('0' . $ten) : trim($phone);
@@ -250,6 +256,12 @@ class GuestCheckoutService
 
     protected function lastTen(string $phone): string
     {
+        if (function_exists('pk_mobile_ten')) {
+            $ten = pk_mobile_ten($phone);
+            if ($ten !== '') {
+                return $ten;
+            }
+        }
         $digits = preg_replace('/\D+/', '', $phone) ?? '';
         if (strlen($digits) > 10) {
             $digits = substr($digits, -10);

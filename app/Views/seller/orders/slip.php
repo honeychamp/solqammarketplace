@@ -36,7 +36,7 @@
             <?php if (! empty($order['area'])): ?>Area: <?= esc($order['area']) ?><br><?php endif; ?>
             <?php if (! empty($order['landmark'])): ?>Landmark: <?= esc($order['landmark']) ?><br><?php endif; ?>
             <?= esc($order['city'] ?? '') ?><?= ! empty($order['province']) ? ', ' . esc($order['province']) : '' ?> <?= esc($order['postal_code'] ?? '') ?><br>
-            Phone: <?= esc($order['recipient_phone'] ?? $order['customer_phone'] ?? '') ?>
+            Phone: <?= esc(pk_local_phone($order['recipient_phone'] ?? $order['customer_phone'] ?? '') ?: ($order['recipient_phone'] ?? $order['customer_phone'] ?? '')) ?>
             <?php if (! empty($order['alternate_phone'])): ?><br>Alt: <?= esc($order['alternate_phone']) ?><?php endif; ?>
         </div>
         <div class="col-md-6">

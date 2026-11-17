@@ -165,7 +165,7 @@ $greet = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good ev
                                 <div class="small"><?= esc($item['product_name']) ?> × <?= (int) $item['quantity'] ?></div>
                                 <div class="small text-muted">
                                     <a href="<?= site_url('seller/customers/' . (int) ($item['customer_id'] ?? 0)) ?>"><?= esc($item['customer_name']) ?></a>
-                                    · <?= esc($item['customer_phone'] ?? '') ?>
+                                    · <?= esc(pk_local_phone($item['customer_phone'] ?? '') ?: ($item['customer_phone'] ?? '')) ?>
                                 </div>
                             </div>
                             <span class="badge text-bg-light"><?= esc(ucfirst((string) $pkg)) ?></span>

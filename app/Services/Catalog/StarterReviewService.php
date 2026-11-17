@@ -4,21 +4,67 @@ namespace App\Services\Catalog;
 
 /**
  * Starter reviews so the storefront is not empty.
- * Fills active products that still have zero reviews, newest first.
- * Runs in chunks so a slow host does not time out on the first hit.
+ * Tops every active product up to 11–12 reviews (keeps real customer reviews).
+ * Includes Whole Trades. HTTP only fills a small batch so pages stay fast.
  */
 class StarterReviewService
 {
-    public static function ensure(): void
+    public const TARGET_MIN = 11;
+    public const TARGET_MAX = 12;
+
+    /**
+     * Cheap HTTP fill: this product (if short) plus a small newest-short batch.
+     */
+    public static function touchStorefront(?int $productId = null): void
     {
-        // Never run on HTTP. Live storefront was spending 20–30s per page on
-        // DELETE/INSERT starter reviews. Seed only from CLI (spark) if needed.
-        if (! is_cli()) {
+        if (is_cli()) {
+            return;
+        }
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        if ($method !== 'GET' && $method !== 'HEAD') {
             return;
         }
         static $ran = false;
         if ($ran) {
             return;
+        }
+        $ran = true;
+
+        try {
+            $db = \Config\Database::connect();
+            if (! $db->tableExists('reviews') || ! $db->tableExists('products') || ! $db->tableExists('users')) {
+                return;
+            }
+            if ($productId && $productId > 0) {
+                self::seedProducts($db, [['id' => $productId]]);
+            }
+
+            $cacheDir = rtrim(WRITEPATH, '\\/') . DIRECTORY_SEPARATOR . 'cache';
+            if (! is_dir($cacheDir)) {
+                @mkdir($cacheDir, 0755, true);
+            }
+            $tick = $cacheDir . DIRECTORY_SEPARATOR . 'starter_reviews_tick';
+            if (is_file($tick) && (time() - (int) filemtime($tick)) < 480) {
+                return;
+            }
+            @touch($tick);
+            self::fillShortBatch($db, 12);
+        } catch (\Throwable $e) {
+            self::rememberError($e->getMessage());
+        }
+    }
+
+    /**
+     * @return array{products:int, reviews:int}
+     */
+    public static function ensure(bool $force = false): array
+    {
+        if (! is_cli()) {
+            return ['products' => 0, 'reviews' => 0];
+        }
+        static $ran = false;
+        if ($ran && ! $force) {
+            return ['products' => 0, 'reviews' => 0];
         }
         $ran = true;
 
@@ -28,142 +74,150 @@ class StarterReviewService
         }
         $tick = $cacheDir . DIRECTORY_SEPARATOR . 'starter_reviews_tick';
 
+        $totals = ['products' => 0, 'reviews' => 0];
+
         try {
             $db = \Config\Database::connect();
             if (! $db->tableExists('reviews') || ! $db->tableExists('products') || ! $db->tableExists('users')) {
-                return;
+                return $totals;
             }
 
-            if (is_file($tick) && (time() - (int) filemtime($tick)) < 3600) {
-                return;
+            if (! $force && is_file($tick) && (time() - (int) filemtime($tick)) < 3600) {
+                return $totals;
             }
             @touch($tick);
 
-            self::stripExcludedStarterReviews($db);
+            $rounds    = 0;
+            $maxRounds = $force ? 80 : 1;
 
-            $reviewers = self::reviewers($db);
-            if ($reviewers === []) {
-                self::rememberError('No reviewer user ids available.');
-                return;
-            }
-
-            $comments = self::comments();
-            $now      = time();
-            $inserted = 0;
-
-            $skip  = self::excludedSellerSql($db);
-            $joins = self::sellerJoins($db);
-            $products = $db->query(
-                "SELECT p.id FROM products p
-                 {$joins}
-                 WHERE p.status = ?
-                   AND NOT EXISTS (SELECT 1 FROM reviews r WHERE r.product_id = p.id)
-                   AND NOT {$skip}
-                 ORDER BY p.id DESC
-                 LIMIT 80",
-                ['active']
-            )->getResultArray();
-
-            if ($products === []) {
-                return;
-            }
-
-            $fields = $db->getFieldNames('reviews');
-            $has    = static fn (string $col): bool => in_array($col, $fields, true);
-
-            foreach ($products as $i => $product) {
-                $pid = (int) $product['id'];
-                $n   = 3 + ($i % 3);
-                for ($k = 0; $k < $n; $k++) {
-                    $user = $reviewers[($i + $k) % count($reviewers)];
-                    $row  = [];
-                    if ($has('product_id')) {
-                        $row['product_id'] = $pid;
-                    }
-                    if ($has('user_id')) {
-                        $row['user_id'] = (int) $user['id'];
-                    }
-                    if ($has('rating')) {
-                        $row['rating'] = ($k === 2 && ($i % 5 === 0)) ? 4 : 5;
-                    }
-                    if ($has('comment')) {
-                        $row['comment'] = $comments[($i + $k) % count($comments)];
-                    }
-                    if ($has('is_approved')) {
-                        $row['is_approved'] = 1;
-                    }
-                    $created = date('Y-m-d H:i:s', $now - (($i * 11 + $k * 17) % 18) * 86400 - ($k * 3600));
-                    if ($has('created_at')) {
-                        $row['created_at'] = $created;
-                    }
-                    if ($has('updated_at')) {
-                        $row['updated_at'] = $created;
-                    }
-
-                    $ok = $db->table('reviews')->insert($row);
-                    if ($ok === false) {
-                        $err = $db->error();
-                        self::rememberError('Insert failed: ' . ($err['message'] ?? 'unknown'));
-                        return;
-                    }
-                    $inserted++;
+            do {
+                $batch = self::fillShortBatch($db, 80);
+                $totals['products'] += $batch['products'];
+                $totals['reviews']  += $batch['reviews'];
+                if ($batch['products'] === 0) {
+                    break;
                 }
-            }
-
-            // Tick already stamped at start — at most one seed pass per hour.
+                $rounds++;
+            } while ($force && $rounds < $maxRounds);
         } catch (\Throwable $e) {
             self::rememberError($e->getMessage());
             log_message('error', 'Starter reviews: ' . $e->getMessage());
         }
+
+        return $totals;
     }
 
     /**
-     * Whole Traders (and similar store/account names) must not get starter reviews.
+     * @return array{products:int, reviews:int}
      */
-    protected static function excludedSellerSql($db): string
+    protected static function fillShortBatch($db, int $limit): array
     {
-        $norm = static fn (string $col): string => "REPLACE(REPLACE(LOWER(COALESCE({$col}, '')), ' ', ''), '-', '')";
-        $parts = [
-            $norm('u.name') . " LIKE '%wholetraders%'",
-            $norm('u.email') . " LIKE '%wholetraders%'",
-        ];
-        if ($db->tableExists('seller_profiles')) {
-            $parts[] = $norm('sp.store_name') . " LIKE '%wholetraders%'";
-            $fields = $db->getFieldNames('seller_profiles');
-            if (in_array('business_name', $fields, true)) {
-                $parts[] = $norm('sp.business_name') . " LIKE '%wholetraders%'";
+        $cap = max(1, min(80, $limit));
+        $min = self::TARGET_MIN;
+        $products = $db->query(
+            "SELECT p.id FROM products p
+             WHERE p.status = ?
+               AND (
+                    SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.id
+               ) < ?
+             ORDER BY p.id DESC
+             LIMIT {$cap}",
+            ['active', $min]
+        )->getResultArray();
+
+        return self::seedProducts($db, $products);
+    }
+
+    /**
+     * @param list<array{id?:int}> $products
+     * @return array{products:int, reviews:int}
+     */
+    protected static function seedProducts($db, array $products): array
+    {
+        $totals = ['products' => 0, 'reviews' => 0];
+        if ($products === []) {
+            return $totals;
+        }
+        $reviewers = self::reviewers($db);
+        if ($reviewers === []) {
+            self::rememberError('No reviewer user ids available.');
+            return $totals;
+        }
+
+        $comments = self::comments();
+        $now      = time();
+        $fields   = $db->getFieldNames('reviews');
+        $has      = static fn (string $col): bool => in_array($col, $fields, true);
+        $revCount = count($reviewers);
+        $comCount = count($comments);
+
+        foreach ($products as $i => $product) {
+            $pid = (int) ($product['id'] ?? 0);
+            if ($pid < 1) {
+                continue;
+            }
+            $have = (int) $db->table('reviews')->where('product_id', $pid)->countAllResults();
+            $want = self::TARGET_MIN + ($pid % 2); // 11 or 12
+            $need = $want - $have;
+            if ($need < 1) {
+                continue;
+            }
+
+            $used = [];
+            $usedRows = $db->table('reviews')->select('user_id')->where('product_id', $pid)->get()->getResultArray();
+            foreach ($usedRows as $usedRow) {
+                $used[(int) $usedRow['user_id']] = true;
+            }
+
+            $added = 0;
+            $guard = 0;
+            while ($added < $need && $guard < 40) {
+                $guard++;
+                $user = $reviewers[($pid + $have + $added + $guard) % $revCount];
+                $uid  = (int) $user['id'];
+                if (isset($used[$uid]) && count($used) < $revCount) {
+                    continue;
+                }
+                $used[$uid] = true;
+                $row = [];
+                if ($has('product_id')) {
+                    $row['product_id'] = $pid;
+                }
+                if ($has('user_id')) {
+                    $row['user_id'] = $uid;
+                }
+                if ($has('rating')) {
+                    $row['rating'] = (($pid + $added) % 6 === 0) ? 4 : 5;
+                }
+                if ($has('comment')) {
+                    $row['comment'] = $comments[($pid + $have + $added) % $comCount];
+                }
+                if ($has('is_approved')) {
+                    $row['is_approved'] = 1;
+                }
+                $created = date('Y-m-d H:i:s', $now - (($i * 9 + $added * 13 + $pid) % 40) * 86400 - ($added * 2700));
+                if ($has('created_at')) {
+                    $row['created_at'] = $created;
+                }
+                if ($has('updated_at')) {
+                    $row['updated_at'] = $created;
+                }
+                $ok = $db->table('reviews')->insert($row);
+                if ($ok === false) {
+                    $err = $db->error();
+                    self::rememberError('Insert failed: ' . ($err['message'] ?? 'unknown'));
+
+                    return $totals;
+                }
+                $added++;
+                $totals['reviews']++;
+            }
+            if ($added > 0) {
+                $totals['products']++;
             }
         }
 
-        return '(' . implode(' OR ', $parts) . ')';
-    }
-
-    /**
-     * Remove fake starter reviews already written on excluded sellers.
-     * Real customer reviews (other emails) are left untouched.
-     */
-    protected static function stripExcludedStarterReviews($db): void
-    {
-        $skip  = self::excludedSellerSql($db);
-        $joins = self::sellerJoins($db);
-        $db->query(
-            "DELETE r FROM reviews r
-             INNER JOIN products p ON p.id = r.product_id
-             {$joins}
-             INNER JOIN users reviewer ON reviewer.id = r.user_id
-             WHERE reviewer.email LIKE '%@reviews.solqam.local'
-               AND {$skip}"
-        );
-    }
-
-    protected static function sellerJoins($db): string
-    {
-        $sql = 'LEFT JOIN users u ON u.id = p.seller_id';
-        if ($db->tableExists('seller_profiles')) {
-            $sql .= ' LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id';
-        }
-
-        return $sql;
+        return $totals;
     }
 
     /**
@@ -184,6 +238,10 @@ class StarterReviewService
             ['Hina Shah', 'hina.shah'],
             ['Ali Hassan', 'ali.hassan'],
             ['Maryam Noor', 'maryam.noor'],
+            ['Hassan Javed', 'hassan.javed'],
+            ['Iqra Nadeem', 'iqra.nadeem'],
+            ['Tariq Mehmood', 'tariq.mehmood'],
+            ['Nimra Khalid', 'nimra.khalid'],
         ];
         $ids = [];
         $now = date('Y-m-d H:i:s');
@@ -237,7 +295,7 @@ class StarterReviewService
             return $ids;
         }
 
-        $fallback = $db->table('users')->select('id')->orderBy('id', 'ASC')->limit(12)->get()->getResultArray();
+        $fallback = $db->table('users')->select('id')->orderBy('id', 'ASC')->limit(16)->get()->getResultArray();
         foreach ($fallback as $row) {
             $ids[] = ['id' => (int) $row['id']];
         }
@@ -270,6 +328,10 @@ class StarterReviewService
             'Smooth order. Seller packed it well. Five stars.',
             'Works as expected. Support replied when I asked about delivery.',
             'Nice quality. Gifted one and they liked it too.',
+            'Second order from this listing. Same quality as the first time.',
+            'Packed well, no scratches. Installed / used the same evening.',
+            'Better than similar items I saw in the market. Fair price.',
+            'Arrived a day early. Description is honest, no surprises.',
         ];
     }
 }

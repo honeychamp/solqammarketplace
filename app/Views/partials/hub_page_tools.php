@@ -23,6 +23,6 @@ unset($hubKeep['q'], $hubKeep['page']);
         </div>
     </form>
     <button type="button" id="hubExcelExport" class="btn btn-success text-nowrap rounded-pill px-3" title="Download this page data as Excel">
-        <i class="bi bi-file-earmark-excel me-1"></i> Download Excel
+        <i class="bi bi-file-earmark-excel me-1"></i><span class="d-none d-sm-inline"> Download Excel</span>
     </button>
 </div>

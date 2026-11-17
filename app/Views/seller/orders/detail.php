@@ -72,7 +72,7 @@
 
             <?php $canSellerEdit = ($pkgStatus === 'placed' && $fulfillBy !== 'admin'); ?>
             <?php if ($canSellerEdit): ?>
-                <div class="alert alert-info small mb-3">After the call, save qty / address first, then Confirm. Commission is not due until you confirm.</div>
+                <div class="alert alert-info small mb-3">After the call, save qty / address / gift wrap (add or cancel) first, then Confirm. Commission is not due until you confirm.</div>
             <?php endif; ?>
             <?php if (in_array($pkgStatus, ['placed', 'confirmed', 'shipped'], true) && ($shipment['fulfill_by'] ?? 'seller') !== 'admin'): ?>
                 <div class="p-3 bg-light rounded-3 border">
@@ -119,6 +119,11 @@
             <?php endif; ?>
         </div>
 
+        <?= view('partials/order_gift_call_banner', [
+            'items'       => $sellerItems ?? [],
+            'canEditGift' => $canSellerEdit,
+        ]) ?>
+
         <?php if ($canSellerEdit): ?>
         <form method="POST" action="<?= site_url('seller/orders/' . $order['id'] . '/edit') ?>" class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
             <?= csrf_field() ?>
@@ -136,7 +141,7 @@
                     <tbody>
                         <?php foreach ($sellerItems as $item): ?>
                             <tr>
-                                <td class="fw-semibold"><?= esc($item['product_name']) ?><div class="small text-muted">0 = remove</div><?= view('partials/order_item_gift', ['item' => $item]) ?></td>
+                                <td class="fw-semibold"><?= esc($item['product_name']) ?><div class="small text-muted">0 = remove</div><?= view('partials/order_edit_gift', ['item' => $item]) ?></td>
                                 <td>Rs. <?= number_format((float) $item['price'], 0) ?></td>
                                 <td>
                                     <input type="number" class="form-control form-control-sm" name="qty[<?= (int) $item['id'] ?>]" value="<?= (int) $item['quantity'] ?>" min="0" max="99">
@@ -155,7 +160,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label small mb-1">Phone</label>
-                    <input class="form-control form-control-sm" name="phone" value="<?= esc($order['recipient_phone'] ?? $order['customer_phone'] ?? '') ?>">
+                    <input class="form-control form-control-sm" name="phone" value="<?= esc(pk_local_phone($order['recipient_phone'] ?? $order['customer_phone'] ?? '') ?: ($order['recipient_phone'] ?? $order['customer_phone'] ?? '')) ?>">
                 </div>
                 <div class="col-12">
                     <label class="form-label small mb-1">Street</label>
@@ -191,7 +196,7 @@
                 </div>
             </div>
             <button type="submit" class="btn btn-outline-dark rounded-pill px-4">Save changes</button>
-            <span class="small text-muted ms-2">Then tap Confirm (Accept Order) above.</span>
+            <span class="small text-muted ms-2">Call: keep wrap, uncheck to cancel, or tick Add gift wrap if they asked now. Save, then Confirm (Accept Order).</span>
         </form>
         <?php endif; ?>
 

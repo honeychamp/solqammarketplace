@@ -1,0 +1,305 @@
+/* Site-wide: mobile · tablet · desktop
+   xs <576 · sm 576 · md 768 · lg 992 · xl 1200 */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+html, body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+img, svg, video, canvas, iframe {
+    max-width: 100%;
+    height: auto;
+}
+iframe { max-height: 100%; }
+table { max-width: 100%; }
+.row > * { min-width: 0; }
+.min-w-0, .flex-grow-1, .hub-main, .content-area, main {
+    min-width: 0;
+}
+
+@media (max-width: 991.98px) {
+    input, select, textarea, .form-control, .form-select {
+        font-size: 16px !important;
+    }
+}
+
+/* ========== Storefront header ========== */
+.solqam-topbar .solqam-topbar-links {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    max-width: 100%;
+}
+.solqam-topbar .solqam-topbar-links::-webkit-scrollbar { display: none; }
+
+.brand-badge-logo img {
+    height: 48px;
+    width: auto;
+    max-width: 160px;
+    object-fit: contain;
+}
+
+.solqam-search-input-group {
+    min-width: 0;
+    width: 100%;
+}
+.solqam-search-input {
+    min-width: 0;
+}
+
+/* ========== Tables never blow the page ========== */
+.table-responsive,
+.hub-content .table-wrap,
+.hub-content :has(> table.table) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+.table-responsive .table,
+.ops-table {
+    margin-bottom: 0;
+}
+
+/* ========== Plastic card ========== */
+.sq-card-scene {
+    width: 100%;
+    max-width: min(440px, 100%);
+}
+
+/* ========== Hub drawer < lg ========== */
+.hub-nav-backdrop { display: none; }
+.hub-nav-toggle {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+@media (max-width: 991.98px) {
+    .hub-app { overflow-x: hidden; }
+    .hub-app .solqam-sidebar {
+        position: fixed !important;
+        z-index: 1080;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: min(288px, 88vw) !important;
+        height: 100% !important;
+        max-height: none !important;
+        min-height: 0 !important;
+        transform: translateX(-105%);
+        transition: transform 0.22s ease;
+        overflow: hidden;
+        display: flex !important;
+        flex-direction: column;
+        box-shadow: 12px 0 40px rgba(15, 23, 42, 0.28);
+    }
+    .hub-app.hub-nav-open .solqam-sidebar { transform: translateX(0); }
+    .hub-app .sidebar-scroll {
+        max-height: none !important;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto !important;
+    }
+    .hub-nav-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1075;
+        border: 0;
+        padding: 0;
+        background: rgba(15, 23, 42, 0.45);
+        cursor: pointer;
+    }
+    .hub-app.hub-nav-open .hub-nav-backdrop { display: block; }
+    body.hub-app.hub-nav-open { overflow: hidden; }
+    .hub-topbar .container-fluid {
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+    }
+    .hub-topbar {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+    }
+    .hub-content { padding: 12px !important; }
+    .hub-page-tools {
+        width: 100%;
+        min-width: 0 !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        flex-wrap: wrap;
+    }
+    .hub-page-tools .input-group { min-width: 0; width: 100%; }
+    #hubExcelExport { font-size: 0.82rem; }
+    .ops-hero .btn { white-space: nowrap; }
+    .ops-queue { grid-template-columns: 1fr 1fr; }
+    .sf-header-row { flex-wrap: wrap; }
+    .sf-header-row .flex-grow-1 { order: 3; flex: 1 0 100%; }
+    .solqam-search-container,
+    .solqam-search-input-group { max-width: 100%; min-width: 0; }
+    .mega-panel { min-height: 0; max-height: min(70vh, 520px); }
+    .mega-l1 {
+        flex-basis: min(200px, 38vw);
+        width: min(200px, 38vw);
+        min-height: 0;
+        max-height: min(70vh, 520px);
+    }
+    .pdp-gallery, .pdp-buybox { width: 100%; }
+}
+
+/* Phone */
+@media (max-width: 575.98px) {
+    .solqam-topbar {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+    .solqam-topbar .container { padding-left: 0; padding-right: 0; }
+    .solqam-topbar-sep { display: none !important; }
+    .brand-badge-logo img { height: 36px; max-width: 120px; }
+    .solqam-main-nav .container { padding-left: 12px; padding-right: 12px; }
+    .solqam-search-btn span { display: none; }
+    .solqam-search-btn { padding: 0.55rem 0.85rem; min-width: 44px; justify-content: center; }
+    .solqam-search-input {
+        padding-left: 0.35rem;
+        padding-right: 0.35rem;
+        font-size: 0.88rem;
+    }
+    .solqam-search-input::placeholder { font-size: 0.82rem; }
+    .solqam-search-input-group > .bi-search { display: none; }
+    .display-4 { font-size: 1.55rem; }
+    .display-5 { font-size: 1.4rem; }
+    .display-6 { font-size: 1.28rem; }
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.2rem; }
+    .container, .container-fluid { padding-left: 12px; padding-right: 12px; }
+    .py-5 { padding-top: 1.35rem !important; padding-bottom: 1.35rem !important; }
+    .row.g-4 { --bs-gutter-x: 0.75rem; --bs-gutter-y: 0.75rem; }
+    .btn { white-space: normal; }
+    .input-group { flex-wrap: wrap; }
+    .sq-card-scene { padding: 0 4px; }
+    .sq-plastic { border-radius: 16px; }
+    .ops-hero { padding: 16px 12px !important; }
+    .ops-hero .d-flex.flex-wrap.gap-2 .btn { width: 100%; }
+    .ops-stat strong { font-size: 1.02rem; }
+    .ops-queue { grid-template-columns: 1fr; }
+    .kpi-tile strong { font-size: 1.05rem; }
+    .command-panel { padding: 14px !important; border-radius: 14px !important; }
+    .hub-topbar h5 { font-size: 1rem; }
+    .hub-app footer.px-4 {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    .ops-hero, .command-panel, .rounded-4 { border-radius: 14px !important; }
+    .sf-hero-stats { grid-template-columns: 1fr; }
+    .hero-slider-card { min-height: 240px; }
+    .sf-section-head { flex-direction: column; align-items: flex-start !important; }
+    .card.p-4.p-md-5 { padding: 1.15rem !important; }
+    .nav-pills.nav-fill .nav-link { font-size: 0.82rem; padding: 0.45rem 0.4rem; }
+    .dropdown-menu { max-width: calc(100vw - 24px); }
+    .pdp-buybar { flex-wrap: wrap; }
+    .pdp-buybar .btn { flex: 1 1 auto; }
+    .pdp-lightbox-stage { padding: 48px 12px 88px !important; }
+    .pdp-lightbox-nav { width: 40px; height: 40px; }
+    .footer-trust { flex-wrap: wrap; }
+}
+
+/* Phablet / large phone */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .container, .container-fluid { padding-left: 16px; padding-right: 16px; }
+    .sf-hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ops-queue { grid-template-columns: 1fr 1fr; }
+    .ops-hero { padding: 20px 16px; }
+    .solqam-search-btn span { display: none; }
+}
+
+/* Tablet */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .container { padding-left: 20px; padding-right: 20px; }
+    .brand-badge-logo img { height: 42px; }
+    .hero-slider-card { min-height: 280px; }
+    .sf-hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .sf-rail, .sf-rail.sf-rail-compact { grid-template-columns: 1fr 1fr; }
+    .hub-content { padding: 16px !important; }
+    .ops-hero { padding: 22px 20px; }
+    .command-panel { padding: 20px; }
+    .pdp-main-stage { min-height: 280px; max-height: 380px; }
+}
+
+/* Small desktop */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .hub-content { padding: 20px 16px; }
+    .hub-app .solqam-sidebar { width: 260px; }
+}
+
+/* Desktop */
+@media (min-width: 1200px) {
+    .hub-content { padding: 28px; }
+    .ops-hero { padding: 28px 26px; }
+}
+
+/* Shared < tablet */
+@media (max-width: 767.98px) {
+    .display-4 { font-size: 1.75rem; }
+    .display-5 { font-size: 1.55rem; }
+    .display-6 { font-size: 1.35rem; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.28rem; }
+    .container, .container-fluid { padding-left: 12px; padding-right: 12px; }
+    .py-5 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+    .ops-hero { padding: 18px 14px; border-radius: 20px; }
+    .ops-stat strong { font-size: 1.05rem; }
+    .ops-queue { grid-template-columns: 1fr; }
+    .kpi-tile strong { font-size: 1.12rem; }
+    .command-panel { border-radius: 16px; }
+    .pdp-main-stage { min-height: 240px; max-height: 320px; }
+    .pdp-price { font-size: 1.4rem; }
+    .filter-sidebar, .shop-filters { margin-bottom: 1rem; }
+    .sf-header-row { flex-wrap: wrap; }
+    .sf-header-row .flex-grow-1 { order: 3; flex: 1 0 100%; }
+    .solqam-topbar .container {
+        justify-content: flex-start !important;
+        gap: 12px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+    .solqam-tabbar {
+        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+    body.has-m-tab {
+        padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+    .breadcrumb { flex-wrap: wrap; }
+    .breadcrumb-item { max-width: 100%; }
+}
+
+/* Tablet+ desktop storefront */
+@media (min-width: 768px) {
+    .solqam-search-input { font-size: 0.93rem; }
+}
+
+/* Auth / legal */
+@media (max-width: 767.98px) {
+    .lang-tabs, .nav-tabs { flex-wrap: wrap; }
+}
+
+/* Print still usable */
+@media print {
+    .solqam-tabbar, .hub-nav-toggle, .hub-nav-backdrop { display: none !important; }
+}

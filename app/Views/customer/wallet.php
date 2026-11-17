@@ -7,9 +7,12 @@
             <h3 class="fw-bold mb-1" style="color: #0F172A;"><i class="bi bi-wallet2 text-warning me-2"></i> Solqam Cash Wallet</h3>
             <p class="text-secondary small mb-0">Wallet is applied first at checkout. Remaining can be Cash on Delivery. JazzCash / EasyPaisa / card on the same page once PayFast is live.</p>
         </div>
-        <a href="<?= site_url('shop') ?>" class="btn btn-sol-primary btn-sm rounded-pill px-3 shadow-sm">
-            <i class="bi bi-bag-check me-1"></i> Spend Balance at Checkout
-        </a>
+        <div class="d-flex gap-2">
+            <a href="<?= site_url('card') ?>" class="btn btn-outline-primary btn-sm rounded-pill px-3">Solqam Card</a>
+            <a href="<?= site_url('shop') ?>" class="btn btn-sol-primary btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-bag-check me-1"></i> Spend Balance at Checkout
+            </a>
+        </div>
     </div>
 
     <div class="row g-4 mb-4">
@@ -45,6 +48,11 @@
                     <span class="badge bg-black bg-opacity-25 px-3 py-1.5 rounded-pill small">
                         Product cashback
                     </span>
+                    <?php if (! empty($pendingCard) && $pendingCard > 0): ?>
+                    <span class="badge bg-warning text-dark rounded-pill px-3 py-1.5 small">
+                        Pending shop credits Rs. <?= number_format((float) $pendingCard, 0) ?>
+                    </span>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

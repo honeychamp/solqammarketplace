@@ -1049,6 +1049,10 @@ body {
     color: #FDE68A;
     transform: translateX(2px);
 }
+.solqam-footer a.is-on {
+    color: var(--sol-gold);
+    font-weight: 800;
+}
 
 .solqam-footer .footer-blurb {
     color: #F8FAFC;
@@ -1072,6 +1076,10 @@ body {
     color: #E2E8F0;
     font-size: 0.86rem;
     font-weight: 600;
+}
+.solqam-footer .footer-copy a {
+    display: inline;
+    margin-bottom: 0;
 }
 
 .payment-badge-grid {
@@ -1858,6 +1866,41 @@ body:has(.modal.pdp-lightbox.show) .modal-backdrop { z-index: 1990; }
         radial-gradient(520px 220px at -5% 110%, rgba(245, 158, 11, 0.32), transparent 50%),
         linear-gradient(128deg, #07176E 0%, #0B30E6 48%, #F0142F 125%);
 }
+.ops-hero.merchant {
+    background:
+        radial-gradient(820px 260px at 100% -8%, rgba(16, 185, 129, 0.45), transparent 52%),
+        radial-gradient(520px 220px at -5% 110%, rgba(245, 158, 11, 0.28), transparent 50%),
+        linear-gradient(128deg, #07176E 0%, #0B30E6 52%, #059669 128%);
+}
+.mhub-photo {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 2px solid rgba(255,255,255,.35);
+    box-shadow: 0 8px 20px rgba(0,0,0,.2);
+}
+.mhub-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid #EEF2FF;
+}
+.mhub-step:last-child { border-bottom: 0; padding-bottom: 0; }
+.mhub-step .n {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: #0B30E6;
+    color: #fff;
+    font-weight: 800;
+    font-size: .8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
 .ops-kicker {
     font-size: .7rem;
     letter-spacing: .2em;
@@ -1955,13 +1998,8 @@ body:has(.modal.pdp-lightbox.show) .modal-backdrop { z-index: 1990; }
     .pdp-main-stage { min-height: 300px; max-height: 420px; }
 }
 @media (max-width: 991.98px) {
-    .hub-app .solqam-sidebar {
-        max-height: 62vh;
-        overflow: hidden;
-    }
     .sidebar-scroll {
         overflow-y: auto !important;
-        max-height: calc(62vh - 170px);
         flex: 1 1 auto;
         min-height: 0;
     }

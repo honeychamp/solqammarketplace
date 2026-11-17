@@ -5,8 +5,11 @@ namespace Config;
 use CodeIgniter\Config\BaseConfig;
 
 /**
- * Android Play Store TWA (Trusted Web Activity) — package + signing fingerprints.
- * After Play Console → App integrity → App signing, paste BOTH SHA-256 hashes here.
+ * Android Play Store TWA — package + signing fingerprints.
+ * After the first AAB upload: Play Console → App integrity → App signing.
+ * Paste BOTH SHA-256 values (App signing key + Upload key). Then upload this file
+ * and delete public/.well-known/assetlinks.json on live so PHP serves this list
+ * at https://solqam.com/.well-known/assetlinks.json
  */
 class Twa extends BaseConfig
 {
@@ -14,7 +17,7 @@ class Twa extends BaseConfig
 
     /** @var list<string> */
     public array $sha256Fingerprints = [
-        // 'AB:CD:...' Play App signing key
-        // 'AB:CD:...' Upload key
+        // 'AB:CD:EF:...' App signing key
+        // 'AB:CD:EF:...' Upload key
     ];
 }

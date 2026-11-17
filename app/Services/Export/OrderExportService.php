@@ -705,6 +705,12 @@ class OrderExportService
 
     protected function digitsPhone(string $phone): string
     {
+        if (function_exists('pk_local_phone')) {
+            $local = pk_local_phone($phone);
+            if ($local !== '') {
+                return $local;
+            }
+        }
         $d = preg_replace('/\D+/', '', $phone) ?? '';
         if (strlen($d) === 10) {
             return '0' . $d;

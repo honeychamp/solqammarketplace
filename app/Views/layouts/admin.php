@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?= esc($title ?? 'Admin Console — Solqam Marketplace') ?></title>
     <?= view('partials/favicon') ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,7 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261102a">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261113t">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-responsive.css') ?>?v=20261113t">
 </head>
 <body class="hub-app admin-hub">
 <div class="d-flex flex-column flex-lg-row">
@@ -61,6 +62,26 @@
             <li class="nav-item">
                 <a href="<?= site_url('admin/customers') ?>" class="nav-link <?= strpos(uri_string(), 'admin/customers') !== false ? 'active' : '' ?>">
                     <span class="nav-ico"><i class="bi bi-people"></i></span><span class="label">Customers</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= merchant_admin_url() ?>" class="nav-link <?= strpos(uri_string(), 'admin/merchant') !== false || strpos(uri_string(), 'admin/dukandar') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-shop-window"></i></span><span class="label">Merchants</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= merchant_admin_url('credits') ?>" class="nav-link <?= strpos(uri_string(), 'admin/merchants/credits') !== false || strpos(uri_string(), 'admin/dukandars/credits') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-qr-code"></i></span><span class="label">Card credits</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('admin/cards') ?>" class="nav-link <?= uri_string() === 'admin/cards' ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-credit-card-2-front"></i></span><span class="label">Solqam Cards</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="<?= site_url('admin/card-ids') ?>" class="nav-link <?= strpos(uri_string(), 'admin/card-ids') !== false ? 'active' : '' ?>">
+                    <span class="nav-ico"><i class="bi bi-hash"></i></span><span class="label">Card ID codes</span>
                 </a>
             </li>
             <li class="hub-nav-label">Catalog</li>
@@ -198,9 +219,12 @@
     <main class="hub-main content-area flex-grow-1 min-vh-100 d-flex flex-column">
         <header class="hub-topbar navbar navbar-expand px-4 py-3 sticky-top">
             <div class="container-fluid p-0">
-                <div>
+                <div class="d-flex align-items-center min-w-0">
+                    <?= view('partials/hub_nav_toggle') ?>
+                    <div class="min-w-0">
                     <div class="small text-muted fw-semibold text-uppercase" style="letter-spacing:.12em;">Solqam Marketplace</div>
-                    <h5 class="mb-0 fw-bold"><?= esc($title ?? 'Admin Console') ?></h5>
+                    <h5 class="mb-0 fw-bold text-truncate"><?= esc($title ?? 'Admin Console') ?></h5>
+                    </div>
                 </div>
                 <?= view('partials/hub_page_tools') ?>
                 <div class="ms-auto d-flex align-items-center gap-2">
@@ -248,7 +272,7 @@
 </div>
 <?= $this->renderSection('modals') ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261104b"></script>
+<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261113r"></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>

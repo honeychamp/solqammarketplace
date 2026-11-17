@@ -109,6 +109,12 @@ class CustomerInsightService
             $payLater = [];
         }
 
+        $card = null;
+        try {
+            $card = (new \App\Models\SolqamCardModel())->forUser($customerId);
+        } catch (\Throwable $e) {
+        }
+
         return [
             'user'           => $user,
             'addresses'      => $addresses,
@@ -118,6 +124,7 @@ class CustomerInsightService
             'ledger'         => $ledger,
             'pay_later'      => $payLater,
             'seller_scope'   => $sellerScopeId,
+            'card'           => $card,
         ];
     }
 

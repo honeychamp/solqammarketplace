@@ -169,7 +169,7 @@
             <div class="small">
                 <div class="mb-2"><strong>Name:</strong> <?= esc($seller['owner_name']) ?></div>
                 <div class="mb-2"><strong>Email:</strong> <?= esc($seller['owner_email']) ?></div>
-                <div class="mb-3"><strong>Phone:</strong> <?= esc($seller['owner_phone']) ?></div>
+                <div class="mb-3"><strong>Phone:</strong> <?= esc(pk_local_phone($seller['owner_phone'] ?? '') ?: ($seller['owner_phone'] ?? '—')) ?></div>
                 <div><strong>User Status:</strong> <span class="badge bg-<?= ($seller['user_status'] === 'active') ? 'success' : 'secondary' ?>"><?= ucfirst($seller['user_status']) ?></span></div>
                 <div class="mt-3 p-3 rounded-3 bg-light">
                     <div class="small text-secondary">Unique customers</div>
@@ -253,7 +253,7 @@
                                 <div class="fw-bold text-dark"><?= esc($b['name']) ?></div>
                                 <small class="text-muted">ID: #<?= (int) $b['id'] ?></small>
                             </td>
-                            <td><code><?= esc($b['phone']) ?></code></td>
+                            <td><code><?= esc(pk_local_phone($b['phone'] ?? '') ?: ($b['phone'] ?? '')) ?></code></td>
                             <td><?= esc($b['email']) ?></td>
                             <td><?= (int) $b['orders'] ?></td>
                             <td>Rs. <?= number_format((float) $b['goods'], 0) ?></td>

@@ -25,6 +25,13 @@ class UserModel extends Model
         'facebook_id',
         'oauth_provider',
         'avatar_url',
+        'city',
+        'province',
+        'division_code',
+        'city_code',
+        'gender',
+        'father_husband_name',
+        'date_of_birth',
     ];
 
     protected bool $allowEmptyInserts = false;
@@ -59,13 +66,17 @@ class UserModel extends Model
             ->where('email', $login)
             ->orWhere('phone', $login);
 
-        $digits = preg_replace('/[^0-9]/', '', $login);
-        if (strlen($digits) >= 10) {
-            $tenDigits = substr($digits, -10);
+        $tenDigits = function_exists('pk_mobile_ten') ? pk_mobile_ten($login) : '';
+        if ($tenDigits === '') {
+            $digits = preg_replace('/[^0-9]/', '', $login) ?? '';
+            $tenDigits = strlen($digits) >= 10 ? substr($digits, -10) : '';
+        }
+        if (strlen($tenDigits) === 10) {
             $builder->orWhere('phone', '0' . $tenDigits)
                     ->orWhere('phone', $tenDigits)
                     ->orWhere('phone', '+92' . $tenDigits)
-                    ->orWhere('phone', '92' . $tenDigits);
+                    ->orWhere('phone', '92' . $tenDigits)
+                    ->orWhere('phone', 'oauth:g' . $tenDigits);
         }
 
         $user = $builder->groupEnd()->first();

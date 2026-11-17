@@ -310,20 +310,73 @@ if (!function_exists('sms_demo_mode')) {
     }
 }
 
+if (! function_exists('pk_mobile_ten')) {
+    /**
+     * Pakistan mobile as 10 digits starting with 3 (3001234567).
+     * Accepts 03XXXXXXXXX, 3XXXXXXXXX, +92 / 92, and guest oauth:g + digits.
+     */
+    function pk_mobile_ten(?string $phone): string
+    {
+        $raw = trim((string) $phone);
+        if ($raw === '') {
+            return '';
+        }
+        $lower = strtolower($raw);
+        if (str_starts_with($lower, 'oauth:g') && preg_match('/(\d{10,})$/', $raw, $m)) {
+            $raw = $m[1];
+        } elseif (str_starts_with($lower, 'oauth:')) {
+            return '';
+        }
+
+        $digits = preg_replace('/\D+/', '', $raw) ?? '';
+        if ($digits === '') {
+            return '';
+        }
+        if (str_starts_with($digits, '0092')) {
+            $digits = substr($digits, 4);
+        } elseif (str_starts_with($digits, '92') && strlen($digits) >= 12) {
+            $digits = substr($digits, 2);
+        }
+        while (str_starts_with($digits, '0') && strlen($digits) > 10) {
+            $digits = substr($digits, 1);
+        }
+        if (str_starts_with($digits, '0') && strlen($digits) === 11) {
+            $digits = substr($digits, 1);
+        }
+        if (strlen($digits) > 10) {
+            $digits = substr($digits, -10);
+        }
+        if (strlen($digits) === 10 && str_starts_with($digits, '3')) {
+            return $digits;
+        }
+
+        return '';
+    }
+}
+
+if (! function_exists('pk_store_phone')) {
+    /** Store / display as 03XXXXXXXXX. Empty if not a Pakistan mobile. */
+    function pk_store_phone(?string $phone): string
+    {
+        $ten = pk_mobile_ten($phone);
+
+        return $ten !== '' ? ('0' . $ten) : '';
+    }
+}
+
+if (! function_exists('pk_local_phone')) {
+    function pk_local_phone(?string $phone): string
+    {
+        return pk_store_phone($phone);
+    }
+}
+
 if (!function_exists('pk_msisdn')) {
     function pk_msisdn(string $phone): string
     {
-        $digits = preg_replace('/\D+/', '', $phone) ?? '';
-        if (str_starts_with($digits, '0092')) {
-            $digits = substr($digits, 2);
-        }
-        if (str_starts_with($digits, '0') && strlen($digits) === 11) {
-            $digits = '92' . substr($digits, 1);
-        } elseif (strlen($digits) === 10) {
-            $digits = '92' . $digits;
-        }
+        $ten = pk_mobile_ten($phone);
 
-        return $digits;
+        return $ten !== '' ? ('92' . $ten) : (preg_replace('/\D+/', '', $phone) ?? '');
     }
 }
 
@@ -348,6 +401,32 @@ if (!function_exists('seller_is_approved')) {
     function seller_is_approved(?int $userId = null): bool
     {
         return seller_approval_status($userId) === 'approved';
+    }
+}
+
+if (! function_exists('footer_link_on')) {
+    /**
+     * Current storefront path for highlighting footer / legal nav.
+     */
+    function footer_link_on(string $path, ?string $queryKey = null, ?string $queryVal = null): bool
+    {
+        $uri  = trim((string) uri_string(), '/');
+        $want = trim($path, '/');
+        if ($uri !== $want) {
+            return false;
+        }
+        if ($queryKey === null) {
+            return true;
+        }
+
+        return (string) ($_GET[$queryKey] ?? '') === (string) $queryVal;
+    }
+}
+
+if (! function_exists('footer_link_class')) {
+    function footer_link_class(string $path, ?string $queryKey = null, ?string $queryVal = null): string
+    {
+        return footer_link_on($path, $queryKey, $queryVal) ? 'is-on' : '';
     }
 }
 
@@ -690,5 +769,113 @@ if (! function_exists('order_status_url')) {
     function order_status_url(int $orderId): string
     {
         return site_url('order/thanks/' . $orderId);
+    }
+}
+
+if (! function_exists('merchant_url')) {
+    function merchant_url(string $path = ''): string
+    {
+        $path = ltrim($path, '/');
+
+        return site_url('merchant' . ($path !== '' ? '/' . $path : ''));
+    }
+}
+
+if (! function_exists('merchant_admin_url')) {
+    function merchant_admin_url(string $path = ''): string
+    {
+        $path = ltrim($path, '/');
+
+        return site_url('admin/merchants' . ($path !== '' ? '/' . $path : ''));
+    }
+}
+
+if (! function_exists('merchant_hub_key')) {
+    function merchant_hub_key(): string
+    {
+        $uri = trim((string) uri_string(), '/');
+        foreach (['merchant/', 'dukandar/'] as $prefix) {
+            if ($uri === rtrim($prefix, '/')) {
+                return '';
+            }
+            if (str_starts_with($uri, $prefix)) {
+                return substr($uri, strlen($prefix));
+            }
+        }
+
+        return $uri;
+    }
+}
+
+if (! function_exists('is_merchant_intent')) {
+    function is_merchant_intent($intent = null): bool
+    {
+        $intent = $intent ?? session()->get('login_intent');
+
+        return in_array((string) $intent, ['dukandar', 'dukandaar', 'merchant'], true);
+    }
+}
+
+if (! function_exists('merchant_receipt')) {
+    function merchant_receipt($id): string
+    {
+        return 'SQM-' . str_pad((string) (int) $id, 6, '0', STR_PAD_LEFT);
+    }
+}
+
+if (! function_exists('merchant_scan_pan')) {
+    function merchant_scan_pan(array $row): string
+    {
+        $pan = (string) ($row['pan'] ?? '');
+        if ($pan !== '') {
+            return \App\Services\Card\SolqamCardNumber::display($pan);
+        }
+
+        return (string) ($row['card_code'] ?? '');
+    }
+}
+
+if (! function_exists('merchant_status_badge')) {
+    function merchant_status_badge(string $status): string
+    {
+        $map = [
+            'pending_payment' => ['Awaiting pay', 'warning'],
+            'processing'      => ['Processing', 'info'],
+            'released'        => ['Released', 'success'],
+            'rejected'        => ['Rejected', 'danger'],
+            'pending'         => ['Pending review', 'warning'],
+            'approved'        => ['Approved', 'success'],
+        ];
+        $row = $map[$status] ?? [ucfirst(str_replace('_', ' ', $status)), 'secondary'];
+
+        return '<span class="badge rounded-pill text-bg-' . $row[1] . '">' . esc($row[0]) . '</span>';
+    }
+}
+
+if (! function_exists('merchant_occupancy_label')) {
+    function merchant_occupancy_label(?string $type): string
+    {
+        $v = strtolower(trim((string) $type));
+        if ($v === 'owner' || $v === 'owned') {
+            return 'Owner';
+        }
+        if ($v === 'rent' || $v === 'rented' || $v === 'rental' || $v === 'tenant') {
+            return 'Rent';
+        }
+
+        return $type ? ucfirst($type) : '—';
+    }
+}
+
+if (! function_exists('merchant_business_years')) {
+    function merchant_business_years(): array
+    {
+        $years = [];
+        $now   = (int) date('Y');
+        for ($y = $now; $y >= 1950; $y--) {
+            $years[] = $y;
+        }
+
+        return $years;
     }
 }

@@ -233,7 +233,7 @@ $pipeTotal = max(1, array_sum($statusCounts ?? []));
                 <?php foreach ($pendingSellers as $s): ?>
                     <div class="pulse-row mb-2">
                         <div class="fw-bold"><?= esc($s['store_name'] ?: 'Store') ?></div>
-                        <div class="small text-muted mb-2"><?= esc($s['owner_name']) ?> · <?= esc($s['owner_email']) ?></div>
+                        <div class="small text-muted mb-2"><?= esc($s['owner_name']) ?> · <?= esc(pk_local_phone($s['owner_phone'] ?? '') ?: ($s['owner_phone'] ?? '')) ?> · <?= esc($s['owner_email']) ?></div>
                         <div class="d-flex gap-2">
                             <form action="<?= site_url('admin/sellers/' . $s['id'] . '/approve') ?>" method="POST">
                                 <?= csrf_field() ?>

@@ -19,7 +19,7 @@ $giftTotal = (float) ($order['gift_wrap_amount'] ?? 0);
         <div class="text-muted text-uppercase" style="font-size:10px;letter-spacing:.06em;">Account</div>
         <strong class="d-block text-dark"><?= esc($order['customer_name'] ?? 'Guest') ?></strong>
         <?php if (! empty($order['customer_phone'])): ?>
-            <div><i class="bi bi-telephone me-1"></i><?= esc($order['customer_phone']) ?></div>
+            <div><i class="bi bi-telephone me-1"></i><?= esc(pk_local_phone($order['customer_phone'] ?? '') ?: ($order['customer_phone'] ?? '')) ?></div>
         <?php endif; ?>
         <?php if (! empty($order['customer_email'])): ?>
             <div><i class="bi bi-envelope me-1"></i><?= esc($order['customer_email']) ?></div>
@@ -35,7 +35,7 @@ $giftTotal = (float) ($order['gift_wrap_amount'] ?? 0);
             <div>Landmark: <?= esc($order['landmark']) ?></div>
         <?php endif; ?>
         <div><?= esc($order['city'] ?? '') ?><?= ! empty($order['province']) ? ', ' . esc($order['province']) : '' ?> <?= esc($order['postal_code'] ?? '') ?></div>
-        <div class="mt-1"><i class="bi bi-telephone me-1"></i><?= esc($order['recipient_phone'] ?? '') ?></div>
+        <div class="mt-1"><i class="bi bi-telephone me-1"></i><?= esc(pk_local_phone($order['recipient_phone'] ?? '') ?: ($order['recipient_phone'] ?? '')) ?></div>
         <?php if (! empty($order['alternate_phone'])): ?>
             <div>WhatsApp / alt: <?= esc($order['alternate_phone']) ?></div>
         <?php endif; ?>

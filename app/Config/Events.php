@@ -66,6 +66,11 @@ Events::on('post_controller_constructor', static function (): void {
         return;
     }
     try {
+        \App\Services\Platform\SchemaHeal::ensureCardNetwork();
+    } catch (\Throwable $e) {
+        log_message('error', 'Card network schema: ' . $e->getMessage());
+    }
+    try {
         if (class_exists(\App\Services\Marketing\MarketingService::class)) {
             \App\Services\Marketing\MarketingService::pageViewIfStorefront();
         }

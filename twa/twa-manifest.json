@@ -13,10 +13,30 @@
   "startUrl": "/",
   "iconUrl": "https://solqam.com/assets/images/solqam-app-icon-1024.png",
   "maskableIconUrl": "https://solqam.com/assets/images/solqam-app-icon-1024.png",
-  "appVersionName": "1",
+  "appVersionName": "1.0.0",
   "appVersionCode": 1,
-  "shortcuts": [],
+  "shortcuts": [
+    {
+      "name": "Shop",
+      "shortName": "Shop",
+      "url": "/shop",
+      "iconUrl": "https://solqam.com/assets/images/solqam-pwa-192.png"
+    },
+    {
+      "name": "Track order",
+      "shortName": "Track",
+      "url": "/track",
+      "iconUrl": "https://solqam.com/assets/images/solqam-pwa-192.png"
+    },
+    {
+      "name": "Solqam Card",
+      "shortName": "Card",
+      "url": "/card",
+      "iconUrl": "https://solqam.com/assets/images/solqam-pwa-192.png"
+    }
+  ],
   "webManifestUrl": "https://solqam.com/manifest.webmanifest",
   "fallbackType": "customtabs",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "isChromeOSCompatible": true
 }

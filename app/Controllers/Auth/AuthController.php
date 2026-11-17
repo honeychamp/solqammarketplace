@@ -58,6 +58,11 @@ class AuthController extends BaseController
                     $msg = $approved
                         ? 'Welcome to your Seller Dashboard!'
                         : 'Signed in. Your store is pending admin approval — you can open the dashboard, but you cannot manage products until Solqam approves you.';
+                    if (is_merchant_intent()) {
+                        session()->remove('login_intent');
+
+                        return redirect()->to(merchant_url('dashboard'))->with('success', $msg);
+                    }
 
                     return redirect()->to('/seller/dashboard')->with('success', $msg);
                 }
@@ -65,6 +70,17 @@ class AuthController extends BaseController
                 $redirectUrl = session()->get('redirect_url') ?? '/';
                 session()->remove('redirect_url');
                 session()->remove('pending_login_email');
+                if (is_merchant_intent()) {
+                    session()->remove('login_intent');
+
+                    return redirect()->to(merchant_url('dashboard'))->with('success', 'Signed in. Open Merchant Hub.');
+                }
+                try {
+                    if ((new \App\Models\DukandarProfileModel())->getByUserId((int) $user['id']) && ($redirectUrl === '/' || $redirectUrl === site_url('/'))) {
+                        return redirect()->to(merchant_url('dashboard'))->with('success', 'Signed in. Welcome to Merchant Hub.');
+                    }
+                } catch (\Throwable $e) {
+                }
                 return redirect()->to($redirectUrl)->with('success', 'Signed in successfully. Welcome to Solqam!');
 
             } catch (Exception $e) {
@@ -194,6 +210,9 @@ class AuthController extends BaseController
                 return redirect()->to('/register')->withInput()->with('error', 'Too many registrations from this network. Wait 15 minutes.');
             }
             $role = $this->request->getPost('role') ?? 'customer';
+            if (in_array((string) $role, ['dukandaar', 'merchant'], true)) {
+                $role = 'dukandar';
+            }
 
             $rules = [
                 'name'     => [
@@ -212,10 +231,10 @@ class AuthController extends BaseController
                     ],
                 ],
                 'phone'    => [
-                    'rules'  => 'required|regex_match[/^[0-9]{10}$/]',
+                    'rules'  => 'required|regex_match[/^3[0-9]{9}$/]',
                     'errors' => [
                         'required'    => 'Please enter your mobile number.',
-                        'regex_match' => 'Mobile number must be exactly 10 digits (numbers only, e.g. 3001234567).',
+                        'regex_match' => 'Enter 10 digits after +92 (e.g. 3001234567). Pasting 03XXXXXXXXX is OK.',
                     ],
                 ],
                 'password' => [
@@ -227,19 +246,81 @@ class AuthController extends BaseController
                 ],
             ];
 
+            if ($role === 'customer') {
+                $rules['gender'] = [
+                    'rules'  => 'required|in_list[male,female,other]',
+                    'errors' => ['required' => 'Please select your gender.', 'in_list' => 'Please select a valid gender.'],
+                ];
+                $rules['father_husband_name'] = [
+                    'rules'  => 'required|min_length[2]|max_length[150]',
+                    'errors' => [
+                        'required'   => 'Please enter father / husband name.',
+                        'min_length' => 'Father / husband name must be at least 2 characters.',
+                    ],
+                ];
+                $rules['date_of_birth'] = [
+                    'rules'  => 'required|valid_date[Y-m-d]',
+                    'errors' => [
+                        'required'   => 'Please select your date of birth.',
+                        'valid_date' => 'Please pick a valid date of birth from the calendar.',
+                    ],
+                ];
+            }
+
+            if (in_array($role, ['customer', 'dukandar', 'seller'], true)) {
+                $rules['division_code'] = [
+                    'rules'  => 'required',
+                    'errors' => ['required' => 'Please select your division.'],
+                ];
+                $rules['city_code'] = [
+                    'rules'  => 'required',
+                    'errors' => ['required' => 'Please select your city of division.'],
+                ];
+            }
+
+            if ($role === 'dukandar') {
+                $rules['shop_name'] = [
+                    'rules'  => 'required|min_length[2]|max_length[180]',
+                    'errors' => ['required' => 'Please enter your shop name.'],
+                ];
+                $rules['address'] = [
+                    'rules'  => 'required|min_length[8]|max_length[500]',
+                    'errors' => ['required' => 'Please enter the complete shop address.'],
+                ];
+                $rules['category'] = [
+                    'rules'  => 'required',
+                    'errors' => ['required' => 'Select your type of business.'],
+                ];
+                $rules['whatsapp'] = [
+                    'rules'  => 'permit_empty|regex_match[/^[0-9]{11}$/]',
+                    'errors' => [
+                        'regex_match' => 'WhatsApp must be exactly 11 digits (numbers only).',
+                    ],
+                ];
+                $rules['occupancy_type'] = [
+                    'rules'  => 'required|in_list[owner,rent]',
+                    'errors' => [
+                        'required' => 'Select shop owner type (Owner or Rent).',
+                        'in_list'  => 'Shop owner type must be Owner or Rent.',
+                    ],
+                ];
+                $rules['business_year'] = [
+                    'rules'  => 'required|integer|greater_than_equal_to[1900]|less_than_equal_to[' . date('Y') . ']',
+                    'errors' => [
+                        'required'              => 'Select the year this business started.',
+                        'integer'               => 'Business year must be a valid year.',
+                        'greater_than_equal_to' => 'Business year looks too old.',
+                        'less_than_equal_to'    => 'Business year cannot be in the future.',
+                    ],
+                ];
+            }
+
             if ($role === 'seller') {
                 $rules['store_name'] = [
                     'rules'  => 'required|min_length[3]|max_length[150]',
                     'errors' => [
                         'required'   => 'Please enter your store or brand name.',
                         'min_length' => 'Store name must be at least 3 characters.',
-                    ],
-                ];
-                $rules['city'] = [
-                    'rules'  => 'required|min_length[2]|max_length[80]',
-                    'errors' => [
-                        'required'   => 'Please enter your operating city.',
-                        'min_length' => 'City is required.',
                     ],
                 ];
                 $rules['cnic_or_ntn'] = [
@@ -271,13 +352,51 @@ class AuthController extends BaseController
                 ];
             }
 
-            if (!$this->validate($rules)) {
+            $post = $this->request->getPost() ?? [];
+            $tenDigits = pk_mobile_ten((string) ($post['phone'] ?? ''));
+            if ($tenDigits !== '') {
+                $post['phone'] = $tenDigits;
+            }
+            if (! $this->validateData($post, $rules)) {
                 return redirect()->to('/register')->withInput()->with('errors', $this->validator->getErrors());
             }
-
-            $post = $this->request->getPost();
-            $tenDigits = preg_replace('/[^0-9]/', '', (string)($post['phone'] ?? ''));
-            $normalizedPhone = (strlen($tenDigits) === 10) ? '0' . $tenDigits : $tenDigits;
+            if ($role === 'customer') {
+                $dob = (string) ($post['date_of_birth'] ?? '');
+                if ($dob !== '' && $dob > date('Y-m-d')) {
+                    return redirect()->to('/register')->withInput()->with('errors', [
+                        'date_of_birth' => 'Date of birth cannot be in the future.',
+                    ]);
+                }
+                $post['father_husband_name'] = trim((string) ($post['father_husband_name'] ?? ''));
+                $post['gender']              = strtolower(trim((string) ($post['gender'] ?? '')));
+            }
+            if (in_array($role, ['customer', 'dukandar', 'seller'], true)) {
+                $geo = \App\Services\Card\SolqamGeoCatalog::cityByCodes(
+                    (string) ($post['division_code'] ?? ''),
+                    (string) ($post['city_code'] ?? '')
+                );
+                if (! $geo) {
+                    return redirect()->to('/register')->withInput()->with('errors', [
+                        'city_code' => 'Please select a valid division and city.',
+                    ]);
+                }
+                $post['division_code'] = $geo['division_code'];
+                $post['city_code']     = $geo['city_code'];
+                $post['city']          = $geo['city_name'];
+                $post['province']      = $geo['province_name'];
+            }
+            if ($role === 'dukandar') {
+                $cat = \App\Services\Card\SolqamGeoCatalog::resolveMerchantCategory((string) ($post['category'] ?? ''));
+                $post['category']      = $cat['name'];
+                $post['category_code'] = $cat['code'];
+            }
+            $tenDigits = pk_mobile_ten((string) ($post['phone'] ?? ''));
+            $normalizedPhone = $tenDigits !== '' ? pk_store_phone($tenDigits) : '';
+            if ($normalizedPhone === '') {
+                return redirect()->to('/register')->withInput()->with('errors', [
+                    'phone' => 'Enter a valid Pakistan mobile (10 digits after +92, e.g. 3001234567).',
+                ]);
+            }
 
             // Check if phone number already exists in database
             $existingUserWithPhone = $this->userModel->groupStart()
@@ -285,6 +404,7 @@ class AuthController extends BaseController
                 ->orWhere('phone', $tenDigits)
                 ->orWhere('phone', '+92' . $tenDigits)
                 ->orWhere('phone', '92' . $tenDigits)
+                ->orWhere('phone', 'oauth:g' . $tenDigits)
                 ->groupEnd()
                 ->first();
 
@@ -308,6 +428,28 @@ class AuthController extends BaseController
                         'bank_name'              => $post['bank_name'] ?? null,
                         'account_number_or_iban' => $post['account_number_or_iban'] ?? null,
                     ]);
+                } elseif ($role === 'dukandar') {
+                    $shopImage   = $this->storeDukandarImage('shop_image');
+                    $shopImageIn = $this->storeDukandarImage('shop_image_in');
+                    $result      = $this->authService->registerDukandar($post, [
+                        'owner_name' => $post['name'],
+                        'shop_name'  => $post['shop_name'],
+                        'phone'      => $post['phone'],
+                        'email'      => $post['email'],
+                        'city'           => $post['city'],
+                        'province'       => $post['province'] ?? '',
+                        'category_code'  => $post['category_code'] ?? '',
+                        'area'           => $post['area'] ?? '',
+                        'whatsapp'       => preg_replace('/[^0-9]/', '', (string) ($post['whatsapp'] ?? '')),
+                        'opening_hours'  => $post['opening_hours'] ?? '',
+                        'address'        => $post['address'],
+                        'category'   => $post['category'] ?? 'General',
+                        'shop_image'     => $shopImage,
+                        'shop_image_in'  => $shopImageIn,
+                        'occupancy_type' => $post['occupancy_type'] ?? '',
+                        'business_year'  => $post['business_year'] ?? '',
+                    ]);
+                    session()->set('login_intent', 'merchant');
                 } else {
                     $result = $this->authService->registerCustomer($post);
                 }
@@ -358,16 +500,24 @@ class AuthController extends BaseController
                     session()->set('pending_login_email', $email);
                 }
 
+                \App\Services\Marketing\MarketingService::rememberLead([
+                    'email' => (string) ($user['email'] ?? ''),
+                    'phone' => (string) ($user['phone'] ?? ''),
+                    'name'  => (string) ($user['name'] ?? ''),
+                ]);
                 \App\Services\Marketing\MarketingService::track('CompleteRegistration', [
                     'email'       => (string) ($user['email'] ?? ''),
                     'phone'       => (string) ($user['phone'] ?? ''),
+                    'name'        => (string) ($user['name'] ?? ''),
                     'external_id' => (string) ($user['id'] ?? ''),
                     'content_name'=> (string) ($user['role'] ?? 'customer'),
                 ]);
 
                 $msg = ($user['role'] ?? '') === 'seller'
                     ? 'Email verified. Sign in with your email and password. Your store stays pending until Solqam approves it.'
-                    : 'Email verified. Sign in with your email and the password you created.';
+                    : (is_merchant_intent()
+                        ? 'Email verified. Sign in, then open Merchant Hub. Scanning starts after Solqam approves your shop.'
+                        : 'Email verified. Sign in with your email and the password you created.');
 
                 return redirect()->to('/login')->with('success', $msg);
             }
@@ -558,6 +708,33 @@ class AuthController extends BaseController
             $role = 'seller';
         }
 
+        if (in_array($role, ['dukandar', 'dukandaar', 'merchant'], true)) {
+            return 'dukandar';
+        }
+
         return $role === 'seller' ? 'seller' : 'customer';
+    }
+
+    protected function storeDukandarImage(string $field = 'shop_image'): ?string
+    {
+        $img = $this->request->getFile($field);
+        if (! $img || ! $img->isValid() || $img->hasMoved()) {
+            return null;
+        }
+        if ($img->getSize() > 4 * 1024 * 1024) {
+            throw new Exception('Shop photo must be under 4 MB.');
+        }
+        $ext = strtolower((string) $img->getExtension());
+        if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            throw new Exception('Shop photo must be JPG, PNG or WEBP.');
+        }
+        $dir = FCPATH . 'uploads/dukandar';
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $name = 'shop_' . $img->getRandomName();
+        $img->move($dir, $name);
+
+        return 'uploads/dukandar/' . $name;
     }
 }

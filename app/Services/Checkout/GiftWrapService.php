@@ -177,4 +177,33 @@ class GiftWrapService
             ]);
         }
     }
+
+    /**
+     * Call-desk POST: gift_wrap[itemId], gift_hide[itemId], gift_message[itemId].
+     *
+     * @param array<int|string, mixed> $qty
+     * @param mixed $wrap
+     * @param mixed $hide
+     * @param mixed $messages
+     * @return array<int, array{wrap:bool,hide:bool,message:?string}>
+     */
+    public static function fromEditPost(array $qty, $wrap, $hide, $messages): array
+    {
+        $wrap = is_array($wrap) ? $wrap : [];
+        $hide = is_array($hide) ? $hide : [];
+        $messages = is_array($messages) ? $messages : [];
+        $out = [];
+        foreach ($qty as $itemId => $n) {
+            $id = (int) $itemId;
+            $on = ! empty($wrap[$itemId]) || ! empty($wrap[(string) $itemId]) || ! empty($wrap[$id]);
+            $msg = $messages[$itemId] ?? $messages[(string) $itemId] ?? $messages[$id] ?? null;
+            $out[$id] = [
+                'wrap'    => $on,
+                'hide'    => $on && (! empty($hide[$itemId]) || ! empty($hide[(string) $itemId]) || ! empty($hide[$id])),
+                'message' => $on ? self::sanitizeMessage(is_string($msg) ? $msg : null) : null,
+            ];
+        }
+
+        return $out;
+    }
 }

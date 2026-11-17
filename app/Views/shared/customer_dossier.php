@@ -45,6 +45,9 @@ $orderUrl = $isAdmin ? 'admin/orders/' : 'seller/orders/';
             <div class="small mb-2"><span class="text-muted">Name</span><div class="fw-semibold"><?= esc($u['name']) ?></div></div>
             <div class="small mb-2"><span class="text-muted">Email</span><div><?= esc($u['email']) ?></div></div>
             <div class="small mb-2"><span class="text-muted">Phone</span><div><?= esc($u['phone']) ?></div></div>
+            <?php if (! empty($d['card']['pan'])): ?>
+            <div class="small mb-2"><span class="text-muted">Solqam Card</span><div class="font-monospace fw-bold"><?= esc(\App\Services\Card\SolqamCardNumber::display((string) $d['card']['pan'])) ?></div></div>
+            <?php endif; ?>
             <div class="small mb-2"><span class="text-muted">Joined</span><div><?= !empty($u['created_at']) ? date('d M Y', strtotime($u['created_at'])) : '—' ?></div></div>
             <div class="small"><span class="text-muted">Seller net (this view)</span><div class="fw-bold text-success">Rs. <?= number_format($t['net_to_seller'], 0) ?></div></div>
         </div>

@@ -46,7 +46,7 @@ $soldCount = (int) ($product['sold_count'] ?? 0);
     </nav>
 
     <div class="row g-3 align-items-start">
-        <div class="col-lg-5">
+        <div class="col-md-6 col-lg-5">
             <div class="sf-panel p-3 p-lg-4 pdp-gallery">
                 <div class="pdp-main-stage" id="pdpMainStage" role="button" tabindex="0" aria-label="Click to enlarge photo or play video">
                     <?php

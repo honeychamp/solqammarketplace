@@ -28,7 +28,7 @@
                 <?php foreach ($buyers as $b): ?>
                     <tr>
                         <td class="fw-semibold"><?= esc($b['name']) ?></td>
-                        <td><?= esc($b['phone']) ?></td>
+                        <td><?= esc(pk_local_phone($b['phone'] ?? '') ?: ($b['phone'] ?? '')) ?></td>
                         <td><?= (int) ($b['lines'] ?? $b['orders']) ?></td>
                         <td>Rs. <?= number_format($b['goods'], 0) ?></td>
                         <td class="text-success">Rs. <?= number_format($b['cashback'] ?? 0, 0) ?></td>

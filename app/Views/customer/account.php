@@ -25,7 +25,9 @@ $wallet = (float) ($wallet ?? 0);
         <a class="acc-link" href="<?= site_url('help') ?>"><i class="bi bi-life-preserver text-solqam"></i> Help Center</a>
         <a class="acc-link" href="<?= site_url('account/wishlist') ?>"><i class="bi bi-heart text-danger"></i> Wishlist</a>
         <a class="acc-link" href="<?= site_url('track') ?>"><i class="bi bi-truck text-info"></i> Track Order</a>
+        <a class="acc-link" href="<?= site_url('card') ?>"><i class="bi bi-credit-card-2-front text-solqam"></i> Solqam Card &amp; services</a>
         <a class="acc-link" href="<?= site_url('account/wallet') ?>"><i class="bi bi-wallet2 text-warning"></i> Wallet Cashback Ledger</a>
+        <a class="acc-link" href="<?= session()->get('user.dukandar_status') ? merchant_url('dashboard') : merchant_url('join') ?>"><i class="bi bi-shop-window text-success"></i> <?= session()->get('user.dukandar_status') ? 'Merchant Hub' : 'Join as a Merchant' ?></a>
         <a class="acc-link" href="<?= site_url('account/addresses') ?>"><i class="bi bi-geo-alt text-danger"></i> Shipping Addresses</a>
         <a class="acc-link acc-link-out" href="<?= site_url('logout') ?>"><i class="bi bi-box-arrow-right"></i> Logout</a>
     </div>

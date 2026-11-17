@@ -214,16 +214,16 @@ class ProductModel extends Model
             }
             $builder->orderBy('products.id', 'DESC');
         } else {
-            switch ($sort) {
-                case 'price_low':
-                    $builder->orderBy('products.price', 'ASC');
-                    break;
-                case 'price_high':
-                    $builder->orderBy('products.price', 'DESC');
-                    break;
-                case 'name_asc':
-                    $builder->orderBy('products.name', 'ASC');
-                    break;
+        switch ($sort) {
+            case 'price_low':
+                $builder->orderBy('products.price', 'ASC');
+                break;
+            case 'price_high':
+                $builder->orderBy('products.price', 'DESC');
+                break;
+            case 'name_asc':
+                $builder->orderBy('products.name', 'ASC');
+                break;
                 case 'best_selling':
                     if ($this->productsHas('sold_count')) {
                         $builder->orderBy('products.sold_count', 'DESC');
@@ -234,12 +234,12 @@ class ProductModel extends Model
                 case 'rating':
                     $builder->orderBy('products.id', 'DESC');
                     break;
-                default:
+            default:
                     if ($this->productsHas('is_sponsored')) {
                         $builder->orderBy('products.is_sponsored', 'DESC');
                     }
-                    $builder->orderBy('products.id', 'DESC');
-                    break;
+                $builder->orderBy('products.id', 'DESC');
+                break;
             }
         }
 

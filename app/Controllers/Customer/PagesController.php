@@ -33,6 +33,13 @@ class PagesController extends BaseController
         ]);
     }
 
+    public function terms()
+    {
+        return view('customer/pages/terms', [
+            'title' => 'Terms & Conditions — Solqam Marketplace',
+        ]);
+    }
+
     public function dataDeletion()
     {
         return view('customer/pages/data_deletion', [

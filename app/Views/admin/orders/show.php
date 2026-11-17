@@ -11,15 +11,18 @@ foreach ($order['shipments'] ?? [] as $pkg) {
         $deskPackages[] = $pkg;
     }
 }
-$canEdit = false;
+$orderStatus = (string) ($order['status'] ?? '');
+$canEdit = in_array($orderStatus, ['placed', 'confirmed', 'shipped', 'delivered'], true);
+$canCancel = $canEdit;
+$canConfirmCall = false;
 foreach ($deskPackages as $pkg) {
     if (($pkg['status'] ?? 'placed') === 'placed') {
-        $canEdit = true;
+        $canConfirmCall = true;
         break;
     }
 }
-if ($deskPackages === [] && $deskSellerIds !== [] && ($order['status'] ?? '') === 'placed') {
-    $canEdit = true;
+if ($deskPackages === [] && $deskSellerIds !== [] && $orderStatus === 'placed') {
+    $canConfirmCall = true;
 }
 $storeBySeller = [];
 foreach ($order['items'] ?? [] as $it) {
@@ -32,7 +35,7 @@ foreach ($order['items'] ?? [] as $it) {
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1">Order #<?= esc($order['order_number']) ?></h4>
-        <p class="text-secondary small mb-0">Received <?= esc(pk_datetime($order['created_at'])) ?> PKT. Seller self-deliver view-only. <strong>Send to Solqam</strong> packages: admin call, confirm, ship, deliver.</p>
+        <p class="text-secondary small mb-0">Received <?= esc(pk_datetime($order['created_at'])) ?> PKT. Admin can edit or cancel while the order is placed, confirmed, shipped or delivered.</p>
     </div>
     <a href="<?= site_url($fromMine ? 'admin/my-orders' : 'admin/orders') ?>" class="btn btn-light btn-sm rounded-pill border px-3">
         <i class="bi bi-arrow-left me-1"></i> Back to Orders
@@ -41,13 +44,11 @@ foreach ($order['items'] ?? [] as $it) {
 
 <?php if ($deskSellerIds === []): ?>
 <div class="alert alert-secondary rounded-4">
-    The seller will deliver this order — confirm / ship / deliver from <strong>Seller Hub</strong>. Admin does not run it here.
-    If the seller chooses <em>Send to Solqam to deliver</em>, admin handles the call, confirm, shipped and delivered here.
+    Seller self-deliver: the seller ships from Seller Hub. Admin can still edit qty/address or cancel this order.
 </div>
 <?php else: ?>
 <div class="alert alert-info rounded-4">
-    <strong>Solqam delivery:</strong> Call, qty/address, Confirm, then mark <em>Shipped</em> and <em>Delivered</em>.
-    Seller self-deliver packages are handled by the seller.
+    <strong>Solqam delivery:</strong> Edit qty/address anytime until cancelled. Confirm after call, then mark shipped / delivered. Cancel is also available.
 </div>
 <?php endif; ?>
 
@@ -73,11 +74,16 @@ foreach ($order['items'] ?? [] as $it) {
         </div>
         <?php endif; ?>
 
+        <?= view('partials/order_gift_call_banner', [
+            'items'       => $order['items'] ?? [],
+            'canEditGift' => $canEdit,
+        ]) ?>
+
         <?php if ($canEdit): ?>
         <form method="POST" action="<?= site_url('admin/orders/' . $order['id'] . '/edit') ?>" class="card-custom p-4 mb-4">
             <?= csrf_field() ?>
             <?php if ($fromMine): ?><input type="hidden" name="mine" value="1"><?php endif; ?>
-            <h5 class="fw-bold mb-3">Edit before confirm</h5>
+            <h5 class="fw-bold mb-3">Edit order <span class="badge text-bg-light ms-1"><?= esc(ucfirst($orderStatus)) ?></span></h5>
             <div class="table-responsive mb-3">
                 <table class="table align-middle">
                     <thead class="table-light small">
@@ -85,19 +91,14 @@ foreach ($order['items'] ?? [] as $it) {
                     </thead>
                     <tbody>
                         <?php foreach ($order['items'] as $item): ?>
-                            <?php $deskLine = in_array((int) ($item['seller_id'] ?? 0), $deskSellerIds, true); ?>
                             <tr>
                                 <td>
                                     <div class="fw-semibold"><?= esc($item['product_name']) ?></div>
-                                    <div class="small text-muted">Rs. <?= number_format((float) $item['price'], 0) ?> each<?= $deskLine ? ' · 0 = remove' : ' · seller package (view only)' ?></div>
-                                    <?= view('partials/order_item_gift', ['item' => $item]) ?>
+                                    <div class="small text-muted">Rs. <?= number_format((float) $item['price'], 0) ?> each · 0 = remove</div>
+                                    <?= view('partials/order_edit_gift', ['item' => $item]) ?>
                                 </td>
                                 <td>
-                                    <?php if ($deskLine): ?>
-                                        <input type="number" class="form-control form-control-sm" name="qty[<?= (int) $item['id'] ?>]" value="<?= (int) $item['quantity'] ?>" min="0" max="99">
-                                    <?php else: ?>
-                                        <span><?= (int) $item['quantity'] ?></span>
-                                    <?php endif; ?>
+                                    <input type="number" class="form-control form-control-sm" name="qty[<?= (int) $item['id'] ?>]" value="<?= (int) $item['quantity'] ?>" min="0" max="99">
                                 </td>
                                 <td>Rs. <?= number_format((float) $item['subtotal'], 0) ?></td>
                             </tr>
@@ -149,19 +150,24 @@ foreach ($order['items'] ?? [] as $it) {
                 </div>
             </div>
             <button type="submit" class="btn btn-outline-dark rounded-pill px-4">Save changes</button>
-            <span class="small text-muted ms-2">Totals, shipping and commission are recalculated. Confirm is a separate button.</span>
+            <span class="small text-muted ms-2">Call: uncheck to cancel wrap, or tick Add gift wrap if they asked now. Totals and fees are recalculated.</span>
         </form>
         <div class="d-flex flex-wrap gap-2 mb-4">
+            <?php if ($canConfirmCall): ?>
             <form method="POST" action="<?= site_url('admin/orders/' . $order['id'] . '/confirm-call') ?>" onsubmit="return confirm('Did you speak to the customer? Commission becomes due after confirm.');">
                 <?= csrf_field() ?>
                 <?php if ($fromMine): ?><input type="hidden" name="mine" value="1"><?php endif; ?>
                 <button type="submit" class="btn btn-success rounded-pill px-4">Confirm after call</button>
             </form>
-            <form method="POST" action="<?= site_url('admin/orders/' . $order['id'] . '/cancel-placed') ?>" onsubmit="return confirm('Cancel this whole order?');">
+            <?php endif; ?>
+            <?php if ($canCancel): ?>
+            <form method="POST" action="<?= site_url('admin/orders/' . $order['id'] . '/cancel-placed') ?>" onsubmit="return confirm('Cancel order <?= esc($order['order_number']) ?>? Stock returns and wallet is refunded.');">
                 <?= csrf_field() ?>
                 <?php if ($fromMine): ?><input type="hidden" name="mine" value="1"><?php endif; ?>
+                <input type="hidden" name="reason" value="Cancelled by admin">
                 <button type="submit" class="btn btn-outline-danger rounded-pill px-3">Cancel this order</button>
             </form>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 
@@ -184,7 +190,7 @@ foreach ($order['items'] ?? [] as $it) {
                     <strong><?= esc($storeBySeller[$sid] ?? ('Seller #' . $sid)) ?></strong>
                     <span class="badge fs-6 bg-info text-dark"><?= esc(ucfirst($st)) ?></span>
                 </div>
-                <?php if (! in_array($st, ['delivered', 'cancelled', 'undelivered'], true)): ?>
+                <?php if (! in_array($st, ['cancelled', 'undelivered'], true)): ?>
                 <form action="<?= site_url('admin/orders/' . $order['id'] . '/status') ?>" method="POST" class="d-flex align-items-center gap-2 flex-wrap">
                     <?= csrf_field() ?>
                     <?php if ($fromMine): ?><input type="hidden" name="mine" value="1"><?php endif; ?>
@@ -194,12 +200,17 @@ foreach ($order['items'] ?? [] as $it) {
                             <option value="confirmed">Confirmed (after call)</option>
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancel order</option>
                         <?php elseif ($st === 'confirmed'): ?>
                             <option value="shipped" selected>Shipped</option>
                             <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancel order</option>
                         <?php elseif ($st === 'shipped'): ?>
                             <option value="delivered" selected>Delivered</option>
                             <option value="undelivered">Not received (charge courier fee)</option>
+                            <option value="cancelled">Cancel order</option>
+                        <?php elseif ($st === 'delivered'): ?>
+                            <option value="cancelled">Cancel order</option>
                         <?php endif; ?>
                     </select>
                     <input type="text" name="courier" class="form-control form-control-sm" style="max-width:140px" placeholder="TCS / Leopard" value="<?= esc($pkg['courier'] ?? '') ?>">

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?= esc($title ?? 'Seller Hub — Solqam Marketplace') ?></title>
     <?= view('partials/favicon') ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,7 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261102a">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-premium.css') ?>?v=20261113t">
+    <link rel="stylesheet" href="<?= base_url('assets/css/solqam-responsive.css') ?>?v=20261113t">
 </head>
 <body class="hub-app seller-hub">
 <div class="d-flex flex-column flex-lg-row">
@@ -128,6 +129,11 @@
             <?php else: ?>
             <li class="nav-item"><span class="nav-link disabled opacity-50"><span class="nav-ico"><i class="bi bi-cash-stack"></i></span><span class="label">Pay Solqam</span></span></li>
             <?php endif; ?>
+            <li class="nav-item">
+                <a href="<?= session()->get('user.dukandar_status') ? merchant_url('dashboard') : merchant_url('join') ?>" class="nav-link">
+                    <span class="nav-ico"><i class="bi bi-qr-code-scan"></i></span><span class="label">Merchant Hub</span>
+                </a>
+            </li>
             <li class="nav-item mt-3">
                 <a href="<?= site_url('store/' . (int) session()->get('user.id')) ?>" target="_blank" class="nav-link">
                     <span class="nav-ico"><i class="bi bi-shop-window"></i></span><span class="label">View storefront</span>
@@ -158,15 +164,18 @@
     <main class="hub-main content-area flex-grow-1 min-vh-100 d-flex flex-column">
         <header class="hub-topbar navbar navbar-expand px-4 py-3 sticky-top">
             <div class="container-fluid p-0">
-                <div>
+                <div class="d-flex align-items-center min-w-0">
+                    <?= view('partials/hub_nav_toggle') ?>
+                    <div class="min-w-0">
                     <div class="small text-muted fw-semibold text-uppercase" style="letter-spacing:.12em;">Solqam Marketplace</div>
-                    <h5 class="mb-0 fw-bold"><?= esc($title ?? 'Seller Hub') ?></h5>
+                    <h5 class="mb-0 fw-bold text-truncate"><?= esc($title ?? 'Seller Hub') ?></h5>
+                    </div>
                 </div>
                 <?= view('partials/hub_page_tools') ?>
                 <div class="ms-auto d-flex align-items-center gap-2">
                     <?php if ($sellerApproved): ?>
                     <a href="<?= site_url('seller/products/create') ?>" class="btn btn-solqam btn-sm px-3">
-                        <i class="bi bi-plus-lg me-1"></i> Add product
+                        <i class="bi bi-plus-lg me-1"></i><span class="d-none d-sm-inline"> Add product</span>
                     </a>
                     <a href="<?= site_url('seller/orders') ?>" class="btn btn-light border btn-sm rounded-pill px-3" title="Orders">
                         <i class="bi bi-bell"></i>
@@ -210,7 +219,7 @@
     </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261104b"></script>
+<script src="<?= base_url('assets/js/solqam-hub-tools.js') ?>?v=20261113r"></script>
 <?= $this->renderSection('scripts') ?>
 </body>
 </html>

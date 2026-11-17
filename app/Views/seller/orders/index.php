@@ -45,12 +45,12 @@
                                 <div class="fw-semibold text-dark"><?= esc($item['product_name']) ?></div>
                                 <small class="text-muted">Qty: <?= $item['quantity'] ?> &times; Rs. <?= number_format($item['price'], 0) ?></small>
                                 <?php if (! empty($item['gift_wrap'])): ?>
-                                    <div class="small text-danger"><i class="bi bi-gift-fill"></i> Gift wrap</div>
+                                    <div class="small text-danger fw-semibold"><i class="bi bi-gift-fill"></i> Customer asked for gift wrap<?= (float) ($item['gift_wrap_fee'] ?? 0) > 0 ? ' · Rs. ' . number_format((float) $item['gift_wrap_fee'], 0) : '' ?></div>
                                 <?php endif; ?>
                             </td>
                             <td>
                                 <div><?= esc($item['customer_name']) ?></div>
-                                <small class="text-muted"><i class="bi bi-telephone me-1"></i> <?= esc($item['customer_phone']) ?></small>
+                                <small class="text-muted"><i class="bi bi-telephone me-1"></i> <?= esc(pk_local_phone($item['customer_phone'] ?? $item['recipient_phone'] ?? '') ?: ($item['customer_phone'] ?? '')) ?></small>
                                 <?php if (!empty($item['customer_id'])): ?>
                                     <div><a class="small" href="<?= site_url('seller/customers/' . $item['customer_id']) ?>">360 profile</a></div>
                                 <?php endif; ?>

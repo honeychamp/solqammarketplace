@@ -1,3 +1,4 @@
+<button type="button" class="hub-nav-backdrop" aria-label="Close menu"></button>
 <script>
 (function () {
     var el = document.querySelector('.hub-app .sidebar-scroll');

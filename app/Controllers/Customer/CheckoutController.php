@@ -101,11 +101,24 @@ class CheckoutController extends BaseController
         }
 
         try {
+            $leadAddr = $defaultAddr ?? ($addresses[0] ?? []);
+            \App\Services\Marketing\MarketingService::rememberLead([
+                'email'          => (string) (session()->get('user.email') ?? ''),
+                'phone'          => (string) (($leadAddr['phone'] ?? '') ?: session()->get('user.phone') ?? ''),
+                'recipient_name' => (string) (($leadAddr['recipient_name'] ?? '') ?: session()->get('user.name') ?? ''),
+                'city'           => (string) ($leadAddr['city'] ?? ''),
+                'province'       => (string) ($leadAddr['province'] ?? ''),
+                'postal_code'    => (string) ($leadAddr['postal_code'] ?? ''),
+            ]);
             \App\Services\Marketing\MarketingService::trackCartItems('InitiateCheckout', $items, [
-                'value'       => max(0, $subtotal - $couponDiscount),
+                'value'       => max(0.01, (float) $subtotal - (float) $couponDiscount + (float) ($giftWrapTotal ?? 0)),
                 'coupon'      => (string) $couponCode,
-                'phone'       => (string) (session()->get('user.phone') ?? ''),
+                'phone'       => (string) (($leadAddr['phone'] ?? '') ?: session()->get('user.phone') ?? ''),
                 'email'       => (string) (session()->get('user.email') ?? ''),
+                'name'        => (string) (($leadAddr['recipient_name'] ?? '') ?: session()->get('user.name') ?? ''),
+                'city'        => (string) ($leadAddr['city'] ?? ''),
+                'province'    => (string) ($leadAddr['province'] ?? ''),
+                'postal_code' => (string) ($leadAddr['postal_code'] ?? ''),
                 'external_id' => (string) $userId,
             ]);
         } catch (\Throwable $e) {
@@ -223,7 +236,7 @@ class CheckoutController extends BaseController
             $payload = [
                 'user_id'        => $userId,
                 'recipient_name' => trim((string) $this->request->getPost('recipient_name')),
-                'phone'          => trim((string) $this->request->getPost('phone')),
+                'phone'          => pk_store_phone((string) $this->request->getPost('phone')) ?: trim((string) $this->request->getPost('phone')),
                 'street_address' => trim((string) $this->request->getPost('street_address')),
                 'city'           => $cityPost,
                 'province'       => trim((string) $this->request->getPost('province')),
@@ -277,10 +290,22 @@ class CheckoutController extends BaseController
             }
             $snapItems = $cartSnap ? GiftWrapService::enrichItems($this->cartItemModel->getItemsWithProducts((int) $cartSnap['id'])) : [];
             $addrRow = $this->addressModel->find($addressId);
+            \App\Services\Marketing\MarketingService::rememberLead([
+                'email'          => (string) ($this->request->getPost('guest_email') ?: session()->get('user.email') ?? ''),
+                'phone'          => (string) ($this->request->getPost('phone') ?: ($addrRow['phone'] ?? session()->get('user.phone') ?? '')),
+                'recipient_name' => (string) ($this->request->getPost('recipient_name') ?: ($addrRow['recipient_name'] ?? session()->get('user.name') ?? '')),
+                'city'           => (string) ($this->request->getPost('city') ?: ($addrRow['city'] ?? '')),
+                'province'       => (string) ($this->request->getPost('province') ?: ($addrRow['province'] ?? '')),
+                'postal_code'    => (string) ($this->request->getPost('postal_code') ?: ($addrRow['postal_code'] ?? '')),
+            ]);
             \App\Services\Marketing\MarketingService::trackCartItems('AddPaymentInfo', $snapItems, [
                 'payment_type' => (string) $paymentMethod,
                 'phone'        => (string) ($this->request->getPost('phone') ?: ($addrRow['phone'] ?? session()->get('user.phone') ?? '')),
-                'email'        => (string) (session()->get('user.email') ?? ''),
+                'email'        => (string) ($this->request->getPost('guest_email') ?: session()->get('user.email') ?? ''),
+                'name'         => (string) ($this->request->getPost('recipient_name') ?: ($addrRow['recipient_name'] ?? session()->get('user.name') ?? '')),
+                'city'         => (string) ($this->request->getPost('city') ?: ($addrRow['city'] ?? '')),
+                'province'     => (string) ($this->request->getPost('province') ?: ($addrRow['province'] ?? '')),
+                'postal_code'  => (string) ($this->request->getPost('postal_code') ?: ($addrRow['postal_code'] ?? '')),
                 'external_id'  => (string) $userId,
                 'fbp'          => (string) ($this->request->getPost('fbp') ?? ''),
                 'fbc'          => (string) ($this->request->getPost('fbc') ?? ''),

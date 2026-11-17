@@ -44,7 +44,7 @@
                             </td>
                             <td>
                                 <div><?= esc($s['owner_name']) ?></div>
-                                <small class="text-muted"><i class="bi bi-telephone me-1"></i> <?= esc($s['owner_phone']) ?></small>
+                                <small class="text-muted"><i class="bi bi-telephone me-1"></i> <?= esc(pk_local_phone($s['owner_phone'] ?? '') ?: ($s['owner_phone'] ?? '')) ?></small>
                             </td>
                             <td><?= esc($s['city'] ?: 'Pakistan') ?></td>
                             <td>
